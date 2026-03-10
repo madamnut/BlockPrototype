@@ -1359,13 +1359,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoxelWorldRuntime
   worldMaterial: {fileID: 2100000, guid: 51136fb5a787bd340a7958a4993a49a2, type: 2}
+  fluidMaterial: {fileID: 2100000, guid: e6156fcb66ad5f342ae4507a05a9cb96, type: 2}
   blockDatabase: {fileID: 11400000, guid: 193aec77485fe1b42bbdc1420bde93c5, type: 2}
   interactionCamera: {fileID: 330585545}
   renderSizeInChunks: 25
   generationPaddingInChunks: 1
   seed: 24680
   terrainSettings:
-    seaLevel: 80
+    seaLevel: 95
     dirt:
       baseHeight: 80
       coarseScale: 0.028
@@ -1387,6 +1388,16 @@ MonoBehaviour:
   interactionDistance: 16
   selectionColor: {r: 1, g: 1, b: 1, a: 1}
   chunkBoundaryColor: {r: 0.2, g: 0.9, b: 1, a: 0.16}
+  enablePlanarReflection: 1
+  planarReflectionRenderScale: 0.5
+  planarReflectionCullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  planarReflectionClipPlaneOffset: 0.05
+  planarReflectionRenderShadows: 1
+  planarReflectionAllowHdr: 1
+  planarReflectionFarClip: 180
+  planarReflectionUpdateInterval: 1
 --- !u!4 &1212262540
 Transform:
   m_ObjectHideFlags: 0

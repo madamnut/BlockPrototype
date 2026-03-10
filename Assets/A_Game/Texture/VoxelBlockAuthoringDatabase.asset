@@ -18,6 +18,8 @@ MonoBehaviour:
   targetMaterial: {fileID: 2100000, guid: 51136fb5a787bd340a7958a4993a49a2, type: 2}
   blocks:
   - blockId: 1
-    blockName: Dirt
+    blockName: Grass
   - blockId: 2
+    blockName: Dirt
+  - blockId: 3
     blockName: Rock

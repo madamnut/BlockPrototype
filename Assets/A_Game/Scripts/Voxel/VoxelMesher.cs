@@ -703,6 +703,15 @@ public static class VoxelMesher
 
         float uvWidth = Mathf.Max(1f, Mathf.Abs(du.x) + Mathf.Abs(du.y) + Mathf.Abs(du.z));
         float uvHeight = Mathf.Max(1f, Mathf.Abs(dv.x) + Mathf.Abs(dv.y) + Mathf.Abs(dv.z));
+        bool rotateSideUv = Mathf.Abs(faceNormal.x) > 0.5f;
+        if (rotateSideUv)
+        {
+            float swappedWidth = uvHeight;
+            uvHeight = uvWidth;
+            uvWidth = swappedWidth;
+        }
+
+        bool useFlippedUvLayout = rotateSideUv ? !backFace : backFace;
 
         if (backFace)
         {
@@ -710,11 +719,6 @@ public static class VoxelMesher
             vertices.Add(origin + vVector);
             vertices.Add(origin + uVector + vVector);
             vertices.Add(origin + uVector);
-
-            uvs.Add(new Vector2(0f, 0f));
-            uvs.Add(new Vector2(0f, uvHeight));
-            uvs.Add(new Vector2(uvWidth, uvHeight));
-            uvs.Add(new Vector2(uvWidth, 0f));
         }
         else
         {
@@ -722,7 +726,17 @@ public static class VoxelMesher
             vertices.Add(origin + uVector);
             vertices.Add(origin + uVector + vVector);
             vertices.Add(origin + vVector);
+        }
 
+        if (useFlippedUvLayout)
+        {
+            uvs.Add(new Vector2(0f, 0f));
+            uvs.Add(new Vector2(0f, uvHeight));
+            uvs.Add(new Vector2(uvWidth, uvHeight));
+            uvs.Add(new Vector2(uvWidth, 0f));
+        }
+        else
+        {
             uvs.Add(new Vector2(0f, 0f));
             uvs.Add(new Vector2(uvWidth, 0f));
             uvs.Add(new Vector2(uvWidth, uvHeight));
@@ -772,6 +786,15 @@ public static class VoxelMesher
 
         float uvWidth = Mathf.Max(1f, Mathf.Abs(du[0]) + Mathf.Abs(du[1]) + Mathf.Abs(du[2]));
         float uvHeight = Mathf.Max(1f, Mathf.Abs(dv[0]) + Mathf.Abs(dv[1]) + Mathf.Abs(dv[2]));
+        bool rotateSideUv = Mathf.Abs(faceNormal.x) > 0.5f;
+        if (rotateSideUv)
+        {
+            float swappedWidth = uvHeight;
+            uvHeight = uvWidth;
+            uvWidth = swappedWidth;
+        }
+
+        bool useFlippedUvLayout = rotateSideUv ? !backFace : backFace;
 
         if (backFace)
         {
@@ -779,11 +802,6 @@ public static class VoxelMesher
             vertices.Add(origin + vVector);
             vertices.Add(origin + uVector + vVector);
             vertices.Add(origin + uVector);
-
-            uvs.Add(new Vector2(0f, 0f));
-            uvs.Add(new Vector2(0f, uvHeight));
-            uvs.Add(new Vector2(uvWidth, uvHeight));
-            uvs.Add(new Vector2(uvWidth, 0f));
         }
         else
         {
@@ -791,7 +809,17 @@ public static class VoxelMesher
             vertices.Add(origin + uVector);
             vertices.Add(origin + uVector + vVector);
             vertices.Add(origin + vVector);
+        }
 
+        if (useFlippedUvLayout)
+        {
+            uvs.Add(new Vector2(0f, 0f));
+            uvs.Add(new Vector2(0f, uvHeight));
+            uvs.Add(new Vector2(uvWidth, uvHeight));
+            uvs.Add(new Vector2(uvWidth, 0f));
+        }
+        else
+        {
             uvs.Add(new Vector2(0f, 0f));
             uvs.Add(new Vector2(uvWidth, 0f));
             uvs.Add(new Vector2(uvWidth, uvHeight));

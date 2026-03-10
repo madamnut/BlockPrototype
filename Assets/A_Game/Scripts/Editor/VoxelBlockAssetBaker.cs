@@ -27,12 +27,6 @@ public static class VoxelBlockAssetBaker
         }
 
         string textureRootPath = AssetDatabase.GetAssetPath(authoringDatabase.TextureRootFolder);
-        if (string.IsNullOrWhiteSpace(textureRootPath) || !AssetDatabase.IsValidFolder(textureRootPath))
-        {
-            Debug.LogError("Voxel block bake requires a valid texture root folder.", authoringDatabase);
-            return;
-        }
-
         VoxelBlockAuthoringEntry[] entries = authoringDatabase.Blocks;
         if (entries == null || entries.Length == 0)
         {
@@ -48,7 +42,7 @@ public static class VoxelBlockAssetBaker
         Texture2D[] allTextures = LoadTextures(textureRootPath);
         if (allTextures.Length == 0)
         {
-            Debug.LogError($"Voxel block bake found no textures under '{textureRootPath}'.", authoringDatabase);
+            Debug.LogError("Voxel block bake needs a valid texture root folder containing textures that match the block name and layout naming rules.", authoringDatabase);
             return;
         }
 
@@ -69,7 +63,7 @@ public static class VoxelBlockAssetBaker
             for (int faceIndex = 0; faceIndex < Faces.Length; faceIndex++)
             {
                 VoxelBlockFace face = Faces[faceIndex];
-                Texture2D texture = FindFaceTexture(allTextures, entry.BlockName, face, authoringDatabase);
+                Texture2D texture = FindFaceTexture(allTextures, entry, face, authoringDatabase);
                 if (texture == null)
                 {
                     return;
@@ -148,6 +142,11 @@ public static class VoxelBlockAssetBaker
 
     private static Texture2D[] LoadTextures(string textureRootPath)
     {
+        if (string.IsNullOrWhiteSpace(textureRootPath) || !AssetDatabase.IsValidFolder(textureRootPath))
+        {
+            return Array.Empty<Texture2D>();
+        }
+
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { textureRootPath });
         Texture2D[] textures = new Texture2D[guids.Length];
 
@@ -160,11 +159,16 @@ public static class VoxelBlockAssetBaker
         return textures;
     }
 
-    private static Texture2D FindFaceTexture(Texture2D[] textures, string blockName, VoxelBlockFace face, Object context)
+    private static Texture2D FindFaceTexture(Texture2D[] textures, VoxelBlockAuthoringEntry entry, VoxelBlockFace face, Object context)
     {
-        string blockToken = NormalizeToken(blockName);
-        string faceToken = NormalizeToken(face.ToString());
-        string expectedToken = blockToken + faceToken;
+        string[] expectedTokens = GetExpectedTextureTokens(entry, face, textures);
+        if (expectedTokens.Length == 0)
+        {
+            Debug.LogError(
+                $"Voxel block bake could not infer a texture layout for block '{entry.BlockName}'. Supported names are '{entry.BlockName}_All', '{entry.BlockName}_Top/_Bottom/_Side', '{entry.BlockName}_Top/_Side', or full '{entry.BlockName}_Top/_Bottom/_Front/_Back/_Left/_Right'.",
+                context);
+            return null;
+        }
 
         List<Texture2D> matches = new();
         for (int i = 0; i < textures.Length; i++)
@@ -177,9 +181,13 @@ public static class VoxelBlockAssetBaker
 
             string assetPath = AssetDatabase.GetAssetPath(texture);
             string fileToken = NormalizeToken(Path.GetFileNameWithoutExtension(assetPath));
-            if (fileToken == expectedToken)
+            for (int tokenIndex = 0; tokenIndex < expectedTokens.Length; tokenIndex++)
             {
-                matches.Add(texture);
+                if (fileToken == expectedTokens[tokenIndex])
+                {
+                    matches.Add(texture);
+                    break;
+                }
             }
         }
 
@@ -191,15 +199,108 @@ public static class VoxelBlockAssetBaker
         if (matches.Count == 0)
         {
             Debug.LogError(
-                $"Voxel block bake could not find a texture for block '{blockName}' face '{face}'. Expected a file named '{blockName}_{face}'.",
+                $"Voxel block bake could not find a texture for block '{entry.BlockName}' face '{face}'. Expected one of: {string.Join(", ", expectedTokens)}.",
                 context);
             return null;
         }
 
         Debug.LogError(
-            $"Voxel block bake found multiple textures for block '{blockName}' face '{face}'. Please keep only one matching texture.",
+            $"Voxel block bake found multiple textures for block '{entry.BlockName}' face '{face}'. Please keep only one matching texture.",
             context);
         return null;
+    }
+
+    private static string[] GetExpectedTextureTokens(VoxelBlockAuthoringEntry entry, VoxelBlockFace face, Texture2D[] textures)
+    {
+        string blockToken = NormalizeToken(entry.BlockName);
+        if (string.IsNullOrEmpty(blockToken))
+        {
+            return Array.Empty<string>();
+        }
+
+        bool hasIndividual =
+            HasTexture(textures, blockToken, "top") &&
+            HasTexture(textures, blockToken, "bottom") &&
+            HasTexture(textures, blockToken, "front") &&
+            HasTexture(textures, blockToken, "back") &&
+            HasTexture(textures, blockToken, "left") &&
+            HasTexture(textures, blockToken, "right");
+
+        if (hasIndividual)
+        {
+            return face switch
+            {
+                VoxelBlockFace.Top => new[] { blockToken + "top" },
+                VoxelBlockFace.Bottom => new[] { blockToken + "bottom" },
+                VoxelBlockFace.Left => new[] { blockToken + "left" },
+                VoxelBlockFace.Right => new[] { blockToken + "right" },
+                VoxelBlockFace.Back => new[] { blockToken + "back" },
+                _ => new[] { blockToken + "front" },
+            };
+        }
+
+        bool hasTopBottomSide =
+            HasTexture(textures, blockToken, "top") &&
+            HasTexture(textures, blockToken, "bottom") &&
+            HasTexture(textures, blockToken, "side");
+
+        if (hasTopBottomSide)
+        {
+            return face switch
+            {
+                VoxelBlockFace.Top => new[] { blockToken + "top" },
+                VoxelBlockFace.Bottom => new[] { blockToken + "bottom" },
+                _ => new[] { blockToken + "side" },
+            };
+        }
+
+        bool hasTopAndSide =
+            HasTexture(textures, blockToken, "top") &&
+            HasTexture(textures, blockToken, "side");
+
+        if (hasTopAndSide)
+        {
+            return face switch
+            {
+                VoxelBlockFace.Top => new[] { blockToken + "top" },
+                _ => new[] { blockToken + "side" },
+            };
+        }
+
+        bool hasAll = HasTexture(textures, blockToken, "all") || HasTexture(textures, blockToken, string.Empty);
+        if (hasAll)
+        {
+            return new[] { blockToken + "all", blockToken };
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static bool HasTexture(Texture2D[] textures, string blockToken, string suffixToken)
+    {
+        if (textures == null || textures.Length == 0)
+        {
+            return false;
+        }
+
+        string target = string.IsNullOrEmpty(suffixToken) ? blockToken : blockToken + suffixToken;
+        for (int i = 0; i < textures.Length; i++)
+        {
+            Texture2D texture = textures[i];
+            if (texture == null)
+            {
+                continue;
+            }
+
+            string assetPath = AssetDatabase.GetAssetPath(texture);
+            string fileToken = NormalizeToken(Path.GetFileNameWithoutExtension(assetPath));
+            if (fileToken == target)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string NormalizeToken(string value)

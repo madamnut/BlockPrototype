@@ -15,15 +15,15 @@ MonoBehaviour:
   definitions:
   - blockId: 1
     leftLayer: 0
-    rightLayer: 1
-    bottomLayer: 2
-    topLayer: 3
-    backLayer: 4
-    frontLayer: 5
+    rightLayer: 0
+    bottomLayer: 0
+    topLayer: 0
+    backLayer: 0
+    frontLayer: 0
   - blockId: 2
-    leftLayer: 6
-    rightLayer: 7
-    bottomLayer: 8
-    topLayer: 9
-    backLayer: 10
-    frontLayer: 11
+    leftLayer: 1
+    rightLayer: 2
+    bottomLayer: 3
+    topLayer: 4
+    backLayer: 5
+    frontLayer: 6

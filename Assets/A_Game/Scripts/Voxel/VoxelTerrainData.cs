@@ -12,11 +12,13 @@ public sealed class VoxelTerrainData : IDisposable
     private sealed class ChunkColumnData
     {
         public readonly VoxelBlockType[] blocks;
+        public readonly VoxelFluid[] fluids;
         public int maxHeight;
 
-        public ChunkColumnData(VoxelBlockType[] blocks, int maxHeight)
+        public ChunkColumnData(VoxelBlockType[] blocks, VoxelFluid[] fluids, int maxHeight)
         {
             this.blocks = blocks;
+            this.fluids = fluids;
             this.maxHeight = maxHeight;
         }
     }
@@ -264,6 +266,26 @@ public sealed class VoxelTerrainData : IDisposable
         return chunk.blocks[GetIndex(localX, worldY, localZ)];
     }
 
+    public VoxelFluid GetFluid(int worldX, int worldY, int worldZ)
+    {
+        if (!IsInBounds(worldX, worldY, worldZ))
+        {
+            return VoxelFluid.None;
+        }
+
+        int chunkX = FloorDiv(worldX, ChunkSize);
+        int chunkZ = FloorDiv(worldZ, ChunkSize);
+        Vector2Int key = new(chunkX, chunkZ);
+        if (!_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+        {
+            return VoxelFluid.None;
+        }
+
+        int localX = Mod(worldX, ChunkSize);
+        int localZ = Mod(worldZ, ChunkSize);
+        return chunk.fluids[GetIndex(localX, worldY, localZ)];
+    }
+
     public bool SetBlock(int worldX, int worldY, int worldZ, VoxelBlockType blockType)
     {
         if (!IsInBounds(worldX, worldY, worldZ))
@@ -284,6 +306,51 @@ public sealed class VoxelTerrainData : IDisposable
 
         chunk.blocks[index] = blockType;
         if (blockType != VoxelBlockType.Air)
+        {
+            chunk.fluids[index] = VoxelFluid.None;
+            if (worldY > chunk.maxHeight)
+            {
+                chunk.maxHeight = worldY;
+            }
+
+            return true;
+        }
+
+        if (worldY == chunk.maxHeight)
+        {
+            RecalculateChunkMaxHeight(chunk);
+        }
+
+        return true;
+    }
+
+    public bool SetFluid(int worldX, int worldY, int worldZ, VoxelFluid fluid)
+    {
+        if (!IsInBounds(worldX, worldY, worldZ))
+        {
+            return false;
+        }
+
+        int chunkX = FloorDiv(worldX, ChunkSize);
+        int chunkZ = FloorDiv(worldZ, ChunkSize);
+        ChunkColumnData chunk = EnsureChunkColumnReady(chunkX, chunkZ);
+        int localX = Mod(worldX, ChunkSize);
+        int localZ = Mod(worldZ, ChunkSize);
+        int index = GetIndex(localX, worldY, localZ);
+
+        if (chunk.blocks[index] != VoxelBlockType.Air && fluid.Exists)
+        {
+            return false;
+        }
+
+        VoxelFluid current = chunk.fluids[index];
+        if (current.fluidId == fluid.fluidId && current.amount == fluid.amount)
+        {
+            return false;
+        }
+
+        chunk.fluids[index] = fluid;
+        if (fluid.Exists)
         {
             if (worldY > chunk.maxHeight)
             {
@@ -342,6 +409,47 @@ public sealed class VoxelTerrainData : IDisposable
         return false;
     }
 
+    public bool HasFluidInSubChunk(int chunkX, int subChunkY, int chunkZ)
+    {
+        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
+        {
+            return false;
+        }
+
+        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
+        if (chunk.maxHeight < 0)
+        {
+            return false;
+        }
+
+        int startY = subChunkY * SubChunkSize;
+        if (chunk.maxHeight < startY)
+        {
+            return false;
+        }
+
+        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
+        for (int worldY = startY; worldY < endY; worldY++)
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
+                {
+                    if (chunk.fluids[GetIndex(localX, worldY, localZ)].Exists)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     public bool IsInBounds(int worldX, int worldY, int worldZ)
     {
         return worldY >= 0 && worldY < WorldHeight;
@@ -372,6 +480,7 @@ public sealed class VoxelTerrainData : IDisposable
         pending.handle.Complete();
 
         VoxelBlockType[] managedBlocks = pending.blocks.ToArray();
+        VoxelFluid[] managedFluids = new VoxelFluid[managedBlocks.Length];
         int maxHeight = -1;
         for (int i = 0; i < pending.columnHeights.Length; i++)
         {
@@ -381,10 +490,65 @@ public sealed class VoxelTerrainData : IDisposable
             }
         }
 
+        if (_settings.seaLevel > 0)
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
+                {
+                    int columnIndex = (localZ * ChunkSize) + localX;
+                    int surfaceHeight = pending.columnHeights[columnIndex];
+                    int waterStartY = surfaceHeight + 1;
+                    int waterEndY = Mathf.Min(_settings.seaLevel, WorldHeight);
+
+                    for (int worldY = waterStartY; worldY < waterEndY; worldY++)
+                    {
+                        int index = GetIndex(localX, worldY, localZ);
+                        if (managedBlocks[index] != VoxelBlockType.Air)
+                        {
+                            continue;
+                        }
+
+                        managedFluids[index] = VoxelFluid.Water(100);
+                        if (worldY > maxHeight)
+                        {
+                            maxHeight = worldY;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int localZ = 0; localZ < ChunkSize; localZ++)
+        {
+            for (int localX = 0; localX < ChunkSize; localX++)
+            {
+                int surfaceHeight = pending.columnHeights[(localZ * ChunkSize) + localX];
+                if (surfaceHeight < 0 || surfaceHeight >= WorldHeight)
+                {
+                    continue;
+                }
+
+                int surfaceIndex = GetIndex(localX, surfaceHeight, localZ);
+                if (managedBlocks[surfaceIndex] != VoxelBlockType.Dirt)
+                {
+                    continue;
+                }
+
+                bool hasFluidAbove = surfaceHeight < WorldHeight - 1 &&
+                                     managedFluids[GetIndex(localX, surfaceHeight + 1, localZ)].Exists;
+
+                if (!hasFluidAbove)
+                {
+                    managedBlocks[surfaceIndex] = VoxelBlockType.Grass;
+                }
+            }
+        }
+
         pending.blocks.Dispose();
         pending.columnHeights.Dispose();
 
-        _chunkColumns[key] = new ChunkColumnData(managedBlocks, maxHeight);
+        _chunkColumns[key] = new ChunkColumnData(managedBlocks, managedFluids, maxHeight);
     }
 
     private static void RecalculateChunkMaxHeight(ChunkColumnData chunk)
@@ -395,7 +559,8 @@ public sealed class VoxelTerrainData : IDisposable
             {
                 for (int localX = 0; localX < ChunkSize; localX++)
                 {
-                    if (chunk.blocks[GetIndex(localX, worldY, localZ)] != VoxelBlockType.Air)
+                    int index = GetIndex(localX, worldY, localZ);
+                    if (chunk.blocks[index] != VoxelBlockType.Air || chunk.fluids[index].Exists)
                     {
                         chunk.maxHeight = worldY;
                         return;
