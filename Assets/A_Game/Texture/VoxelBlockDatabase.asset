@@ -20,3 +20,10 @@ MonoBehaviour:
     topLayer: 3
     backLayer: 4
     frontLayer: 5
+  - blockId: 2
+    leftLayer: 6
+    rightLayer: 7
+    bottomLayer: 8
+    topLayer: 9
+    backLayer: 10
+    frontLayer: 11

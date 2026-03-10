@@ -19,3 +19,5 @@ MonoBehaviour:
   blocks:
   - blockId: 1
     blockName: Dirt
+  - blockId: 2
+    blockName: Rock

@@ -10,6 +10,7 @@ public sealed class VoxelBlockDatabase : ScriptableObject
     private ushort _highestTextureLayer;
 
     public ushort HighestTextureLayer => _highestTextureLayer;
+    public ushort MaxBlockId => _definitionsById.Length > 0 ? (ushort)(_definitionsById.Length - 1) : (ushort)0;
 
     private void OnEnable()
     {

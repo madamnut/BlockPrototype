@@ -1,114 +1,142 @@
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Profiling;
-using UnityEngine.UI;
 
 public sealed class VoxelDebugOverlay : MonoBehaviour
 {
-    [SerializeField] private float refreshInterval = 0.25f;
+    [Header("Bindings")]
+    [SerializeField] private VoxelWorldRuntime worldRuntime;
+    [SerializeField] private VoxelFlyCamera playerController;
+    [SerializeField] private TMP_Text upperLeftText;
+    [SerializeField] private TMP_Text upperRightText;
+    [SerializeField] private TMP_Text lowerLeftText;
+    [SerializeField] private TMP_Text lowerRightText;
 
-    private readonly StringBuilder _leftBuilder = new(64);
-    private readonly StringBuilder _rightBuilder = new(192);
+    [Header("Timing")]
+    [SerializeField] private float memoryRefreshInterval = 0.25f;
 
-    private GameObject _overlayRoot;
-    private Text _leftText;
-    private Text _rightText;
-    private float _refreshTimer;
+    private readonly StringBuilder _upperLeftBuilder = new(128);
+    private readonly StringBuilder _upperRightBuilder = new(192);
+
+    private float _memoryRefreshTimer;
     private float _smoothedFps;
-    private bool _visible = true;
+    private bool _topTextsVisible = true;
 
     private void Awake()
     {
-        CreateOverlay();
-        RefreshTexts();
+        ResolveWorldRuntime();
+        ResolvePlayerController();
+        RefreshKeyHelpText();
+        RefreshUpperRightText();
+        ApplyTopTextVisibility();
     }
 
     private void Update()
     {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
-        {
-            _visible = !_visible;
-            _overlayRoot.SetActive(_visible);
-        }
+        HandleVisibilityToggle();
 
         float unscaledDeltaTime = Mathf.Max(Time.unscaledDeltaTime, 0.0001f);
         float currentFps = 1f / unscaledDeltaTime;
         _smoothedFps = Mathf.Lerp(_smoothedFps <= 0f ? currentFps : _smoothedFps, currentFps, 0.12f);
 
-        _refreshTimer -= Time.unscaledDeltaTime;
-        if (_refreshTimer > 0f)
+        ResolveWorldRuntime();
+        ResolvePlayerController();
+        RefreshUpperLeftText();
+
+        _memoryRefreshTimer -= Time.unscaledDeltaTime;
+        if (_memoryRefreshTimer <= 0f)
+        {
+            _memoryRefreshTimer = memoryRefreshInterval;
+            RefreshUpperRightText();
+        }
+    }
+
+    public void BindWorldRuntime(VoxelWorldRuntime runtime)
+    {
+        worldRuntime = runtime;
+    }
+
+    private void HandleVisibilityToggle()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null || !keyboard.f3Key.wasPressedThisFrame)
         {
             return;
         }
 
-        _refreshTimer = refreshInterval;
-        RefreshTexts();
+        _topTextsVisible = !_topTextsVisible;
+        ApplyTopTextVisibility();
     }
 
-    private void CreateOverlay()
+    private void ApplyTopTextVisibility()
     {
-        Font debugFont = LoadDebugFont();
+        if (upperLeftText != null)
+        {
+            upperLeftText.gameObject.SetActive(_topTextsVisible);
+        }
 
-        _overlayRoot = new GameObject("Debug Overlay");
-        _overlayRoot.transform.SetParent(transform, false);
-
-        Canvas canvas = _overlayRoot.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.pixelPerfect = true;
-        canvas.sortingOrder = short.MaxValue;
-
-        CanvasScaler scaler = _overlayRoot.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
-        _overlayRoot.AddComponent<GraphicRaycaster>();
-
-        _leftText = CreateText("Left Debug Text", debugFont, TextAnchor.UpperLeft);
-        _leftText.rectTransform.anchorMin = new Vector2(0f, 1f);
-        _leftText.rectTransform.anchorMax = new Vector2(0f, 1f);
-        _leftText.rectTransform.pivot = new Vector2(0f, 1f);
-        _leftText.rectTransform.anchoredPosition = new Vector2(16f, -16f);
-
-        _rightText = CreateText("Right Debug Text", debugFont, TextAnchor.UpperRight);
-        _rightText.rectTransform.anchorMin = new Vector2(1f, 1f);
-        _rightText.rectTransform.anchorMax = new Vector2(1f, 1f);
-        _rightText.rectTransform.pivot = new Vector2(1f, 1f);
-        _rightText.rectTransform.anchoredPosition = new Vector2(-16f, -16f);
+        if (upperRightText != null)
+        {
+            upperRightText.gameObject.SetActive(_topTextsVisible);
+        }
     }
 
-    private Text CreateText(string objectName, Font font, TextAnchor alignment)
+    private void RefreshUpperLeftText()
     {
-        GameObject textObject = new(objectName);
-        textObject.transform.SetParent(_overlayRoot.transform, false);
+        if (upperLeftText == null)
+        {
+            return;
+        }
 
-        Text text = textObject.AddComponent<Text>();
-        text.font = font;
-        text.fontSize = 22;
-        text.alignment = alignment;
-        text.color = Color.white;
-        text.horizontalOverflow = HorizontalWrapMode.Overflow;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        text.raycastTarget = false;
+        _upperLeftBuilder.Clear();
+        if (playerController != null)
+        {
+            _upperLeftBuilder.Append("Camera: ");
+            _upperLeftBuilder.Append(playerController.CurrentCameraModeLabel);
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Move: ");
+            _upperLeftBuilder.Append(playerController.CurrentMovementModeLabel);
+            _upperLeftBuilder.AppendLine();
+        }
 
-        RectTransform rectTransform = text.rectTransform;
-        rectTransform.sizeDelta = new Vector2(700f, 240f);
+        _upperLeftBuilder.Append("FPS: ");
+        _upperLeftBuilder.Append(Mathf.RoundToInt(_smoothedFps));
+        _upperLeftBuilder.AppendLine();
 
-        Outline outline = textObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.8f);
-        outline.effectDistance = new Vector2(1f, -1f);
+        if (worldRuntime == null || !worldRuntime.HasSelectedBlock)
+        {
+            _upperLeftBuilder.Append("Block: None");
+        }
+        else
+        {
+            Vector3Int position = worldRuntime.SelectedBlockPosition;
+            VoxelBlockType blockType = worldRuntime.SelectedBlockType;
 
-        return text;
+            _upperLeftBuilder.Append("Block ID: ");
+            _upperLeftBuilder.Append((ushort)blockType);
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Block Name: ");
+            _upperLeftBuilder.Append(blockType);
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Block Pos: ");
+            _upperLeftBuilder.Append(position.x);
+            _upperLeftBuilder.Append(", ");
+            _upperLeftBuilder.Append(position.y);
+            _upperLeftBuilder.Append(", ");
+            _upperLeftBuilder.Append(position.z);
+        }
+
+        upperLeftText.text = _upperLeftBuilder.ToString();
     }
 
-    private void RefreshTexts()
+    private void RefreshUpperRightText()
     {
-        _leftBuilder.Clear();
-        _leftBuilder.Append("FPS: ");
-        _leftBuilder.Append(Mathf.RoundToInt(_smoothedFps));
-        _leftText.text = _leftBuilder.ToString();
+        if (upperRightText == null)
+        {
+            return;
+        }
 
         long totalAllocated = Profiler.GetTotalAllocatedMemoryLong();
         long totalReserved = Profiler.GetTotalReservedMemoryLong();
@@ -116,39 +144,73 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
         long monoHeap = Profiler.GetMonoHeapSizeLong();
         long gcMemory = System.GC.GetTotalMemory(false);
 
-        _rightBuilder.Clear();
-        _rightBuilder.Append("Allocated: ");
-        _rightBuilder.Append(FormatMegabytes(totalAllocated));
-        _rightBuilder.AppendLine();
-        _rightBuilder.Append("Reserved: ");
-        _rightBuilder.Append(FormatMegabytes(totalReserved));
-        _rightBuilder.AppendLine();
-        _rightBuilder.Append("Mono Used: ");
-        _rightBuilder.Append(FormatMegabytes(monoUsed));
-        _rightBuilder.AppendLine();
-        _rightBuilder.Append("Mono Heap: ");
-        _rightBuilder.Append(FormatMegabytes(monoHeap));
-        _rightBuilder.AppendLine();
-        _rightBuilder.Append("GC Memory: ");
-        _rightBuilder.Append(FormatMegabytes(gcMemory));
+        _upperRightBuilder.Clear();
+        _upperRightBuilder.Append("Allocated: ");
+        _upperRightBuilder.Append(FormatMegabytes(totalAllocated));
+        _upperRightBuilder.AppendLine();
+        _upperRightBuilder.Append("Reserved: ");
+        _upperRightBuilder.Append(FormatMegabytes(totalReserved));
+        _upperRightBuilder.AppendLine();
+        _upperRightBuilder.Append("Mono Used: ");
+        _upperRightBuilder.Append(FormatMegabytes(monoUsed));
+        _upperRightBuilder.AppendLine();
+        _upperRightBuilder.Append("Mono Heap: ");
+        _upperRightBuilder.Append(FormatMegabytes(monoHeap));
+        _upperRightBuilder.AppendLine();
+        _upperRightBuilder.Append("GC Memory: ");
+        _upperRightBuilder.Append(FormatMegabytes(gcMemory));
 
-        _rightText.text = _rightBuilder.ToString();
+        upperRightText.text = _upperRightBuilder.ToString();
+    }
+
+    private void RefreshKeyHelpText()
+    {
+        if (lowerLeftText == null)
+        {
+            return;
+        }
+
+        lowerLeftText.text =
+            "F3: Toggle top debug\n" +
+            "F3 + G: Chunk bounds\n" +
+            "F5: Cycle camera mode\n" +
+            "Space x2: Toggle fly/ground\n" +
+            "LMB: Break block\n" +
+            "RMB: Place block\n" +
+            "Q / E: Fly down / up\n" +
+            "1: Select Dirt\n" +
+            "2: Select Rock";
+    }
+
+    private void ResolveWorldRuntime()
+    {
+        if (worldRuntime != null)
+        {
+            return;
+        }
+
+        worldRuntime = GetComponent<VoxelWorldRuntime>();
+        if (worldRuntime != null)
+        {
+            return;
+        }
+
+        worldRuntime = FindAnyObjectByType<VoxelWorldRuntime>();
+    }
+
+    private void ResolvePlayerController()
+    {
+        if (playerController != null)
+        {
+            return;
+        }
+
+        playerController = FindAnyObjectByType<VoxelFlyCamera>();
     }
 
     private static string FormatMegabytes(long bytes)
     {
         float megabytes = bytes / (1024f * 1024f);
         return megabytes.ToString("F1") + " MB";
-    }
-
-    private static Font LoadDebugFont()
-    {
-        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (font == null)
-        {
-            font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        }
-
-        return font;
     }
 }

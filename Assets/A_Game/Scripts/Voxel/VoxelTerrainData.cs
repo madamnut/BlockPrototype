@@ -1,105 +1,444 @@
+using System;
+using System.Collections.Generic;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
-public sealed class VoxelTerrainData
+public sealed class VoxelTerrainData : IDisposable
 {
+    private sealed class ChunkColumnData
+    {
+        public readonly VoxelBlockType[] blocks;
+        public int maxHeight;
+
+        public ChunkColumnData(VoxelBlockType[] blocks, int maxHeight)
+        {
+            this.blocks = blocks;
+            this.maxHeight = maxHeight;
+        }
+    }
+
+    private struct PendingChunkColumnData
+    {
+        public JobHandle handle;
+        public NativeArray<VoxelBlockType> blocks;
+        public NativeArray<int> columnHeights;
+    }
+
+    private struct TerrainLayerJobSettings
+    {
+        public float baseHeight;
+        public float coarseScale;
+        public float coarseAmplitude;
+        public float detailScale;
+        public float detailAmplitude;
+        public float ridgeScale;
+        public float ridgeAmplitude;
+    }
+
+    [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+    private struct GenerateChunkColumnJob : IJob
+    {
+        public int chunkX;
+        public int chunkZ;
+        public int seed;
+        public TerrainLayerJobSettings dirt;
+        public TerrainLayerJobSettings rock;
+
+        [NativeDisableContainerSafetyRestriction]
+        public NativeArray<VoxelBlockType> blocks;
+        public NativeArray<int> columnHeights;
+
+        public void Execute()
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
+                {
+                    int worldX = (chunkX * ChunkSize) + localX;
+                    int worldZ = (chunkZ * ChunkSize) + localZ;
+                    int dirtHeight = SampleLayerHeight(worldX, worldZ, seed, dirt, 0.173f, 0.127f, 100f, 300f);
+                    int rockHeight = SampleLayerHeight(worldX, worldZ, seed, rock, 0.241f, 0.191f, 700f, 1100f);
+                    rockHeight = math.clamp(rockHeight, 0, dirtHeight);
+
+                    for (int worldY = 0; worldY <= dirtHeight; worldY++)
+                    {
+                        blocks[GetIndex(localX, worldY, localZ)] = worldY <= rockHeight ? VoxelBlockType.Rock : VoxelBlockType.Dirt;
+                    }
+
+                    columnHeights[(localZ * ChunkSize) + localX] = dirtHeight;
+                }
+            }
+        }
+
+        private static int SampleLayerHeight(
+            int x,
+            int z,
+            int seed,
+            TerrainLayerJobSettings layer,
+            float offsetSeedX,
+            float offsetSeedZ,
+            float baseOffsetX,
+            float baseOffsetZ)
+        {
+            float offsetX = (seed * offsetSeedX) + baseOffsetX;
+            float offsetZ = (seed * offsetSeedZ) + baseOffsetZ;
+
+            float coarse = SampleNoise(x, z, offsetX, offsetZ, layer.coarseScale);
+            float detail = SampleNoise(x, z, -offsetZ, offsetX, layer.detailScale);
+            float ridgeNoise = SampleNoise(x, z, offsetX, -offsetZ, layer.ridgeScale);
+            float ridge = math.abs((ridgeNoise * 2f) - 1f);
+
+            float elevation = layer.baseHeight;
+            elevation += coarse * layer.coarseAmplitude;
+            elevation += detail * layer.detailAmplitude;
+            elevation -= ridge * layer.ridgeAmplitude;
+
+            return math.clamp((int)math.round(elevation), 0, WorldHeight - 1);
+        }
+
+        private static float SampleNoise(int x, int z, float offsetX, float offsetZ, float scale)
+        {
+            if (scale <= 0f)
+            {
+                return 0f;
+            }
+
+            float2 point = new((x + offsetX) * scale, (z + offsetZ) * scale);
+            return math.saturate((noise.snoise(point) * 0.5f) + 0.5f);
+        }
+    }
+
     public const int ChunkSize = 16;
     public const int SubChunkSize = 16;
     public const int WorldHeight = 256;
     public const int SubChunkCountY = WorldHeight / SubChunkSize;
 
-    private readonly int _worldSizeInChunks;
-    private readonly int _worldSizeInBlocks;
-    private readonly int[] _heights;
-    private readonly int[] _chunkMaxHeights;
+    private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
+    private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
+    private readonly List<Vector2Int> _pendingChunkKeys = new();
+    private readonly int _seed;
+    private readonly VoxelTerrainGenerationSettings _settings;
 
-    public VoxelTerrainData(int worldSizeInChunks, int seed)
+    public VoxelTerrainData(int seed, VoxelTerrainGenerationSettings settings)
     {
-        _worldSizeInChunks = worldSizeInChunks;
-        _worldSizeInBlocks = _worldSizeInChunks * ChunkSize;
-        _heights = new int[_worldSizeInBlocks * _worldSizeInBlocks];
-        _chunkMaxHeights = new int[_worldSizeInChunks * _worldSizeInChunks];
-
-        BuildHeightMap(seed);
+        _seed = seed;
+        _settings = settings;
     }
 
-    public int WorldSizeInChunks => _worldSizeInChunks;
+    public int SeaLevel => _settings.seaLevel;
 
-    public int WorldSizeInBlocks => _worldSizeInBlocks;
+    public void Dispose()
+    {
+        for (int i = 0; i < _pendingChunkKeys.Count; i++)
+        {
+            Vector2Int key = _pendingChunkKeys[i];
+            if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+            {
+                continue;
+            }
+
+            pending.handle.Complete();
+            if (pending.blocks.IsCreated)
+            {
+                pending.blocks.Dispose();
+            }
+
+            if (pending.columnHeights.IsCreated)
+            {
+                pending.columnHeights.Dispose();
+            }
+        }
+
+        _pendingChunkColumns.Clear();
+        _pendingChunkKeys.Clear();
+        _chunkColumns.Clear();
+    }
+
+    public void RequestChunkColumn(int chunkX, int chunkZ)
+    {
+        Vector2Int key = new(chunkX, chunkZ);
+        if (_chunkColumns.ContainsKey(key) || _pendingChunkColumns.ContainsKey(key))
+        {
+            return;
+        }
+
+        PendingChunkColumnData pending = new()
+        {
+            blocks = new NativeArray<VoxelBlockType>(ChunkSize * WorldHeight * ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory),
+            columnHeights = new NativeArray<int>(ChunkSize * ChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+        };
+
+        GenerateChunkColumnJob job = new()
+        {
+            chunkX = chunkX,
+            chunkZ = chunkZ,
+            seed = _seed,
+            dirt = ToJobSettings(_settings.dirt),
+            rock = ToJobSettings(_settings.rock),
+            blocks = pending.blocks,
+            columnHeights = pending.columnHeights,
+        };
+
+        pending.handle = job.Schedule();
+        _pendingChunkColumns.Add(key, pending);
+        _pendingChunkKeys.Add(key);
+    }
+
+    public int CompletePendingChunkColumns(List<Vector2Int> completedChunkCoords, int maxCompletions)
+    {
+        int completedCount = 0;
+        for (int i = 0; i < _pendingChunkKeys.Count && completedCount < maxCompletions; i++)
+        {
+            Vector2Int key = _pendingChunkKeys[i];
+            if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+            {
+                continue;
+            }
+
+            if (!pending.handle.IsCompleted)
+            {
+                continue;
+            }
+
+            FinalizePendingChunkColumn(key, pending);
+            _pendingChunkColumns.Remove(key);
+            _pendingChunkKeys.RemoveAt(i);
+            i--;
+
+            completedChunkCoords?.Add(key);
+            completedCount++;
+        }
+
+        return completedCount;
+    }
+
+    public bool IsChunkColumnReady(int chunkX, int chunkZ)
+    {
+        return _chunkColumns.ContainsKey(new Vector2Int(chunkX, chunkZ));
+    }
+
+    public bool TryGetUsedSubChunkCount(int chunkX, int chunkZ, out int usedSubChunkCount)
+    {
+        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        {
+            usedSubChunkCount = 0;
+            return false;
+        }
+
+        if (chunk.maxHeight < 0)
+        {
+            usedSubChunkCount = 0;
+            return true;
+        }
+
+        usedSubChunkCount = Mathf.Clamp((chunk.maxHeight / SubChunkSize) + 1, 1, SubChunkCountY);
+        return true;
+    }
 
     public int GetUsedSubChunkCount(int chunkX, int chunkZ)
     {
-        int maxHeight = _chunkMaxHeights[(chunkZ * _worldSizeInChunks) + chunkX];
-        return Mathf.Clamp((maxHeight / SubChunkSize) + 1, 1, SubChunkCountY);
+        return TryGetUsedSubChunkCount(chunkX, chunkZ, out int usedSubChunkCount) ? usedSubChunkCount : 0;
     }
 
     public VoxelBlockType GetBlock(int worldX, int worldY, int worldZ)
     {
-        if (worldX < 0 || worldZ < 0 || worldX >= _worldSizeInBlocks || worldZ >= _worldSizeInBlocks)
+        if (!IsInBounds(worldX, worldY, worldZ))
         {
             return VoxelBlockType.Air;
         }
 
-        if (worldY < 0 || worldY >= WorldHeight)
+        int chunkX = FloorDiv(worldX, ChunkSize);
+        int chunkZ = FloorDiv(worldZ, ChunkSize);
+        Vector2Int key = new(chunkX, chunkZ);
+        if (!_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
         {
             return VoxelBlockType.Air;
         }
 
-        int surfaceHeight = _heights[(worldZ * _worldSizeInBlocks) + worldX];
-        if (worldY > surfaceHeight)
-        {
-            return VoxelBlockType.Air;
-        }
-
-        if (worldY == 0)
-        {
-            return VoxelBlockType.Stone;
-        }
-
-        if (worldY == surfaceHeight)
-        {
-            return VoxelBlockType.Grass;
-        }
-
-        if (worldY >= surfaceHeight - 3)
-        {
-            return VoxelBlockType.Dirt;
-        }
-
-        return VoxelBlockType.Stone;
+        int localX = Mod(worldX, ChunkSize);
+        int localZ = Mod(worldZ, ChunkSize);
+        return chunk.blocks[GetIndex(localX, worldY, localZ)];
     }
 
-    private void BuildHeightMap(int seed)
+    public bool SetBlock(int worldX, int worldY, int worldZ, VoxelBlockType blockType)
     {
-        float coarseScale = 0.028f;
-        float detailScale = 0.085f;
-        float ridgeScale = 0.041f;
-        float offsetX = (seed * 0.173f) + 100f;
-        float offsetZ = (seed * 0.127f) + 300f;
-
-        for (int z = 0; z < _worldSizeInBlocks; z++)
+        if (!IsInBounds(worldX, worldY, worldZ))
         {
-            for (int x = 0; x < _worldSizeInBlocks; x++)
+            return false;
+        }
+
+        int chunkX = FloorDiv(worldX, ChunkSize);
+        int chunkZ = FloorDiv(worldZ, ChunkSize);
+        ChunkColumnData chunk = EnsureChunkColumnReady(chunkX, chunkZ);
+        int localX = Mod(worldX, ChunkSize);
+        int localZ = Mod(worldZ, ChunkSize);
+        int index = GetIndex(localX, worldY, localZ);
+        if (chunk.blocks[index] == blockType)
+        {
+            return false;
+        }
+
+        chunk.blocks[index] = blockType;
+        if (blockType != VoxelBlockType.Air)
+        {
+            if (worldY > chunk.maxHeight)
             {
-                float coarse = Mathf.PerlinNoise((x + offsetX) * coarseScale, (z + offsetZ) * coarseScale);
-                float detail = Mathf.PerlinNoise((x - offsetZ) * detailScale, (z + offsetX) * detailScale);
-                float ridge = Mathf.Abs((Mathf.PerlinNoise((x + offsetX) * ridgeScale, (z - offsetZ) * ridgeScale) * 2f) - 1f);
+                chunk.maxHeight = worldY;
+            }
 
-                float elevation = 26f;
-                elevation += coarse * 34f;
-                elevation += detail * 10f;
-                elevation -= ridge * 8f;
+            return true;
+        }
 
-                int surfaceHeight = Mathf.Clamp(Mathf.RoundToInt(elevation), 12, 84);
-                _heights[(z * _worldSizeInBlocks) + x] = surfaceHeight;
+        if (worldY == chunk.maxHeight)
+        {
+            RecalculateChunkMaxHeight(chunk);
+        }
 
-                int chunkX = x / ChunkSize;
-                int chunkZ = z / ChunkSize;
-                int chunkIndex = (chunkZ * _worldSizeInChunks) + chunkX;
-                if (surfaceHeight > _chunkMaxHeights[chunkIndex])
+        return true;
+    }
+
+    public bool HasSolidBlocksInSubChunk(int chunkX, int subChunkY, int chunkZ)
+    {
+        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
+        {
+            return false;
+        }
+
+        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
+        if (chunk.maxHeight < 0)
+        {
+            return false;
+        }
+
+        int startY = subChunkY * SubChunkSize;
+        if (chunk.maxHeight < startY)
+        {
+            return false;
+        }
+
+        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
+        for (int worldY = startY; worldY < endY; worldY++)
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
                 {
-                    _chunkMaxHeights[chunkIndex] = surfaceHeight;
+                    if (chunk.blocks[GetIndex(localX, worldY, localZ)] != VoxelBlockType.Air)
+                    {
+                        return true;
+                    }
                 }
             }
         }
+
+        return false;
+    }
+
+    public bool IsInBounds(int worldX, int worldY, int worldZ)
+    {
+        return worldY >= 0 && worldY < WorldHeight;
+    }
+
+    private ChunkColumnData EnsureChunkColumnReady(int chunkX, int chunkZ)
+    {
+        Vector2Int key = new(chunkX, chunkZ);
+        if (_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+        {
+            return chunk;
+        }
+
+        if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+        {
+            RequestChunkColumn(chunkX, chunkZ);
+            pending = _pendingChunkColumns[key];
+        }
+
+        FinalizePendingChunkColumn(key, pending);
+        _pendingChunkColumns.Remove(key);
+        _pendingChunkKeys.Remove(key);
+        return _chunkColumns[key];
+    }
+
+    private void FinalizePendingChunkColumn(Vector2Int key, PendingChunkColumnData pending)
+    {
+        pending.handle.Complete();
+
+        VoxelBlockType[] managedBlocks = pending.blocks.ToArray();
+        int maxHeight = -1;
+        for (int i = 0; i < pending.columnHeights.Length; i++)
+        {
+            if (pending.columnHeights[i] > maxHeight)
+            {
+                maxHeight = pending.columnHeights[i];
+            }
+        }
+
+        pending.blocks.Dispose();
+        pending.columnHeights.Dispose();
+
+        _chunkColumns[key] = new ChunkColumnData(managedBlocks, maxHeight);
+    }
+
+    private static void RecalculateChunkMaxHeight(ChunkColumnData chunk)
+    {
+        for (int worldY = WorldHeight - 1; worldY >= 0; worldY--)
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
+                {
+                    if (chunk.blocks[GetIndex(localX, worldY, localZ)] != VoxelBlockType.Air)
+                    {
+                        chunk.maxHeight = worldY;
+                        return;
+                    }
+                }
+            }
+        }
+
+        chunk.maxHeight = -1;
+    }
+
+    private static TerrainLayerJobSettings ToJobSettings(VoxelTerrainLayerSettings settings)
+    {
+        return new TerrainLayerJobSettings
+        {
+            baseHeight = settings.baseHeight,
+            coarseScale = settings.coarseScale,
+            coarseAmplitude = settings.coarseAmplitude,
+            detailScale = settings.detailScale,
+            detailAmplitude = settings.detailAmplitude,
+            ridgeScale = settings.ridgeScale,
+            ridgeAmplitude = settings.ridgeAmplitude,
+        };
+    }
+
+    private static int GetIndex(int localX, int worldY, int localZ)
+    {
+        return ((worldY * ChunkSize) + localZ) * ChunkSize + localX;
+    }
+
+    private static int FloorDiv(int value, int divisor)
+    {
+        if (value >= 0)
+        {
+            return value / divisor;
+        }
+
+        return ((value + 1) / divisor) - 1;
+    }
+
+    private static int Mod(int value, int modulus)
+    {
+        int result = value % modulus;
+        return result < 0 ? result + modulus : result;
     }
 }

@@ -1,7 +1,6 @@
 public enum VoxelBlockType : ushort
 {
     Air = 0,
-    Grass = 1,
-    Dirt = 2,
-    Stone = 3,
+    Dirt = 1,
+    Rock = 2,
 }
