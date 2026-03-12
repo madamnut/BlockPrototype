@@ -39,6 +39,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     [SerializeField] private Material fluidMaterial;
     [SerializeField] private Material foliageMaterial;
     [SerializeField] private BlockDatabase blockDatabase;
+    [SerializeField] private BiomeGraph worldBiomeGraph;
     [SerializeField] private Camera interactionCamera;
     [SerializeField] private GameObject chunkColumnPrefab;
 
@@ -47,7 +48,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int renderSizeInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
-    [SerializeField] private VoxelTerrainGenerationSettings terrainSettings = default;
+    [SerializeField] private VoxelWorldGenSettingsAsset worldGenSettingsAsset;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -115,6 +116,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     private bool _isRenderingPlanarReflection;
     private int _lastPlanarReflectionFrame = -999999;
     private BlockType _selectedPlacementBlock = BlockType.Dirt;
+    private VoxelTerrainGenerationSettings terrainSettings;
 
     private static readonly int PlanarReflectionTextureId = Shader.PropertyToID("_PlanarReflectionTex");
     private static readonly int PlanarReflectionVpId = Shader.PropertyToID("_PlanarReflectionVP");
@@ -131,15 +133,56 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
             ? _terrain.GetBlock(_selectedBlockPosition.x, _selectedBlockPosition.y, _selectedBlockPosition.z)
             : BlockType.Air;
     public int RenderSizeInChunks => renderSizeInChunks;
+    public int SeaLevel => terrainSettings.seaLevel;
+
+    public bool TryGetWorldGenDebugInfo(out Vector2Int position, out VoxelTerrainData.WorldGenDebugSample sample)
+    {
+        position = default;
+        sample = default;
+
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        Vector3 samplePosition;
+        if (_playerController != null)
+        {
+            samplePosition = _playerController.transform.position;
+        }
+        else if (_resolvedInteractionCamera != null)
+        {
+            samplePosition = _resolvedInteractionCamera.transform.position;
+        }
+        else
+        {
+            return false;
+        }
+
+        if (_worldRoot != null)
+        {
+            samplePosition = _worldRoot.InverseTransformPoint(samplePosition);
+        }
+
+        position = new Vector2Int(Mathf.FloorToInt(samplePosition.x), Mathf.FloorToInt(samplePosition.z));
+        sample = _terrain.SampleWorldGen(position.x, position.y);
+        return true;
+    }
+
+    public string GetWorldGenBiomeLabel(float temperature, float precipitation)
+    {
+        if (worldBiomeGraph != null && worldBiomeGraph.TryGetBiome(temperature, precipitation, out BiomeGraphEntry entry))
+        {
+            return string.IsNullOrWhiteSpace(entry.BiomeName) ? "Unnamed" : entry.BiomeName;
+        }
+
+        return "Unassigned";
+    }
 
     private void Reset()
     {
-        if (terrainSettings.dirt.baseHeight == 0 && terrainSettings.rock.baseHeight == 0)
-        {
-            terrainSettings = VoxelTerrainGenerationSettings.Default;
-        }
-
         EnsureRenderSizeIsOdd();
+        EnsureTerrainSettingsInitialized();
     }
 
     private void OnEnable()
@@ -2122,6 +2165,17 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
             isValid = false;
         }
 
+        if (worldGenSettingsAsset == null)
+        {
+            Debug.LogError("VoxelWorldRuntime requires a World Gen Settings Asset reference.", this);
+            isValid = false;
+        }
+        else if (!worldGenSettingsAsset.settings.IsInitialized)
+        {
+            Debug.LogError("VoxelWorldRuntime requires a valid initialized World Gen Settings Asset.", this);
+            isValid = false;
+        }
+
         if (worldMaterial != null && !worldMaterial.HasProperty("_BlockTextures"))
         {
             Debug.LogError("VoxelWorldRuntime world material must use a shader with a _BlockTextures Texture2DArray property.", this);
@@ -2147,11 +2201,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
 
         if (blockDatabase != null)
         {
-            isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Grass);
-            isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Dirt);
             isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Rock);
-            isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Log);
-            isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Leaves);
         }
 
         return isValid;
@@ -2199,12 +2249,13 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
 
     private void EnsureTerrainSettingsInitialized()
     {
-        if (terrainSettings.dirt.baseHeight != 0 || terrainSettings.rock.baseHeight != 0)
+        if (worldGenSettingsAsset != null && worldGenSettingsAsset.settings.IsInitialized)
         {
+            terrainSettings = worldGenSettingsAsset.settings;
             return;
         }
 
-        terrainSettings = VoxelTerrainGenerationSettings.Default;
+        terrainSettings = default;
     }
 
     private void EnsureRenderSizeIsOdd()

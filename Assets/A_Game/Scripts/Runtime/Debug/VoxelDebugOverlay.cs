@@ -131,6 +131,24 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append(position.z);
         }
 
+        if (worldRuntime != null && worldRuntime.TryGetWorldGenDebugInfo(out Vector2Int worldGenPosition, out VoxelTerrainData.WorldGenDebugSample sample))
+        {
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("WorldGen Pos: ");
+            _upperLeftBuilder.Append(worldGenPosition.x);
+            _upperLeftBuilder.Append(", ");
+            _upperLeftBuilder.Append(worldGenPosition.y);
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Height: ");
+            _upperLeftBuilder.Append(sample.height);
+            _upperLeftBuilder.Append("  Sea: ");
+            _upperLeftBuilder.Append(worldRuntime.SeaLevel);
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Cont: ");
+            _upperLeftBuilder.Append(sample.continentalness.ToString("F2"));
+        }
+
         upperLeftText.text = _upperLeftBuilder.ToString();
     }
 

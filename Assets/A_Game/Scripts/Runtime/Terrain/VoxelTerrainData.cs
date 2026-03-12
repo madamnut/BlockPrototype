@@ -9,6 +9,20 @@ using UnityEngine;
 
 public sealed class VoxelTerrainData : IDisposable
 {
+    public readonly struct WorldGenDebugSample
+    {
+        public readonly int height;
+        public readonly float continentalness;
+
+        public WorldGenDebugSample(
+            int height,
+            float continentalness)
+        {
+            this.height = height;
+            this.continentalness = continentalness;
+        }
+    }
+
     private sealed class ChunkColumnData
     {
         public readonly BlockType[] blocks;
@@ -32,15 +46,14 @@ public sealed class VoxelTerrainData : IDisposable
         public NativeArray<int> columnHeights;
     }
 
-    private struct TerrainLayerJobSettings
+    private struct FractalNoiseJobSettings
     {
-        public float baseHeight;
-        public float coarseScale;
-        public float coarseAmplitude;
-        public float detailScale;
-        public float detailAmplitude;
-        public float ridgeScale;
-        public float ridgeAmplitude;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float offsetX;
+        public float offsetY;
     }
 
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
@@ -49,8 +62,17 @@ public sealed class VoxelTerrainData : IDisposable
         public int chunkX;
         public int chunkZ;
         public int seed;
-        public TerrainLayerJobSettings dirt;
-        public TerrainLayerJobSettings rock;
+        public int minTerrainHeight;
+        public int maxTerrainHeight;
+        public float continentalnessSeaLevel;
+        public float continentalnessWeight;
+        public float continentalnessWarpScaleMultiplier;
+        public float continentalnessWarpStrength;
+        public float continentalnessDetailScaleMultiplier;
+        public float continentalnessDetailWeight;
+        public float continentalnessRemapMin;
+        public float continentalnessRemapMax;
+        public FractalNoiseJobSettings continentalness;
 
         [NativeDisableContainerSafetyRestriction]
         public NativeArray<BlockType> blocks;
@@ -64,55 +86,171 @@ public sealed class VoxelTerrainData : IDisposable
                 {
                     int worldX = (chunkX * ChunkSize) + localX;
                     int worldZ = (chunkZ * ChunkSize) + localZ;
-                    int dirtHeight = SampleLayerHeight(worldX, worldZ, seed, dirt, 0.173f, 0.127f, 100f, 300f);
-                    int rockHeight = SampleLayerHeight(worldX, worldZ, seed, rock, 0.241f, 0.191f, 700f, 1100f);
-                    rockHeight = math.clamp(rockHeight, 0, dirtHeight);
+                    int terrainHeight = SampleSurfaceHeight(worldX, worldZ);
 
-                    for (int worldY = 0; worldY <= dirtHeight; worldY++)
+                    for (int worldY = 0; worldY <= terrainHeight; worldY++)
                     {
-                        blocks[GetIndex(localX, worldY, localZ)] = worldY <= rockHeight ? BlockType.Rock : BlockType.Dirt;
+                        blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
                     }
 
-                    columnHeights[(localZ * ChunkSize) + localX] = dirtHeight;
+                    columnHeights[(localZ * ChunkSize) + localX] = terrainHeight;
                 }
             }
         }
 
-        private static int SampleLayerHeight(
-            int x,
-            int z,
-            int seed,
-            TerrainLayerJobSettings layer,
-            float offsetSeedX,
-            float offsetSeedZ,
-            float baseOffsetX,
-            float baseOffsetZ)
+        private int SampleSurfaceHeight(int worldX, int worldZ)
         {
-            float offsetX = (seed * offsetSeedX) + baseOffsetX;
-            float offsetZ = (seed * offsetSeedZ) + baseOffsetZ;
-
-            float coarse = SampleNoise(x, z, offsetX, offsetZ, layer.coarseScale);
-            float detail = SampleNoise(x, z, -offsetZ, offsetX, layer.detailScale);
-            float ridgeNoise = SampleNoise(x, z, offsetX, -offsetZ, layer.ridgeScale);
-            float ridge = math.abs((ridgeNoise * 2f) - 1f);
-
-            float elevation = layer.baseHeight;
-            elevation += coarse * layer.coarseAmplitude;
-            elevation += detail * layer.detailAmplitude;
-            elevation -= ridge * layer.ridgeAmplitude;
-
-            return math.clamp((int)math.round(elevation), 0, WorldHeight - 1);
+            float seedOffset = seed * 0.000031f;
+            ApplyContinentalnessWarp(ref worldX, ref worldZ, seedOffset);
+            float continentalnessValue = SampleFractalPerlin(worldX, worldZ, continentalness, seedOffset);
+            FractalNoiseJobSettings detailSettings = continentalness;
+            detailSettings.scale *= math.max(1f, continentalnessDetailScaleMultiplier);
+            detailSettings.offsetX += 173.31f;
+            detailSettings.offsetY += 91.77f;
+            float continentalnessDetailValue = SampleFractalPerlin(worldX, worldZ, detailSettings, seedOffset);
+            float shapedContinentalness = ShapeContinentalness(
+                continentalnessValue,
+                continentalnessDetailValue,
+                continentalnessDetailWeight,
+                continentalnessRemapMin,
+                continentalnessRemapMax);
+            return ComposeSurfaceHeight(
+                shapedContinentalness,
+                minTerrainHeight,
+                maxTerrainHeight,
+                continentalnessSeaLevel,
+                continentalnessWeight);
         }
 
-        private static float SampleNoise(int x, int z, float offsetX, float offsetZ, float scale)
+        private static int ComposeSurfaceHeight(
+            float continentalnessValue,
+            int minHeight,
+            int maxHeight,
+            float seaLevelThreshold,
+            float continentalnessMultiplier)
         {
-            if (scale <= 0f)
+            float landness = math.saturate(math.unlerp(seaLevelThreshold, 1f, continentalnessValue));
+            float height01 = math.saturate(landness * continentalnessMultiplier);
+            int clampedMin = math.clamp(minHeight, 0, WorldHeight - 1);
+            int clampedMax = math.clamp(math.max(minHeight, maxHeight), 0, WorldHeight - 1);
+            return math.clamp((int)math.round(math.lerp(clampedMin, clampedMax, height01)), 0, WorldHeight - 1);
+        }
+
+        private void ApplyContinentalnessWarp(ref int worldX, ref int worldZ, float seedOffset)
+        {
+            float warpScale = continentalness.scale * math.clamp(continentalnessWarpScaleMultiplier, 0.1f, 8f);
+            float warpStrength = math.max(0f, continentalnessWarpStrength);
+            if (warpStrength <= 0.0001f)
             {
-                return 0f;
+                return;
             }
 
-            float2 point = new((x + offsetX) * scale, (z + offsetZ) * scale);
-            return math.saturate((noise.snoise(point) * 0.5f) + 0.5f);
+            float warpX = SampleFractalPerlin(worldX, worldZ, new FractalNoiseJobSettings
+            {
+                scale = warpScale,
+                octaves = continentalness.octaves,
+                persistence = continentalness.persistence,
+                lacunarity = continentalness.lacunarity,
+                offsetX = continentalness.offsetX + 401.17f,
+                offsetY = continentalness.offsetY + 233.91f,
+            }, seedOffset);
+            float warpZ = SampleFractalPerlin(worldX, worldZ, new FractalNoiseJobSettings
+            {
+                scale = warpScale,
+                octaves = continentalness.octaves,
+                persistence = continentalness.persistence,
+                lacunarity = continentalness.lacunarity,
+                offsetX = continentalness.offsetX + 719.43f,
+                offsetY = continentalness.offsetY + 587.29f,
+            }, seedOffset);
+
+            worldX = (int)math.round(worldX + (((warpX - 0.5f) * 2f) * warpStrength));
+            worldZ = (int)math.round(worldZ + (((warpZ - 0.5f) * 2f) * warpStrength));
+        }
+
+        private static float ShapeContinentalness(
+            float baseContinentalness,
+            float detailContinentalness,
+            float detailWeight,
+            float remapMin,
+            float remapMax)
+        {
+            float baseRemapped = math.saturate(math.unlerp(remapMin, remapMax, baseContinentalness));
+            float baseSmoothed = baseRemapped * baseRemapped * (3f - (2f * baseRemapped));
+
+            float coastMask = 1f - math.abs((baseSmoothed * 2f) - 1f);
+            float detailSigned = (detailContinentalness - 0.5f) * 2f;
+            float coastAdjusted = math.saturate(baseSmoothed + (detailSigned * math.saturate(detailWeight) * coastMask));
+
+            float centered = (coastAdjusted * 2f) - 1f;
+            float contrasted = math.sign(centered) * math.pow(math.abs(centered), 0.72f);
+            return math.saturate((contrasted * 0.5f) + 0.5f);
+        }
+
+        private static float SampleFractalPerlin(int worldX, int worldZ, FractalNoiseJobSettings settings, float seedOffset)
+        {
+            int octaveCount = math.max(1, settings.octaves);
+            float amplitude = 1f;
+            float frequency = 1f;
+            float total = 0f;
+            float amplitudeSum = 0f;
+            float safeScale = math.max(0.00001f, settings.scale);
+            float persistence = math.saturate(settings.persistence);
+            float lacunarity = math.max(1f, settings.lacunarity);
+
+            for (int octave = 0; octave < octaveCount; octave++)
+            {
+                float sampleX = (worldX * safeScale * frequency) + settings.offsetX + seedOffset;
+                float sampleZ = (worldZ * safeScale * frequency) + settings.offsetY + seedOffset;
+                total += SamplePerlin2D(sampleX, sampleZ) * amplitude;
+                amplitudeSum += amplitude;
+                amplitude *= persistence;
+                frequency *= lacunarity;
+            }
+
+            return amplitudeSum <= 0f ? 0.5f : total / amplitudeSum;
+        }
+
+        private static float SamplePerlin2D(float x, float z)
+        {
+            float cellX = math.floor(x);
+            float cellZ = math.floor(z);
+            float localX = math.frac(x);
+            float localZ = math.frac(z);
+
+            Gradient(cellX, cellZ, out float g00x, out float g00z);
+            Gradient(cellX + 1f, cellZ, out float g10x, out float g10z);
+            Gradient(cellX, cellZ + 1f, out float g01x, out float g01z);
+            Gradient(cellX + 1f, cellZ + 1f, out float g11x, out float g11z);
+
+            float n00 = (g00x * localX) + (g00z * localZ);
+            float n10 = (g10x * (localX - 1f)) + (g10z * localZ);
+            float n01 = (g01x * localX) + (g01z * (localZ - 1f));
+            float n11 = (g11x * (localX - 1f)) + (g11z * (localZ - 1f));
+
+            float fadeX = localX * localX * localX * (localX * (localX * 6f - 15f) + 10f);
+            float fadeZ = localZ * localZ * localZ * (localZ * (localZ * 6f - 15f) + 10f);
+            float nx0 = math.lerp(n00, n10, fadeX);
+            float nx1 = math.lerp(n01, n11, fadeX);
+            float nxy = math.lerp(nx0, nx1, fadeZ);
+            return math.saturate((nxy * 0.70710677f) + 0.5f);
+        }
+
+        private static void Gradient(float cellX, float cellZ, out float gx, out float gz)
+        {
+            uint hash = Hash((int)cellX, (int)cellZ);
+            float angle = (hash / 4294967295f) * 6.28318530718f;
+            gx = math.cos(angle);
+            gz = math.sin(angle);
+        }
+
+        private static uint Hash(int xValue, int zValue)
+        {
+            uint x = (uint)xValue;
+            uint z = (uint)zValue;
+            uint h = (x * 374761393u) + (z * 668265263u);
+            h = (h ^ (h >> 13)) * 1274126177u;
+            return h ^ (h >> 16);
         }
     }
 
@@ -120,11 +258,6 @@ public sealed class VoxelTerrainData : IDisposable
     public const int SubChunkSize = 16;
     public const int WorldHeight = 256;
     public const int SubChunkCountY = WorldHeight / SubChunkSize;
-    public const ushort PlantFoliageId = 100;
-    private const float PlantSpawnChance = 0.7f;
-    private const float TreeSpawnChance = 0.03f;
-    private const int TreeEdgePadding = 2;
-
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
     private readonly List<Vector2Int> _pendingChunkKeys = new();
@@ -138,6 +271,16 @@ public sealed class VoxelTerrainData : IDisposable
     }
 
     public int SeaLevel => _settings.seaLevel;
+
+    public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
+    {
+        int height = VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings);
+        float continentalness = VoxelWorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings);
+
+        return new WorldGenDebugSample(
+            height,
+            continentalness);
+    }
 
     public void Dispose()
     {
@@ -185,8 +328,17 @@ public sealed class VoxelTerrainData : IDisposable
             chunkX = chunkX,
             chunkZ = chunkZ,
             seed = _seed,
-            dirt = ToJobSettings(_settings.dirt),
-            rock = ToJobSettings(_settings.rock),
+            minTerrainHeight = _settings.minTerrainHeight,
+            maxTerrainHeight = _settings.maxTerrainHeight,
+            continentalnessSeaLevel = _settings.continentalnessSeaLevel,
+            continentalnessWeight = _settings.continentalnessWeight,
+            continentalnessWarpScaleMultiplier = _settings.continentalnessWarpScaleMultiplier,
+            continentalnessWarpStrength = _settings.continentalnessWarpStrength,
+            continentalnessDetailScaleMultiplier = _settings.continentalnessDetailScaleMultiplier,
+            continentalnessDetailWeight = _settings.continentalnessDetailWeight,
+            continentalnessRemapMin = _settings.continentalnessRemapMin,
+            continentalnessRemapMax = _settings.continentalnessRemapMax,
+            continentalness = ToJobSettings(_settings.continentalness),
             blocks = pending.blocks,
             columnHeights = pending.columnHeights,
         };
@@ -646,176 +798,10 @@ public sealed class VoxelTerrainData : IDisposable
             }
         }
 
-        for (int localZ = 0; localZ < ChunkSize; localZ++)
-        {
-            for (int localX = 0; localX < ChunkSize; localX++)
-            {
-                int surfaceHeight = pending.columnHeights[(localZ * ChunkSize) + localX];
-                if (surfaceHeight < 0 || surfaceHeight >= WorldHeight)
-                {
-                    continue;
-                }
-
-                int surfaceIndex = GetIndex(localX, surfaceHeight, localZ);
-                if (managedBlocks[surfaceIndex] != BlockType.Dirt)
-                {
-                    continue;
-                }
-
-                bool hasFluidAbove = surfaceHeight < WorldHeight - 1 &&
-                                     managedFluids[GetIndex(localX, surfaceHeight + 1, localZ)].Exists;
-
-                if (!hasFluidAbove)
-                {
-                    managedBlocks[surfaceIndex] = BlockType.Grass;
-
-                    bool treeGenerated = TryGenerateTree(
-                        key.x,
-                        key.y,
-                        localX,
-                        surfaceHeight,
-                        localZ,
-                        managedBlocks,
-                        managedFluids,
-                        managedFoliageIds,
-                        ref maxHeight);
-
-                    int foliageY = surfaceHeight + 1;
-                    if (!treeGenerated &&
-                        foliageY < WorldHeight &&
-                        managedBlocks[GetIndex(localX, foliageY, localZ)] == BlockType.Air &&
-                        !managedFluids[GetIndex(localX, foliageY, localZ)].Exists &&
-                        ShouldSpawnPlant(key.x, key.y, localX, foliageY, localZ))
-                    {
-                        managedFoliageIds[GetIndex(localX, foliageY, localZ)] = PlantFoliageId;
-                        if (foliageY > maxHeight)
-                        {
-                            maxHeight = foliageY;
-                        }
-                    }
-                }
-            }
-        }
-
         pending.blocks.Dispose();
         pending.columnHeights.Dispose();
 
         _chunkColumns[key] = new ChunkColumnData(managedBlocks, managedFluids, managedFoliageIds, maxHeight);
-    }
-
-    private bool TryGenerateTree(
-        int chunkX,
-        int chunkZ,
-        int localX,
-        int surfaceY,
-        int localZ,
-        BlockType[] blocks,
-        VoxelFluid[] fluids,
-        ushort[] foliageIds,
-        ref int maxHeight)
-    {
-        if (localX < TreeEdgePadding || localX >= ChunkSize - TreeEdgePadding ||
-            localZ < TreeEdgePadding || localZ >= ChunkSize - TreeEdgePadding)
-        {
-            return false;
-        }
-
-        if (!ShouldSpawnTree(chunkX, chunkZ, localX, surfaceY + 1, localZ))
-        {
-            return false;
-        }
-
-        int trunkBaseY = surfaceY + 1;
-        int trunkHeight = 6 + GetDeterministicInt(chunkX, chunkZ, localX, trunkBaseY, localZ, 3, 17);
-        int trunkTopY = trunkBaseY + trunkHeight - 1;
-        if (trunkTopY + 2 >= WorldHeight)
-        {
-            return false;
-        }
-
-        for (int worldY = trunkBaseY; worldY <= trunkTopY; worldY++)
-        {
-            BlockType existing = blocks[GetIndex(localX, worldY, localZ)];
-            if (existing != BlockType.Air && existing != BlockType.Leaves)
-            {
-                return false;
-            }
-
-            if (fluids[GetIndex(localX, worldY, localZ)].Exists)
-            {
-                return false;
-            }
-        }
-
-        for (int worldY = trunkBaseY; worldY <= trunkTopY; worldY++)
-        {
-            int index = GetIndex(localX, worldY, localZ);
-            blocks[index] = BlockType.Log;
-            fluids[index] = VoxelFluid.None;
-            foliageIds[index] = 0;
-            if (worldY > maxHeight)
-            {
-                maxHeight = worldY;
-            }
-        }
-
-        TryPlaceLeavesLayer(localX, trunkTopY - 1, localZ, 2, blocks, fluids, foliageIds, ref maxHeight);
-        TryPlaceLeavesLayer(localX, trunkTopY, localZ, 2, blocks, fluids, foliageIds, ref maxHeight);
-        TryPlaceLeavesLayer(localX, trunkTopY + 1, localZ, 1, blocks, fluids, foliageIds, ref maxHeight);
-        TryPlaceLeavesLayer(localX, trunkTopY + 2, localZ, 0, blocks, fluids, foliageIds, ref maxHeight);
-        return true;
-    }
-
-    private static void TryPlaceLeavesLayer(
-        int centerX,
-        int worldY,
-        int centerZ,
-        int radius,
-        BlockType[] blocks,
-        VoxelFluid[] fluids,
-        ushort[] foliageIds,
-        ref int maxHeight)
-    {
-        if (worldY < 0 || worldY >= WorldHeight)
-        {
-            return;
-        }
-
-        for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
-        {
-            int localZ = centerZ + offsetZ;
-            if (localZ < 0 || localZ >= ChunkSize)
-            {
-                continue;
-            }
-
-            for (int offsetX = -radius; offsetX <= radius; offsetX++)
-            {
-                int localX = centerX + offsetX;
-                if (localX < 0 || localX >= ChunkSize)
-                {
-                    continue;
-                }
-
-                if (radius > 1 && Mathf.Abs(offsetX) == radius && Mathf.Abs(offsetZ) == radius)
-                {
-                    continue;
-                }
-
-                int index = GetIndex(localX, worldY, localZ);
-                if (blocks[index] != BlockType.Air || fluids[index].Exists)
-                {
-                    continue;
-                }
-
-                blocks[index] = BlockType.Leaves;
-                foliageIds[index] = 0;
-                if (worldY > maxHeight)
-                {
-                    maxHeight = worldY;
-                }
-            }
-        }
     }
 
     private static void RecalculateChunkMaxHeight(ChunkColumnData chunk)
@@ -853,7 +839,7 @@ public sealed class VoxelTerrainData : IDisposable
         }
 
         int supportIndex = GetIndex(localX, worldY, localZ);
-        bool hasSupport = chunk.blocks[supportIndex] == BlockType.Grass && !chunk.fluids[aboveIndex].Exists;
+        bool hasSupport = chunk.blocks[supportIndex] != BlockType.Air && !chunk.fluids[aboveIndex].Exists;
         if (!hasSupport)
         {
             chunk.foliageIds[aboveIndex] = 0;
@@ -863,57 +849,22 @@ public sealed class VoxelTerrainData : IDisposable
         return false;
     }
 
-    private bool ShouldSpawnPlant(int chunkX, int chunkZ, int localX, int worldY, int localZ)
+    private static FractalNoiseJobSettings ToJobSettings(VoxelTerrainNoiseSettings settings)
     {
-        unchecked
+        return new FractalNoiseJobSettings
         {
-            float normalized = GetDeterministic01(chunkX, chunkZ, localX, worldY, localZ, 3);
-            return normalized < PlantSpawnChance;
-        }
-    }
-
-    private bool ShouldSpawnTree(int chunkX, int chunkZ, int localX, int worldY, int localZ)
-    {
-        float normalized = GetDeterministic01(chunkX, chunkZ, localX, worldY, localZ, 11);
-        return normalized < TreeSpawnChance;
-    }
-
-    private float GetDeterministic01(int chunkX, int chunkZ, int localX, int worldY, int localZ, int salt)
-    {
-        unchecked
-        {
-            uint hash = 2166136261u;
-            hash = (hash ^ (uint)_seed) * 16777619u;
-            hash = (hash ^ (uint)(chunkX * ChunkSize + localX)) * 16777619u;
-            hash = (hash ^ (uint)worldY) * 16777619u;
-            hash = (hash ^ (uint)(chunkZ * ChunkSize + localZ)) * 16777619u;
-            hash = (hash ^ (uint)salt) * 16777619u;
-            return (hash & 0x00FFFFFFu) / 16777215f;
-        }
-    }
-
-    private int GetDeterministicInt(int chunkX, int chunkZ, int localX, int worldY, int localZ, int range, int salt)
-    {
-        if (range <= 1)
-        {
-            return 0;
-        }
-
-        return Mathf.FloorToInt(GetDeterministic01(chunkX, chunkZ, localX, worldY, localZ, salt) * range);
-    }
-
-    private static TerrainLayerJobSettings ToJobSettings(VoxelTerrainLayerSettings settings)
-    {
-        return new TerrainLayerJobSettings
-        {
-            baseHeight = settings.baseHeight,
-            coarseScale = settings.coarseScale,
-            coarseAmplitude = settings.coarseAmplitude,
-            detailScale = settings.detailScale,
-            detailAmplitude = settings.detailAmplitude,
-            ridgeScale = settings.ridgeScale,
-            ridgeAmplitude = settings.ridgeAmplitude,
+            scale = settings.scale,
+            octaves = settings.octaves,
+            persistence = settings.persistence,
+            lacunarity = settings.lacunarity,
+            offsetX = settings.offset.x,
+            offsetY = settings.offset.y,
         };
+    }
+
+    private int SampleSurfaceHeight(int worldX, int worldZ)
+    {
+        return VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings);
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)

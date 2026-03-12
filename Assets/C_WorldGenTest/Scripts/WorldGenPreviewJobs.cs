@@ -32,6 +32,9 @@ public static class WorldGenPreviewJobs
         public float ruggedColorG;
         public float ruggedColorB;
         public float erosionOverlayStrength;
+        public bool invertGrayscale;
+        public bool binaryThreshold;
+        public float threshold;
 
         [WriteOnly] public NativeArray<Color32> pixels;
 
@@ -41,10 +44,23 @@ public static class WorldGenPreviewJobs
             int y = index / size;
             float continentalness = SampleFractalPerlin(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
             float baseValue = clamp(continentalness, 0f, 1f);
+            if (invertGrayscale)
+            {
+                baseValue = 1f - baseValue;
+            }
 
             if (!useErosion)
             {
-                byte channel = (byte)round(baseValue * 255f);
+                byte channel;
+                if (binaryThreshold)
+                {
+                    bool isAboveThreshold = baseValue >= threshold;
+                    channel = isAboveThreshold ? (byte)0 : (byte)255;
+                }
+                else
+                {
+                    channel = (byte)round(baseValue * 255f);
+                }
                 pixels[index] = new Color32(channel, channel, channel, 255);
                 return;
             }
@@ -93,6 +109,9 @@ public static class WorldGenPreviewJobs
         public float ruggedColorG;
         public float ruggedColorB;
         public float erosionOverlayStrength;
+        public bool invertGrayscale;
+        public bool binaryThreshold;
+        public float threshold;
 
         [WriteOnly] public NativeArray<Color32> pixels;
 
@@ -102,10 +121,23 @@ public static class WorldGenPreviewJobs
             int y = index / size;
             float continentalness = SampleFractalSimplex(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
             float baseValue = clamp(continentalness, 0f, 1f);
+            if (invertGrayscale)
+            {
+                baseValue = 1f - baseValue;
+            }
 
             if (!useErosion)
             {
-                byte channel = (byte)round(baseValue * 255f);
+                byte channel;
+                if (binaryThreshold)
+                {
+                    bool isAboveThreshold = baseValue >= threshold;
+                    channel = isAboveThreshold ? (byte)0 : (byte)255;
+                }
+                else
+                {
+                    channel = (byte)round(baseValue * 255f);
+                }
                 pixels[index] = new Color32(channel, channel, channel, 255);
                 return;
             }
@@ -127,6 +159,239 @@ public static class WorldGenPreviewJobs
                 (byte)round(clamp(mixedR, 0f, 1f) * 255f),
                 (byte)round(clamp(mixedG, 0f, 1f) * 255f),
                 (byte)round(clamp(mixedB, 0f, 1f) * 255f),
+                255);
+        }
+    }
+
+    [BurstCompile]
+    public struct FloatMapJob : IJobParallelFor
+    {
+        public int size;
+        public bool useSimplex;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float2 offset;
+        public float seedOffset;
+
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+
+            float value = useSimplex
+                ? SampleFractalSimplex(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity)
+                : SampleFractalPerlin(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
+
+            values[index] = clamp(value, 0f, 1f);
+        }
+    }
+
+    [BurstCompile]
+    public struct WorldSpaceFloatMapJob : IJobParallelFor
+    {
+        public int size;
+        public bool useSimplex;
+        public float blocksPerPixel;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float2 offset;
+        public float seedOffset;
+
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+            float worldX = (x + 0.5f) * blocksPerPixel;
+            float worldY = (y + 0.5f) * blocksPerPixel;
+
+            float value = useSimplex
+                ? SampleFractalSimplex(worldX, worldY, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity)
+                : SampleFractalPerlin(worldX, worldY, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
+
+            values[index] = clamp(value, 0f, 1f);
+        }
+    }
+
+    [BurstCompile]
+    public struct RegionPerlinValueJob : IJobParallelFor
+    {
+        public int regionCountX;
+        public int cellSize;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float2 offset;
+        public float seedOffset;
+
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int safeCellSize = max(1, cellSize);
+            int regionXIndex = index % regionCountX;
+            int regionYIndex = index / regionCountX;
+            float regionX = regionXIndex + 0.5f;
+            float regionY = regionYIndex + 0.5f;
+            float adjustedScale = max(0.00001f, scale * safeCellSize);
+            float value = SampleFractalPerlin(regionX, regionY, adjustedScale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
+            values[index] = clamp(value, 0f, 1f);
+        }
+    }
+
+    [BurstCompile]
+    public struct WorldSpacePerlinGrayscaleJob : IJobParallelFor
+    {
+        public int size;
+        public float blocksPerPixel;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float2 offset;
+        public float seedOffset;
+
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+            float worldX = (x + 0.5f) * blocksPerPixel;
+            float worldY = (y + 0.5f) * blocksPerPixel;
+            float value = SampleFractalPerlin(worldX, worldY, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
+            byte channel = (byte)round(clamp(value, 0f, 1f) * 255f);
+            pixels[index] = new Color32(channel, channel, channel, 255);
+        }
+    }
+
+    [BurstCompile]
+    public struct ExpandRegionGrayscaleJob : IJobParallelFor
+    {
+        public int size;
+        public int cellSize;
+        public int regionCountX;
+        public int regionCountY;
+
+        [ReadOnly] public NativeArray<float> regionValues;
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+            int safeCellSize = max(1, cellSize);
+            int regionX = min(x / safeCellSize, regionCountX - 1);
+            int regionY = min(y / safeCellSize, regionCountY - 1);
+            int regionIndex = regionY * regionCountX + regionX;
+            byte channel = (byte)round(clamp(regionValues[regionIndex], 0f, 1f) * 255f);
+            pixels[index] = new Color32(channel, channel, channel, 255);
+        }
+    }
+
+    [BurstCompile]
+    public struct ColorizeValueMapJob : IJobParallelFor
+    {
+        public float startR;
+        public float startG;
+        public float startB;
+        public float endR;
+        public float endG;
+        public float endB;
+
+        [ReadOnly] public NativeArray<float> values;
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            float t = clamp(values[index], 0f, 1f);
+            float r = lerp(startR, endR, t);
+            float g = lerp(startG, endG, t);
+            float b = lerp(startB, endB, t);
+
+            pixels[index] = new Color32(
+                (byte)round(clamp(r, 0f, 1f) * 255f),
+                (byte)round(clamp(g, 0f, 1f) * 255f),
+                (byte)round(clamp(b, 0f, 1f) * 255f),
+                255);
+        }
+    }
+
+    [BurstCompile]
+    public struct HeightmapComposeJob : IJobParallelFor
+    {
+        public float continentalnessSeaLevel;
+        public float continentalnessWeight;
+        public float ridgeWeight;
+        public float ridgeSharpness;
+
+        [ReadOnly] public NativeArray<float> continentalnessValues;
+        [ReadOnly] public NativeArray<float> erosionValues;
+        [ReadOnly] public NativeArray<float> ridgesValues;
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            float continentalness = clamp(continentalnessValues[index], 0f, 1f);
+            float erosion = clamp(erosionValues[index], 0f, 1f);
+            float ridges = clamp(ridgesValues[index], 0f, 1f);
+
+            float landness = saturate(unlerp(continentalnessSeaLevel, 1f, continentalness));
+            float ruggedness = 1f - erosion;
+            float ridgePattern = pow(ridges, max(0.01f, ridgeSharpness));
+            float height = saturate((landness * continentalnessWeight) + (landness * ruggedness * ridgePattern * ridgeWeight));
+
+            byte channel = (byte)round((1f - height) * 255f);
+            pixels[index] = new Color32(channel, channel, channel, 255);
+        }
+    }
+
+    [BurstCompile]
+    public struct GradientMapJob : IJobParallelFor
+    {
+        public int size;
+        public bool useSimplex;
+        public float scale;
+        public int octaves;
+        public float persistence;
+        public float lacunarity;
+        public float2 offset;
+        public float seedOffset;
+        public float startR;
+        public float startG;
+        public float startB;
+        public float endR;
+        public float endG;
+        public float endB;
+
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+
+            float value = useSimplex
+                ? SampleFractalSimplex(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity)
+                : SampleFractalPerlin(x, y, scale, offset.x, offset.y, seedOffset, octaves, persistence, lacunarity);
+
+            float t = clamp(value, 0f, 1f);
+            float r = lerp(startR, endR, t);
+            float g = lerp(startG, endG, t);
+            float b = lerp(startB, endB, t);
+
+            pixels[index] = new Color32(
+                (byte)round(clamp(r, 0f, 1f) * 255f),
+                (byte)round(clamp(g, 0f, 1f) * 255f),
+                (byte)round(clamp(b, 0f, 1f) * 255f),
                 255);
         }
     }
@@ -198,7 +463,6 @@ public static class WorldGenPreviewJobs
         public byte backgroundG;
         public byte backgroundB;
         public byte backgroundA;
-        public bool useBorderNoise;
         public float borderNoiseScale;
         public float borderNoiseStrength;
         public int borderNoiseOctaves;
@@ -217,14 +481,10 @@ public static class WorldGenPreviewJobs
             int x = index % size;
             int y = index / size;
             float2 point = new float2(x, y);
-
-            if (useBorderNoise)
-            {
-                float noiseX = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetA.x, borderNoiseOffsetA.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
-                float noiseY = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetB.x, borderNoiseOffsetB.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
-                point.x += (noiseX - 0.5f) * 2f * borderNoiseStrength;
-                point.y += (noiseY - 0.5f) * 2f * borderNoiseStrength;
-            }
+            float noiseX = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetA.x, borderNoiseOffsetA.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            float noiseY = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetB.x, borderNoiseOffsetB.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            point.x += (noiseX - 0.5f) * 2f * borderNoiseStrength;
+            point.y += (noiseY - 0.5f) * 2f * borderNoiseStrength;
 
             int nearestIndex = 0;
             float nearestDistance = float.MaxValue;
@@ -283,6 +543,119 @@ public static class WorldGenPreviewJobs
             {
                 pixels[index] = new Color32(lineR, lineG, lineB, lineA);
             }
+        }
+    }
+
+    [BurstCompile]
+    public struct VoronoiAttributeRasterJob : IJobParallelFor
+    {
+        public int size;
+        public float borderNoiseScale;
+        public float borderNoiseStrength;
+        public int borderNoiseOctaves;
+        public float borderNoisePersistence;
+        public float borderNoiseLacunarity;
+        public float2 borderNoiseOffsetA;
+        public float2 borderNoiseOffsetB;
+        public float seedOffset;
+        public float startR;
+        public float startG;
+        public float startB;
+        public float endR;
+        public float endG;
+        public float endB;
+
+        [ReadOnly] public NativeArray<float2> sites;
+        [ReadOnly] public NativeArray<float> siteValues;
+        [WriteOnly] public NativeArray<int> cellIndices;
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+            float2 point = new float2(x, y);
+            float noiseX = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetA.x, borderNoiseOffsetA.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            float noiseY = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetB.x, borderNoiseOffsetB.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            point.x += (noiseX - 0.5f) * 2f * borderNoiseStrength;
+            point.y += (noiseY - 0.5f) * 2f * borderNoiseStrength;
+
+            int nearestIndex = 0;
+            float nearestDistance = float.MaxValue;
+
+            for (int siteIndex = 0; siteIndex < sites.Length; siteIndex++)
+            {
+                float dx = point.x - sites[siteIndex].x;
+                float dy = point.y - sites[siteIndex].y;
+                float distance = (dx * dx) + (dy * dy);
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestIndex = siteIndex;
+                }
+            }
+
+            float t = clamp(siteValues[nearestIndex], 0f, 1f);
+            float r = lerp(startR, endR, t);
+            float g = lerp(startG, endG, t);
+            float b = lerp(startB, endB, t);
+
+            cellIndices[index] = nearestIndex;
+            pixels[index] = new Color32(
+                (byte)round(clamp(r, 0f, 1f) * 255f),
+                (byte)round(clamp(g, 0f, 1f) * 255f),
+                (byte)round(clamp(b, 0f, 1f) * 255f),
+                255);
+        }
+    }
+
+    [BurstCompile]
+    public struct VoronoiColorRasterJob : IJobParallelFor
+    {
+        public int size;
+        public float borderNoiseScale;
+        public float borderNoiseStrength;
+        public int borderNoiseOctaves;
+        public float borderNoisePersistence;
+        public float borderNoiseLacunarity;
+        public float2 borderNoiseOffsetA;
+        public float2 borderNoiseOffsetB;
+        public float seedOffset;
+
+        [ReadOnly] public NativeArray<float2> sites;
+        [ReadOnly] public NativeArray<Color32> siteColors;
+        [WriteOnly] public NativeArray<int> cellIndices;
+        [WriteOnly] public NativeArray<Color32> pixels;
+
+        public void Execute(int index)
+        {
+            int x = index % size;
+            int y = index / size;
+            float2 point = new float2(x, y);
+            float noiseX = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetA.x, borderNoiseOffsetA.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            float noiseY = SampleFractalPerlin(x, y, borderNoiseScale, borderNoiseOffsetB.x, borderNoiseOffsetB.y, seedOffset, borderNoiseOctaves, borderNoisePersistence, borderNoiseLacunarity);
+            point.x += (noiseX - 0.5f) * 2f * borderNoiseStrength;
+            point.y += (noiseY - 0.5f) * 2f * borderNoiseStrength;
+
+            int nearestIndex = 0;
+            float nearestDistance = float.MaxValue;
+
+            for (int siteIndex = 0; siteIndex < sites.Length; siteIndex++)
+            {
+                float dx = point.x - sites[siteIndex].x;
+                float dy = point.y - sites[siteIndex].y;
+                float distance = (dx * dx) + (dy * dy);
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestIndex = siteIndex;
+                }
+            }
+
+            cellIndices[index] = nearestIndex;
+            pixels[index] = siteColors[nearestIndex];
         }
     }
 
