@@ -22,7 +22,7 @@ MonoBehaviour:
     continentalnessWarpStrength: 120
     continentalnessDetailScaleMultiplier: 3
     continentalnessDetailWeight: 0.08
-    continentalnessRemapMin: 0.43
+    continentalnessRemapMin: 0.384
     continentalnessRemapMax: 0.6
     continentalness:
       scale: 0.00125
