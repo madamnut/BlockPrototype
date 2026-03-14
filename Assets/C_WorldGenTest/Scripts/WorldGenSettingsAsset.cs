@@ -6,9 +6,9 @@ using UnityEngine;
 public sealed class WorldGenSettingsAsset : ScriptableObject
 {
     [Header("Runtime Terrain")]
-    [SerializeField, Range(0, VoxelTerrainData.WorldHeight - 1)] private int seaLevel = 63;
-    [SerializeField, Range(0, VoxelTerrainData.WorldHeight - 1)] private int minTerrainHeight = 0;
-    [SerializeField, Range(0, VoxelTerrainData.WorldHeight - 1)] private int maxTerrainHeight = 180;
+    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int seaLevel = 63;
+    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int minTerrainHeight = 0;
+    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int maxTerrainHeight = 180;
 
     [Header("CDF Remap")]
     [SerializeField] private bool useContinentalnessCdfRemap = true;
@@ -193,9 +193,9 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField] private Color deepInlandColor = new Color(0.23f, 0.48f, 0.17f, 1f);
     [SerializeField] private Color continentalCoreColor = new Color(0.47f, 0.38f, 0.24f, 1f);
 
-    public int SeaLevel => Mathf.Clamp(seaLevel, 0, VoxelTerrainData.WorldHeight - 1);
-    public int MinTerrainHeight => Mathf.Clamp(minTerrainHeight, 0, VoxelTerrainData.WorldHeight - 1);
-    public int MaxTerrainHeight => Mathf.Clamp(Mathf.Max(minTerrainHeight, maxTerrainHeight), 0, VoxelTerrainData.WorldHeight - 1);
+    public int SeaLevel => Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
+    public int MinTerrainHeight => Mathf.Clamp(minTerrainHeight, 0, TerrainData.WorldHeight - 1);
+    public int MaxTerrainHeight => Mathf.Clamp(Mathf.Max(minTerrainHeight, maxTerrainHeight), 0, TerrainData.WorldHeight - 1);
     public bool UseContinentalnessCdfRemap => useContinentalnessCdfRemap;
     public bool UseErosionCdfRemap => useErosionCdfRemap;
     public bool UseRidgesCdfRemap => useRidgesCdfRemap;

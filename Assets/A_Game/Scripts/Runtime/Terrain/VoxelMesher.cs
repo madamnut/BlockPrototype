@@ -16,8 +16,8 @@ public static class VoxelMesher
         public readonly List<Vector2> uvs = new(512);
         public readonly List<Vector3> normals = new(512);
         public readonly List<Color32> colors = new(512);
-        public readonly MaskCell[] mask = new MaskCell[VoxelTerrainData.SubChunkSize * VoxelTerrainData.SubChunkSize];
-        public readonly int[] dims = { VoxelTerrainData.SubChunkSize, VoxelTerrainData.SubChunkSize, VoxelTerrainData.SubChunkSize };
+        public readonly MaskCell[] mask = new MaskCell[TerrainData.SubChunkSize * TerrainData.SubChunkSize];
+        public readonly int[] dims = { TerrainData.SubChunkSize, TerrainData.SubChunkSize, TerrainData.SubChunkSize };
         public readonly int[] x = new int[3];
         public readonly int[] q = new int[3];
 
@@ -68,7 +68,7 @@ public static class VoxelMesher
         {
             this.subChunkY = subChunkY;
             sampledBlocks = new NativeArray<ushort>(SampledBlockSize * SampledBlockSize * SampledBlockSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-            mask = new NativeArray<JobMaskCell>(VoxelTerrainData.SubChunkSize * VoxelTerrainData.SubChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            mask = new NativeArray<JobMaskCell>(TerrainData.SubChunkSize * TerrainData.SubChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
             vertices = new NativeList<Vector3>(512, Allocator.Persistent);
             indices = new NativeList<int>(768, Allocator.Persistent);
             uvs = new NativeList<Vector2>(512, Allocator.Persistent);
@@ -133,7 +133,7 @@ public static class VoxelMesher
         public readonly int chunkX;
         public readonly int chunkZ;
         public readonly int usedSubChunkCount;
-        public readonly PendingSubChunkMeshData[] subChunks = new PendingSubChunkMeshData[VoxelTerrainData.SubChunkCountY];
+        public readonly PendingSubChunkMeshData[] subChunks = new PendingSubChunkMeshData[TerrainData.SubChunkCountY];
 
         public JobHandle combinedHandle;
         public bool hasScheduledJobs;
@@ -214,14 +214,14 @@ public static class VoxelMesher
                 int3 q = SetAxis(int3.zero, d, 1);
                 int3 x = SetAxis(int3.zero, d, -1);
 
-                while (GetAxis(x, d) < VoxelTerrainData.SubChunkSize)
+                while (GetAxis(x, d) < TerrainData.SubChunkSize)
                 {
                     int n = 0;
 
-                    for (int vCoord = 0; vCoord < VoxelTerrainData.SubChunkSize; vCoord++)
+                    for (int vCoord = 0; vCoord < TerrainData.SubChunkSize; vCoord++)
                     {
                         x = SetAxis(x, v, vCoord);
-                        for (int uCoord = 0; uCoord < VoxelTerrainData.SubChunkSize; uCoord++)
+                        for (int uCoord = 0; uCoord < TerrainData.SubChunkSize; uCoord++)
                         {
                             x = SetAxis(x, u, uCoord);
 
@@ -245,9 +245,9 @@ public static class VoxelMesher
                     x = SetAxis(x, d, GetAxis(x, d) + 1);
                     n = 0;
 
-                    for (int j = 0; j < VoxelTerrainData.SubChunkSize; j++)
+                    for (int j = 0; j < TerrainData.SubChunkSize; j++)
                     {
-                        for (int i = 0; i < VoxelTerrainData.SubChunkSize;)
+                        for (int i = 0; i < TerrainData.SubChunkSize;)
                         {
                             JobMaskCell current = mask[n];
                             if (current.Exists == 0)
@@ -258,18 +258,18 @@ public static class VoxelMesher
                             }
 
                             int width = 1;
-                            while (i + width < VoxelTerrainData.SubChunkSize && mask[n + width].Matches(current))
+                            while (i + width < TerrainData.SubChunkSize && mask[n + width].Matches(current))
                             {
                                 width++;
                             }
 
                             int height = 1;
                             bool stop = false;
-                            while (j + height < VoxelTerrainData.SubChunkSize && !stop)
+                            while (j + height < TerrainData.SubChunkSize && !stop)
                             {
                                 for (int k = 0; k < width; k++)
                                 {
-                                    if (!mask[n + k + (height * VoxelTerrainData.SubChunkSize)].Matches(current))
+                                    if (!mask[n + k + (height * TerrainData.SubChunkSize)].Matches(current))
                                     {
                                         stop = true;
                                         break;
@@ -291,7 +291,7 @@ public static class VoxelMesher
 
                             for (int l = 0; l < height; l++)
                             {
-                                int row = n + (l * VoxelTerrainData.SubChunkSize);
+                                int row = n + (l * TerrainData.SubChunkSize);
                                 for (int k = 0; k < width; k++)
                                 {
                                     mask[row + k] = default;
@@ -307,7 +307,7 @@ public static class VoxelMesher
         }
     }
 
-    private const int SampledBlockSize = VoxelTerrainData.SubChunkSize + 2;
+    private const int SampledBlockSize = TerrainData.SubChunkSize + 2;
     private const int FaceCount = 6;
     private const ushort LeavesBlockId = (ushort)BlockType.Leaves;
 
@@ -315,7 +315,7 @@ public static class VoxelMesher
     [ThreadStatic] private static MeshApplyBuffers s_applyBuffers;
 
     public static PendingChunkColumnMesh ScheduleChunkColumnMesh(
-        VoxelTerrainData terrain,
+        TerrainData terrain,
         NativeArray<ushort> faceTextureLookup,
         int chunkX,
         int chunkZ,
@@ -401,7 +401,7 @@ public static class VoxelMesher
         return true;
     }
 
-    public static bool RebuildSubChunkMesh(Mesh mesh, VoxelTerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    public static bool RebuildSubChunkMesh(Mesh mesh, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (mesh == null)
         {
@@ -539,17 +539,17 @@ public static class VoxelMesher
         return true;
     }
 
-    private static void CopySampledBlocks(VoxelTerrainData terrain, int chunkX, int subChunkY, int chunkZ, NativeArray<ushort> sampledBlocks)
+    private static void CopySampledBlocks(TerrainData terrain, int chunkX, int subChunkY, int chunkZ, NativeArray<ushort> sampledBlocks)
     {
-        int startWorldX = chunkX * VoxelTerrainData.ChunkSize;
-        int startWorldY = subChunkY * VoxelTerrainData.SubChunkSize;
-        int startWorldZ = chunkZ * VoxelTerrainData.ChunkSize;
+        int startWorldX = chunkX * TerrainData.ChunkSize;
+        int startWorldY = subChunkY * TerrainData.SubChunkSize;
+        int startWorldZ = chunkZ * TerrainData.ChunkSize;
 
-        for (int sampleZ = -1; sampleZ <= VoxelTerrainData.SubChunkSize; sampleZ++)
+        for (int sampleZ = -1; sampleZ <= TerrainData.SubChunkSize; sampleZ++)
         {
-            for (int sampleY = -1; sampleY <= VoxelTerrainData.SubChunkSize; sampleY++)
+            for (int sampleY = -1; sampleY <= TerrainData.SubChunkSize; sampleY++)
             {
-                for (int sampleX = -1; sampleX <= VoxelTerrainData.SubChunkSize; sampleX++)
+                for (int sampleX = -1; sampleX <= TerrainData.SubChunkSize; sampleX++)
                 {
                     int worldX = startWorldX + sampleX;
                     int worldY = startWorldY + sampleY;
@@ -718,11 +718,11 @@ public static class VoxelMesher
         return value;
     }
 
-    private static BlockType SampleBlock(VoxelTerrainData terrain, int chunkX, int subChunkY, int chunkZ, int localX, int localY, int localZ)
+    private static BlockType SampleBlock(TerrainData terrain, int chunkX, int subChunkY, int chunkZ, int localX, int localY, int localZ)
     {
-        int worldX = (chunkX * VoxelTerrainData.ChunkSize) + localX;
-        int worldY = (subChunkY * VoxelTerrainData.SubChunkSize) + localY;
-        int worldZ = (chunkZ * VoxelTerrainData.ChunkSize) + localZ;
+        int worldX = (chunkX * TerrainData.ChunkSize) + localX;
+        int worldY = (subChunkY * TerrainData.SubChunkSize) + localY;
+        int worldZ = (chunkZ * TerrainData.ChunkSize) + localZ;
         return terrain.GetBlock(worldX, worldY, worldZ);
     }
 

@@ -7,9 +7,9 @@ public sealed class Chunk : MonoBehaviour
     private const string FluidRootName = "Fluid";
     private const string FoliageRootName = "Foliage";
 
-    [SerializeField] private SubChunk[] solidSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
-    [SerializeField] private SubChunk[] fluidSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
-    [SerializeField] private SubChunk[] foliageSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
+    [SerializeField] private SubChunk[] solidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
+    [SerializeField] private SubChunk[] fluidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
+    [SerializeField] private SubChunk[] foliageSubChunks = new SubChunk[TerrainData.SubChunkCountY];
 
     public SubChunk[] SolidSubChunks => solidSubChunks;
     public SubChunk[] FluidSubChunks => fluidSubChunks;
@@ -38,7 +38,7 @@ public sealed class Chunk : MonoBehaviour
         ClearContainerChildren(fluidRoot);
         ClearContainerChildren(foliageRoot);
 
-        for (int subChunkY = 0; subChunkY < VoxelTerrainData.SubChunkCountY; subChunkY++)
+        for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
         {
             solidSubChunks[subChunkY] = CreateSubChunkBinding(solidRoot, "Solid", subChunkY, createCollider: true);
             fluidSubChunks[subChunkY] = CreateSubChunkBinding(fluidRoot, "Fluid", subChunkY, createCollider: false);
@@ -57,19 +57,19 @@ public sealed class Chunk : MonoBehaviour
 
     private void EnsureArraySizes()
     {
-        if (solidSubChunks == null || solidSubChunks.Length != VoxelTerrainData.SubChunkCountY)
+        if (solidSubChunks == null || solidSubChunks.Length != TerrainData.SubChunkCountY)
         {
-            solidSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
+            solidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
         }
 
-        if (fluidSubChunks == null || fluidSubChunks.Length != VoxelTerrainData.SubChunkCountY)
+        if (fluidSubChunks == null || fluidSubChunks.Length != TerrainData.SubChunkCountY)
         {
-            fluidSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
+            fluidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
         }
 
-        if (foliageSubChunks == null || foliageSubChunks.Length != VoxelTerrainData.SubChunkCountY)
+        if (foliageSubChunks == null || foliageSubChunks.Length != TerrainData.SubChunkCountY)
         {
-            foliageSubChunks = new SubChunk[VoxelTerrainData.SubChunkCountY];
+            foliageSubChunks = new SubChunk[TerrainData.SubChunkCountY];
         }
     }
 
@@ -113,7 +113,7 @@ public sealed class Chunk : MonoBehaviour
         GameObject child = new($"{prefix}_SubChunk_{subChunkY}");
         Transform childTransform = child.transform;
         childTransform.SetParent(parent, false);
-        childTransform.localPosition = new Vector3(0f, subChunkY * VoxelTerrainData.SubChunkSize, 0f);
+        childTransform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
         childTransform.localRotation = Quaternion.identity;
         childTransform.localScale = Vector3.one;
 
@@ -149,7 +149,7 @@ public sealed class Chunk : MonoBehaviour
                 continue;
             }
 
-            int subChunkIndex = Mathf.RoundToInt(child.localPosition.y / VoxelTerrainData.SubChunkSize);
+            int subChunkIndex = Mathf.RoundToInt(child.localPosition.y / TerrainData.SubChunkSize);
             if (subChunkIndex < 0 || subChunkIndex >= target.Length)
             {
                 continue;

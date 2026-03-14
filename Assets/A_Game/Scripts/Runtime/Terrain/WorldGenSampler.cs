@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public static class VoxelWorldGenSampler
+public static class WorldGenSampler
 {
     private const float ReliefStrengthHigh = 42f;
     private const float ReliefStrengthLow = 8f;
@@ -12,7 +12,7 @@ public static class VoxelWorldGenSampler
         int worldX,
         int worldZ,
         int seed,
-        in VoxelTerrainGenerationSettings settings,
+        in TerrainGenerationSettings settings,
         float[] continentalnessCdfLut = null)
     {
         float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
@@ -33,7 +33,7 @@ public static class VoxelWorldGenSampler
         int worldX,
         int worldZ,
         int seed,
-        in VoxelTerrainGenerationSettings settings,
+        in TerrainGenerationSettings settings,
         float[] erosionCdfLut = null)
     {
         float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
@@ -54,7 +54,7 @@ public static class VoxelWorldGenSampler
         int worldX,
         int worldZ,
         int seed,
-        in VoxelTerrainGenerationSettings settings,
+        in TerrainGenerationSettings settings,
         float[] ridgesCdfLut = null)
     {
         float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
@@ -75,7 +75,7 @@ public static class VoxelWorldGenSampler
         int worldX,
         int worldZ,
         int seed,
-        in VoxelTerrainGenerationSettings settings,
+        in TerrainGenerationSettings settings,
         float[] ridgesCdfLut = null)
     {
         float weirdness = SampleWeirdness(worldX, worldZ, seed, settings, ridgesCdfLut);
@@ -88,9 +88,9 @@ public static class VoxelWorldGenSampler
         int seaLevel,
         int maxHeight)
     {
-        int clampedMin = Mathf.Clamp(minHeight, 0, VoxelTerrainData.WorldHeight - 1);
-        int clampedSeaLevel = Mathf.Clamp(seaLevel, 0, VoxelTerrainData.WorldHeight - 1);
-        int clampedMax = Mathf.Clamp(Mathf.Max(seaLevel, maxHeight), 0, VoxelTerrainData.WorldHeight - 1);
+        int clampedMin = Mathf.Clamp(minHeight, 0, TerrainData.WorldHeight - 1);
+        int clampedSeaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
+        int clampedMax = Mathf.Clamp(Mathf.Max(seaLevel, maxHeight), 0, TerrainData.WorldHeight - 1);
 
         if (continentalness < 0f)
         {
@@ -120,14 +120,14 @@ public static class VoxelWorldGenSampler
                             (uplift * inlandMask * reliefStrength) -
                             (depression * inlandMask * reliefStrength * DepressionScale);
 
-        return Mathf.Clamp(Mathf.RoundToInt(finalHeight), 0, VoxelTerrainData.WorldHeight - 1);
+        return Mathf.Clamp(Mathf.RoundToInt(finalHeight), 0, TerrainData.WorldHeight - 1);
     }
 
     public static int SampleSurfaceHeight(
         int worldX,
         int worldZ,
         int seed,
-        in VoxelTerrainGenerationSettings settings,
+        in TerrainGenerationSettings settings,
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null)

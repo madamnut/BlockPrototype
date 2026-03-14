@@ -2,11 +2,11 @@ using System;
 using UnityEngine;
 
 [Serializable]
-public struct VoxelTerrainGenerationSettings
+public struct TerrainGenerationSettings
 {
-    [Range(0, VoxelTerrainData.WorldHeight - 1)] public int seaLevel;
-    [Range(0, VoxelTerrainData.WorldHeight - 1)] public int minTerrainHeight;
-    [Range(0, VoxelTerrainData.WorldHeight - 1)] public int maxTerrainHeight;
+    [Range(0, TerrainData.WorldHeight - 1)] public int seaLevel;
+    [Range(0, TerrainData.WorldHeight - 1)] public int minTerrainHeight;
+    [Range(0, TerrainData.WorldHeight - 1)] public int maxTerrainHeight;
     public bool useContinentalnessCdfRemap;
     public bool useErosionCdfRemap;
     public bool useRidgesCdfRemap;
@@ -17,7 +17,7 @@ public struct VoxelTerrainGenerationSettings
     public bool IsInitialized =>
         maxTerrainHeight > minTerrainHeight;
 
-    public static VoxelTerrainGenerationSettings Default => new()
+    public static TerrainGenerationSettings Default => new()
     {
         seaLevel = 63,
         minTerrainHeight = 0,
@@ -30,7 +30,7 @@ public struct VoxelTerrainGenerationSettings
         ridges = WorldGenSettingsAsset.CreateDefaultRidgesSettings(),
     };
 
-    public static VoxelTerrainGenerationSettings FromWorldGenSettings(
+    public static TerrainGenerationSettings FromWorldGenSettings(
         WorldGenSettingsAsset worldGenSettingsAsset,
         bool useContinentalnessCdfRemap,
         bool useErosionCdfRemap,
@@ -38,14 +38,14 @@ public struct VoxelTerrainGenerationSettings
     {
         if (worldGenSettingsAsset == null)
         {
-            VoxelTerrainGenerationSettings defaults = Default;
+            TerrainGenerationSettings defaults = Default;
             defaults.useContinentalnessCdfRemap = useContinentalnessCdfRemap;
             defaults.useErosionCdfRemap = useErosionCdfRemap;
             defaults.useRidgesCdfRemap = useRidgesCdfRemap;
             return defaults;
         }
 
-        return new VoxelTerrainGenerationSettings
+        return new TerrainGenerationSettings
         {
             seaLevel = worldGenSettingsAsset.SeaLevel,
             minTerrainHeight = worldGenSettingsAsset.MinTerrainHeight,

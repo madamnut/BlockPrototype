@@ -26,7 +26,7 @@ public static class VoxelFluidMesher
 
     [System.ThreadStatic] private static MeshBuildBuffers s_buffers;
 
-    public static bool RebuildSubChunkMesh(Mesh mesh, VoxelTerrainData terrain, int chunkX, int subChunkY, int chunkZ)
+    public static bool RebuildSubChunkMesh(Mesh mesh, TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
     {
         if (mesh == null)
         {
@@ -36,17 +36,17 @@ public static class VoxelFluidMesher
         MeshBuildBuffers buffers = GetBuffers();
         buffers.Clear();
 
-        int startX = chunkX * VoxelTerrainData.ChunkSize;
-        int startY = subChunkY * VoxelTerrainData.SubChunkSize;
-        int startZ = chunkZ * VoxelTerrainData.ChunkSize;
+        int startX = chunkX * TerrainData.ChunkSize;
+        int startY = subChunkY * TerrainData.SubChunkSize;
+        int startZ = chunkZ * TerrainData.ChunkSize;
 
-        for (int localY = 0; localY < VoxelTerrainData.SubChunkSize; localY++)
+        for (int localY = 0; localY < TerrainData.SubChunkSize; localY++)
         {
             int worldY = startY + localY;
-            for (int localZ = 0; localZ < VoxelTerrainData.ChunkSize; localZ++)
+            for (int localZ = 0; localZ < TerrainData.ChunkSize; localZ++)
             {
                 int worldZ = startZ + localZ;
-                for (int localX = 0; localX < VoxelTerrainData.ChunkSize; localX++)
+                for (int localX = 0; localX < TerrainData.ChunkSize; localX++)
                 {
                     int worldX = startX + localX;
                     VoxelFluid fluid = terrain.GetFluid(worldX, worldY, worldZ);
@@ -86,7 +86,7 @@ public static class VoxelFluidMesher
 
     private static void AddFluidCell(
         MeshBuildBuffers buffers,
-        VoxelTerrainData terrain,
+        TerrainData terrain,
         int worldX,
         int worldY,
         int worldZ,
@@ -129,7 +129,7 @@ public static class VoxelFluidMesher
         }
     }
 
-    private static float GetVisibleNeighborHeight(VoxelTerrainData terrain, int worldX, int worldY, int worldZ)
+    private static float GetVisibleNeighborHeight(TerrainData terrain, int worldX, int worldY, int worldZ)
     {
         if (terrain.GetBlock(worldX, worldY, worldZ) != BlockType.Air)
         {
@@ -151,7 +151,7 @@ public static class VoxelFluidMesher
         return Mathf.Clamp01(fluid.amount / 100f);
     }
 
-    private static bool IsTopBlocked(VoxelTerrainData terrain, int worldX, int worldY, int worldZ)
+    private static bool IsTopBlocked(TerrainData terrain, int worldX, int worldY, int worldZ)
     {
         return terrain.GetBlock(worldX, worldY + 1, worldZ) != BlockType.Air || terrain.GetFluid(worldX, worldY + 1, worldZ).Exists;
     }

@@ -222,7 +222,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 49370efb522603b47b2ba9cbd0f914e8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VoxelDebugOverlay
+  m_EditorClassIdentifier: Assembly-CSharp::WorldDebugOverlay
   worldRuntime: {fileID: 1212262539}
   playerController: {fileID: 0}
   upperLeftText: {fileID: 1562323632}
@@ -1189,7 +1189,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e15faa0a4af8b39459c0cf06ac88e77f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VoxelFlyCamera
+  m_EditorClassIdentifier: Assembly-CSharp::FlyCamera
   controlledCamera: {fileID: 330585545}
   playerRoot: {fileID: 841338667}
   headTransform: {fileID: 171821073}
@@ -1432,7 +1432,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46c3a1ecc1ed3e1498cedbe0a049510e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VoxelWorldRuntime
+  m_EditorClassIdentifier: Assembly-CSharp::WorldRuntime
   worldMaterial: {fileID: 2100000, guid: 51136fb5a787bd340a7958a4993a49a2, type: 2}
   fluidMaterial: {fileID: 2100000, guid: e6156fcb66ad5f342ae4507a05a9cb96, type: 2}
   foliageMaterial: {fileID: 2100000, guid: f528af85fc719be4e927464d6c2162fd, type: 2}

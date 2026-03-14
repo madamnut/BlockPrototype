@@ -7,7 +7,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-public sealed class VoxelTerrainData : IDisposable
+public sealed class TerrainData : IDisposable
 {
     public readonly struct WorldGenDebugSample
     {
@@ -198,7 +198,7 @@ public sealed class VoxelTerrainData : IDisposable
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
     private readonly List<Vector2Int> _pendingChunkKeys = new();
     private readonly int _seed;
-    private readonly VoxelTerrainGenerationSettings _settings;
+    private readonly TerrainGenerationSettings _settings;
     private readonly float[] _managedContinentalnessCdfLut;
     private readonly float[] _managedErosionCdfLut;
     private readonly float[] _managedRidgesCdfLut;
@@ -206,9 +206,9 @@ public sealed class VoxelTerrainData : IDisposable
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
 
-    public VoxelTerrainData(
+    public TerrainData(
         int seed,
-        VoxelTerrainGenerationSettings settings,
+        TerrainGenerationSettings settings,
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null)
@@ -227,7 +227,7 @@ public sealed class VoxelTerrainData : IDisposable
 
     public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
     {
-        int height = VoxelWorldGenSampler.SampleSurfaceHeight(
+        int height = WorldGenSampler.SampleSurfaceHeight(
             worldX,
             worldZ,
             _seed,
@@ -235,10 +235,10 @@ public sealed class VoxelTerrainData : IDisposable
             _managedContinentalnessCdfLut,
             _managedErosionCdfLut,
             _managedRidgesCdfLut);
-        float continentalness = VoxelWorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
-        float erosion = VoxelWorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
-        float weirdness = VoxelWorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
-        float pv = VoxelWorldGenSampler.SamplePv(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+        float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
+        float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
+        float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+        float pv = WorldGenSampler.SamplePv(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
 
         return new WorldGenDebugSample(
             height,
@@ -833,7 +833,7 @@ public sealed class VoxelTerrainData : IDisposable
 
     private int SampleSurfaceHeight(int worldX, int worldZ)
     {
-        return VoxelWorldGenSampler.SampleSurfaceHeight(
+        return WorldGenSampler.SampleSurfaceHeight(
             worldX,
             worldZ,
             _seed,

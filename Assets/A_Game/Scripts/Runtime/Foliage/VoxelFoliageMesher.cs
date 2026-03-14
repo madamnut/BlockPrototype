@@ -31,7 +31,7 @@ public static class VoxelFoliageMesher
 
     [System.ThreadStatic] private static MeshBuildBuffers s_buffers;
 
-    public static bool RebuildSubChunkMesh(Mesh mesh, VoxelTerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    public static bool RebuildSubChunkMesh(Mesh mesh, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (mesh == null || terrain == null || blockDatabase == null)
         {
@@ -41,17 +41,17 @@ public static class VoxelFoliageMesher
         MeshBuildBuffers buffers = GetBuffers();
         buffers.Clear();
 
-        int startX = chunkX * VoxelTerrainData.ChunkSize;
-        int startY = subChunkY * VoxelTerrainData.SubChunkSize;
-        int startZ = chunkZ * VoxelTerrainData.ChunkSize;
+        int startX = chunkX * TerrainData.ChunkSize;
+        int startY = subChunkY * TerrainData.SubChunkSize;
+        int startZ = chunkZ * TerrainData.ChunkSize;
 
-        for (int localY = 0; localY < VoxelTerrainData.SubChunkSize; localY++)
+        for (int localY = 0; localY < TerrainData.SubChunkSize; localY++)
         {
             int worldY = startY + localY;
-            for (int localZ = 0; localZ < VoxelTerrainData.ChunkSize; localZ++)
+            for (int localZ = 0; localZ < TerrainData.ChunkSize; localZ++)
             {
                 int worldZ = startZ + localZ;
-                for (int localX = 0; localX < VoxelTerrainData.ChunkSize; localX++)
+                for (int localX = 0; localX < TerrainData.ChunkSize; localX++)
                 {
                     int worldX = startX + localX;
                     ushort foliageId = terrain.GetFoliageId(worldX, worldY, worldZ);

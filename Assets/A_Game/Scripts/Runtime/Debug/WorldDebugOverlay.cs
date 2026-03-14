@@ -6,11 +6,11 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Profiling;
 
-public sealed class VoxelDebugOverlay : MonoBehaviour
+public sealed class WorldDebugOverlay : MonoBehaviour
 {
     [Header("Bindings")]
-    [SerializeField] private VoxelWorldRuntime worldRuntime;
-    [SerializeField] private VoxelFlyCamera playerController;
+    [SerializeField] private WorldRuntime worldRuntime;
+    [SerializeField] private FlyCamera playerController;
     [SerializeField] private TMP_Text upperLeftText;
     [SerializeField] private TMP_Text upperRightText;
     [SerializeField] private TMP_Text lowerLeftText;
@@ -59,7 +59,7 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
         }
     }
 
-    public void BindWorldRuntime(VoxelWorldRuntime runtime)
+    public void BindWorldRuntime(WorldRuntime runtime)
     {
         worldRuntime = runtime;
     }
@@ -137,7 +137,7 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append(position.z);
         }
 
-        if (worldRuntime != null && worldRuntime.TryGetWorldGenDebugInfo(out Vector2Int worldGenPosition, out VoxelTerrainData.WorldGenDebugSample sample))
+        if (worldRuntime != null && worldRuntime.TryGetWorldGenDebugInfo(out Vector2Int worldGenPosition, out TerrainData.WorldGenDebugSample sample))
         {
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.AppendLine();
@@ -268,13 +268,13 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             return;
         }
 
-        worldRuntime = GetComponent<VoxelWorldRuntime>();
+        worldRuntime = GetComponent<WorldRuntime>();
         if (worldRuntime != null)
         {
             return;
         }
 
-        worldRuntime = FindAnyObjectByType<VoxelWorldRuntime>();
+        worldRuntime = FindAnyObjectByType<WorldRuntime>();
     }
 
     private void ResolvePlayerController()
@@ -284,7 +284,7 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             return;
         }
 
-        playerController = FindAnyObjectByType<VoxelFlyCamera>();
+        playerController = FindAnyObjectByType<FlyCamera>();
     }
 
     private static string FormatMegabytes(long bytes)

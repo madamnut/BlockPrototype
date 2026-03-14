@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
-public sealed class VoxelFlyCamera : MonoBehaviour
+public sealed class FlyCamera : MonoBehaviour
 {
     public enum CameraMode : byte
     {
