@@ -14,6 +14,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         None,
         Continentalness,
+        Erosion,
+        PeaksRidges,
+        Temperature,
+        Precipitation,
     }
 
     [Header("UI")]
@@ -22,10 +26,15 @@ public sealed class WorldGenPrototype : MonoBehaviour
     [SerializeField] private RawImage gridImage;
     [SerializeField] private Button generateButton;
     [SerializeField] private Button continentalnessButton;
+    [SerializeField] private Button erosionButton;
+    [SerializeField] private Button peaksRidgesButton;
+    [SerializeField] private Button temperatureButton;
+    [SerializeField] private Button precipitationButton;
     [SerializeField] private Button gridButton;
 
-    [Header("Continentalness")]
-    [SerializeField] private ContinentalnessSettingsAsset continentalnessSettingsAsset;
+    [Header("World Gen Settings")]
+    [FormerlySerializedAs("continentalnessSettingsAsset")]
+    [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
     [SerializeField] private ContinentalnessCdfProfileAsset continentalnessCdfProfileAsset;
 
     [Header("Grid")]
@@ -44,7 +53,11 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
     private Texture2D previewTexture;
     private Texture2D gridTexture;
-    private NativeArray<float> cachedCdfLut;
+    private NativeArray<float> cachedContinentalnessCdfLut;
+    private NativeArray<float> cachedErosionCdfLut;
+    private NativeArray<float> cachedRidgesCdfLut;
+    private NativeArray<float> cachedTemperatureCdfLut;
+    private NativeArray<float> cachedPrecipitationCdfLut;
     private ContinentalnessCdfProfileAsset cachedCdfProfileAsset;
     private int cachedCdfBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
@@ -67,6 +80,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         BindButton(generateButton, GeneratePreview);
         BindButton(continentalnessButton, ToggleContinentalnessMode);
+        BindButton(erosionButton, ToggleErosionMode);
+        BindButton(peaksRidgesButton, TogglePeaksRidgesMode);
+        BindButton(temperatureButton, ToggleTemperatureMode);
+        BindButton(precipitationButton, TogglePrecipitationMode);
         BindButton(gridButton, ToggleGrid);
         UpdateButtonVisuals();
     }
@@ -75,6 +92,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         UnbindButton(generateButton, GeneratePreview);
         UnbindButton(continentalnessButton, ToggleContinentalnessMode);
+        UnbindButton(erosionButton, ToggleErosionMode);
+        UnbindButton(peaksRidgesButton, TogglePeaksRidgesMode);
+        UnbindButton(temperatureButton, ToggleTemperatureMode);
+        UnbindButton(precipitationButton, TogglePrecipitationMode);
         UnbindButton(gridButton, ToggleGrid);
         DisposeCachedCdfLut();
         DestroyTexture(ref previewTexture);
@@ -91,16 +112,67 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
         int seed = ResolveSeed();
         EnsureTextures();
-        ContinentalnessStats stats = GenerateContinentalnessPreview(seed);
+        ContinentalnessStats stats;
+        string label;
+        switch (mode)
+        {
+            case GenerationMode.Continentalness:
+                stats = GenerateContinentalnessPreview(seed);
+                label = $"CDF Remap: {UseContinentalnessCdfRemap()}";
+                break;
+            case GenerationMode.Erosion:
+                stats = GenerateErosionPreview(seed);
+                label = $"CDF Remap: {UseErosionCdfRemap()}";
+                break;
+            case GenerationMode.PeaksRidges:
+                stats = GenerateRidgesPreview(seed);
+                label = $"CDF Remap: {UseRidgesCdfRemap()}";
+                break;
+            case GenerationMode.Temperature:
+                stats = GenerateTemperaturePreview(seed);
+                label = $"CDF Remap: {UseTemperatureCdfRemap()}";
+                break;
+            case GenerationMode.Precipitation:
+                stats = GeneratePrecipitationPreview(seed);
+                label = $"CDF Remap: {UsePrecipitationCdfRemap()}";
+                break;
+            default:
+                return;
+        }
+
         UpdateGridOverlay();
 
         Debug.Log(
-            $"[WorldGenPrototype] Generated Continentalness preview. Seed: {seed}, SectorIndex: ({sectorIndexX}, {sectorIndexZ}), Resolution: {previewTexture.width}x{previewTexture.height}, CDF Remap: {UseCdfRemap()}, Continentalness Min/Avg/Max: {stats.Min:F3} / {stats.Average:F3} / {stats.Max:F3}");
+            $"[WorldGenPrototype] Generated {mode} preview. Seed: {seed}, SectorIndex: ({sectorIndexX}, {sectorIndexZ}), Resolution: {previewTexture.width}x{previewTexture.height}, {label}, Value Min/Avg/Max: {stats.Min:F3} / {stats.Average:F3} / {stats.Max:F3}");
     }
 
     private void ToggleContinentalnessMode()
     {
         mode = mode == GenerationMode.Continentalness ? GenerationMode.None : GenerationMode.Continentalness;
+        UpdateButtonVisuals();
+    }
+
+    private void ToggleErosionMode()
+    {
+        mode = mode == GenerationMode.Erosion ? GenerationMode.None : GenerationMode.Erosion;
+        UpdateButtonVisuals();
+    }
+
+    private void TogglePeaksRidgesMode()
+    {
+        mode = mode == GenerationMode.PeaksRidges ? GenerationMode.None : GenerationMode.PeaksRidges;
+        UpdateButtonVisuals();
+    }
+
+    private void ToggleTemperatureMode()
+    {
+        mode = mode == GenerationMode.Temperature ? GenerationMode.None : GenerationMode.Temperature;
+        UpdateButtonVisuals();
+    }
+
+    private void TogglePrecipitationMode()
+    {
+        mode = mode == GenerationMode.Precipitation ? GenerationMode.None : GenerationMode.Precipitation;
         UpdateButtonVisuals();
     }
 
@@ -163,14 +235,238 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         ContinentalnessSettings settings = BuildContinentalnessSettings();
-        bool useCdfRemap = UseCdfRemap();
+        bool useCdfRemap = UseContinentalnessCdfRemap();
         EnsureCdfLutCache();
-        NativeArray<float> cdfLut = cachedCdfLut;
+        NativeArray<float> cdfLut = cachedContinentalnessCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
         try
         {
             JobHandle previewHandle = new WorldGenPrototypeJobs.ContinentalnessPreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useCdfRemap = useCdfRemap,
+                settings = settings,
+                cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
+    private ContinentalnessStats GenerateErosionPreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        ErosionSettings settings = BuildErosionSettings();
+        bool useCdfRemap = UseErosionCdfRemap();
+        EnsureCdfLutCache();
+        NativeArray<float> cdfLut = cachedErosionCdfLut;
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.ErosionPreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useCdfRemap = useCdfRemap,
+                settings = settings,
+                cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
+    private ContinentalnessStats GenerateRidgesPreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        RidgesSettings settings = BuildRidgesSettings();
+        bool useCdfRemap = UseRidgesCdfRemap();
+        EnsureCdfLutCache();
+        NativeArray<float> cdfLut = cachedRidgesCdfLut;
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.RidgesPreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useCdfRemap = useCdfRemap,
+                settings = settings,
+                cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
+    private ContinentalnessStats GenerateTemperaturePreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        TemperatureSettings settings = BuildTemperatureSettings();
+        bool useCdfRemap = UseTemperatureCdfRemap();
+        EnsureCdfLutCache();
+        NativeArray<float> cdfLut = cachedTemperatureCdfLut;
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.TemperaturePreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useCdfRemap = useCdfRemap,
+                settings = settings,
+                cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
+    private ContinentalnessStats GeneratePrecipitationPreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        PrecipitationSettings settings = BuildPrecipitationSettings();
+        bool useCdfRemap = UsePrecipitationCdfRemap();
+        EnsureCdfLutCache();
+        NativeArray<float> cdfLut = cachedPrecipitationCdfLut;
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.PrecipitationPreviewJob
             {
                 size = previewSize,
                 seed = seed,
@@ -266,18 +562,66 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private void UpdateButtonVisuals()
     {
         SetButtonVisual(continentalnessButton, mode == GenerationMode.Continentalness);
+        SetButtonVisual(erosionButton, mode == GenerationMode.Erosion);
+        SetButtonVisual(peaksRidgesButton, mode == GenerationMode.PeaksRidges);
+        SetButtonVisual(temperatureButton, mode == GenerationMode.Temperature);
+        SetButtonVisual(precipitationButton, mode == GenerationMode.Precipitation);
         SetButtonVisual(gridButton, drawGrid);
     }
 
     private ContinentalnessSettings BuildContinentalnessSettings()
     {
-        if (continentalnessSettingsAsset == null)
+        if (worldGenSettingsAsset == null)
         {
-            Debug.LogWarning("[WorldGenPrototype] ContinentalnessSettingsAsset is not assigned. Using built-in defaults.");
-            return ContinentalnessSettingsAsset.CreateDefaultSettings();
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in defaults.");
+            return WorldGenSettingsAsset.CreateDefaultSettings();
         }
 
-        return continentalnessSettingsAsset.ToSettings();
+        return worldGenSettingsAsset.ToSettings();
+    }
+
+    private ErosionSettings BuildErosionSettings()
+    {
+        if (worldGenSettingsAsset == null)
+        {
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in erosion defaults.");
+            return WorldGenSettingsAsset.CreateDefaultErosionSettings();
+        }
+
+        return worldGenSettingsAsset.ToErosionSettings();
+    }
+
+    private RidgesSettings BuildRidgesSettings()
+    {
+        if (worldGenSettingsAsset == null)
+        {
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in peaks/ridges defaults.");
+            return WorldGenSettingsAsset.CreateDefaultRidgesSettings();
+        }
+
+        return worldGenSettingsAsset.ToRidgesSettings();
+    }
+
+    private TemperatureSettings BuildTemperatureSettings()
+    {
+        if (worldGenSettingsAsset == null)
+        {
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in temperature defaults.");
+            return WorldGenSettingsAsset.CreateDefaultTemperatureSettings();
+        }
+
+        return worldGenSettingsAsset.ToTemperatureSettings();
+    }
+
+    private PrecipitationSettings BuildPrecipitationSettings()
+    {
+        if (worldGenSettingsAsset == null)
+        {
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in precipitation defaults.");
+            return WorldGenSettingsAsset.CreateDefaultPrecipitationSettings();
+        }
+
+        return worldGenSettingsAsset.ToPrecipitationSettings();
     }
 
     private void EnsureCdfLutCache()
@@ -289,7 +633,11 @@ public sealed class WorldGenPrototype : MonoBehaviour
         }
 
         bool needsRefresh =
-            !cachedCdfLut.IsCreated ||
+            !cachedContinentalnessCdfLut.IsCreated ||
+            !cachedErosionCdfLut.IsCreated ||
+            !cachedRidgesCdfLut.IsCreated ||
+            !cachedTemperatureCdfLut.IsCreated ||
+            !cachedPrecipitationCdfLut.IsCreated ||
             cachedCdfProfileAsset != continentalnessCdfProfileAsset ||
             cachedCdfBakeVersion != continentalnessCdfProfileAsset.BakeVersion;
 
@@ -299,11 +647,39 @@ public sealed class WorldGenPrototype : MonoBehaviour
         }
 
         DisposeCachedCdfLut();
-        float[] sourceLut = continentalnessCdfProfileAsset.BakedCdfLut;
-        cachedCdfLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        for (int i = 0; i < sourceLut.Length; i++)
+        float[] continentalnessSourceLut = continentalnessCdfProfileAsset.BakedContinentalnessCdfLut;
+        cachedContinentalnessCdfLut = new NativeArray<float>(continentalnessSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < continentalnessSourceLut.Length; i++)
         {
-            cachedCdfLut[i] = sourceLut[i];
+            cachedContinentalnessCdfLut[i] = continentalnessSourceLut[i];
+        }
+
+        float[] erosionSourceLut = continentalnessCdfProfileAsset.BakedErosionCdfLut;
+        cachedErosionCdfLut = new NativeArray<float>(erosionSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < erosionSourceLut.Length; i++)
+        {
+            cachedErosionCdfLut[i] = erosionSourceLut[i];
+        }
+
+        float[] ridgesSourceLut = continentalnessCdfProfileAsset.BakedRidgesCdfLut;
+        cachedRidgesCdfLut = new NativeArray<float>(ridgesSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < ridgesSourceLut.Length; i++)
+        {
+            cachedRidgesCdfLut[i] = ridgesSourceLut[i];
+        }
+
+        float[] temperatureSourceLut = continentalnessCdfProfileAsset.BakedTemperatureCdfLut;
+        cachedTemperatureCdfLut = new NativeArray<float>(temperatureSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < temperatureSourceLut.Length; i++)
+        {
+            cachedTemperatureCdfLut[i] = temperatureSourceLut[i];
+        }
+
+        float[] precipitationSourceLut = continentalnessCdfProfileAsset.BakedPrecipitationCdfLut;
+        cachedPrecipitationCdfLut = new NativeArray<float>(precipitationSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < precipitationSourceLut.Length; i++)
+        {
+            cachedPrecipitationCdfLut[i] = precipitationSourceLut[i];
         }
 
         cachedCdfProfileAsset = continentalnessCdfProfileAsset;
@@ -315,11 +691,56 @@ public sealed class WorldGenPrototype : MonoBehaviour
         return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.EnableRemap;
     }
 
+    private bool UseContinentalnessCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasContinentalnessRemap;
+    }
+
+    private bool UseErosionCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasErosionRemap;
+    }
+
+    private bool UseRidgesCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasRidgesRemap;
+    }
+
+    private bool UseTemperatureCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasTemperatureRemap;
+    }
+
+    private bool UsePrecipitationCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasPrecipitationRemap;
+    }
+
     private void DisposeCachedCdfLut()
     {
-        if (cachedCdfLut.IsCreated)
+        if (cachedContinentalnessCdfLut.IsCreated)
         {
-            cachedCdfLut.Dispose();
+            cachedContinentalnessCdfLut.Dispose();
+        }
+
+        if (cachedErosionCdfLut.IsCreated)
+        {
+            cachedErosionCdfLut.Dispose();
+        }
+
+        if (cachedRidgesCdfLut.IsCreated)
+        {
+            cachedRidgesCdfLut.Dispose();
+        }
+
+        if (cachedTemperatureCdfLut.IsCreated)
+        {
+            cachedTemperatureCdfLut.Dispose();
+        }
+
+        if (cachedPrecipitationCdfLut.IsCreated)
+        {
+            cachedPrecipitationCdfLut.Dispose();
         }
 
         cachedCdfProfileAsset = null;

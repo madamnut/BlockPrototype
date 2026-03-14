@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -19,13 +21,17 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
 
     private readonly StringBuilder _upperLeftBuilder = new(128);
     private readonly StringBuilder _upperRightBuilder = new(192);
+    private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
 
     private float _memoryRefreshTimer;
     private float _smoothedFps;
     private bool _topTextsVisible = true;
+    private double _lastCpuSampleTime;
+    private double _lastCpuTotalProcessorTimeMs;
 
     private void Awake()
     {
+        InitializePerformanceSampling();
         ResolveWorldRuntime();
         ResolvePlayerController();
         RefreshKeyHelpText();
@@ -159,6 +165,8 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             return;
         }
 
+        float cpuUsagePercent = SampleCpuUsagePercent();
+        bool hasGpuFrameTime = TryGetGpuFrameTime(out float gpuFrameTimeMs);
         long totalAllocated = Profiler.GetTotalAllocatedMemoryLong();
         long totalReserved = Profiler.GetTotalReservedMemoryLong();
         long monoUsed = Profiler.GetMonoUsedSizeLong();
@@ -166,6 +174,13 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
         long gcMemory = System.GC.GetTotalMemory(false);
 
         _upperRightBuilder.Clear();
+        _upperRightBuilder.Append("CPU Usage: ");
+        _upperRightBuilder.Append(cpuUsagePercent.ToString("F1"));
+        _upperRightBuilder.Append('%');
+        _upperRightBuilder.AppendLine();
+        _upperRightBuilder.Append("GPU Frame: ");
+        _upperRightBuilder.Append(hasGpuFrameTime ? gpuFrameTimeMs.ToString("F2") + " ms" : "N/A");
+        _upperRightBuilder.AppendLine();
         _upperRightBuilder.Append("Allocated: ");
         _upperRightBuilder.Append(FormatMegabytes(totalAllocated));
         _upperRightBuilder.AppendLine();
@@ -182,6 +197,41 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
         _upperRightBuilder.Append(FormatMegabytes(gcMemory));
 
         upperRightText.text = _upperRightBuilder.ToString();
+    }
+
+    private void InitializePerformanceSampling()
+    {
+        using Process process = Process.GetCurrentProcess();
+        _lastCpuSampleTime = Time.realtimeSinceStartupAsDouble;
+        _lastCpuTotalProcessorTimeMs = process.TotalProcessorTime.TotalMilliseconds;
+    }
+
+    private float SampleCpuUsagePercent()
+    {
+        double now = Time.realtimeSinceStartupAsDouble;
+        using Process process = Process.GetCurrentProcess();
+        double currentCpuTotalProcessorTimeMs = process.TotalProcessorTime.TotalMilliseconds;
+        double elapsedMs = Math.Max(1.0, (now - _lastCpuSampleTime) * 1000.0);
+        double cpuTimeDeltaMs = Math.Max(0.0, currentCpuTotalProcessorTimeMs - _lastCpuTotalProcessorTimeMs);
+
+        _lastCpuSampleTime = now;
+        _lastCpuTotalProcessorTimeMs = currentCpuTotalProcessorTimeMs;
+
+        return Mathf.Clamp((float)((cpuTimeDeltaMs / (elapsedMs * Environment.ProcessorCount)) * 100.0), 0f, 100f);
+    }
+
+    private bool TryGetGpuFrameTime(out float gpuFrameTimeMs)
+    {
+        gpuFrameTimeMs = 0f;
+        FrameTimingManager.CaptureFrameTimings();
+        uint timingCount = FrameTimingManager.GetLatestTimings(1, _frameTimings);
+        if (timingCount == 0)
+        {
+            return false;
+        }
+
+        gpuFrameTimeMs = (float)_frameTimings[0].gpuFrameTime;
+        return gpuFrameTimeMs > 0f;
     }
 
     private void RefreshKeyHelpText()

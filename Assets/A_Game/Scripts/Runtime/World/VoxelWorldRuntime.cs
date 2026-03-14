@@ -48,7 +48,8 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int renderSizeInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
-    [SerializeField] private VoxelWorldGenSettingsAsset worldGenSettingsAsset;
+    [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
+    [SerializeField] private ContinentalnessCdfProfileAsset continentalnessCdfProfileAsset;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -291,7 +292,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     private void BuildWorld()
     {
         _terrain?.Dispose();
-        _terrain = new VoxelTerrainData(seed, terrainSettings);
+        _terrain = new VoxelTerrainData(seed, terrainSettings, GetContinentalnessCdfLut());
 
         DisposePendingChunkMeshJobs();
         DestroyAllChunkColumnInstances();
@@ -933,6 +934,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
 
             subChunk.MeshCollider.sharedMesh = null;
             subChunk.MeshCollider.sharedMesh = subChunk.Mesh;
+            subChunk.MeshCollider.enabled = true;
         }
     }
 
@@ -2170,7 +2172,7 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
             Debug.LogError("VoxelWorldRuntime requires a World Gen Settings Asset reference.", this);
             isValid = false;
         }
-        else if (!worldGenSettingsAsset.settings.IsInitialized)
+        else if (!terrainSettings.IsInitialized)
         {
             Debug.LogError("VoxelWorldRuntime requires a valid initialized World Gen Settings Asset.", this);
             isValid = false;
@@ -2249,13 +2251,27 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
 
     private void EnsureTerrainSettingsInitialized()
     {
-        if (worldGenSettingsAsset != null && worldGenSettingsAsset.settings.IsInitialized)
+        if (worldGenSettingsAsset != null)
         {
-            terrainSettings = worldGenSettingsAsset.settings;
+            terrainSettings = VoxelTerrainGenerationSettings.FromWorldGenSettings(
+                worldGenSettingsAsset,
+                UseContinentalnessCdfRemap());
             return;
         }
 
         terrainSettings = default;
+    }
+
+    private bool UseContinentalnessCdfRemap()
+    {
+        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasContinentalnessRemap;
+    }
+
+    private float[] GetContinentalnessCdfLut()
+    {
+        return UseContinentalnessCdfRemap()
+            ? continentalnessCdfProfileAsset.BakedContinentalnessCdfLut
+            : null;
     }
 
     private void EnsureRenderSizeIsOdd()

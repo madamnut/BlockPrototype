@@ -20,7 +20,7 @@ public sealed class WorldGenPreviewGenerator : MonoBehaviour
     [SerializeField] private Button regionGridButton;
 
     [Header("Settings")]
-    [SerializeField] private VoxelWorldGenSettingsAsset worldGenSettingsAsset;
+    [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
     [SerializeField] private int textureSize = 1080;
     [SerializeField] private int regionCellSizeInPixels = 54;
     [SerializeField] private int worldRegionSizeInBlocks = 512;
@@ -88,7 +88,7 @@ public sealed class WorldGenPreviewGenerator : MonoBehaviour
             return;
         }
 
-        if (worldGenSettingsAsset == null || !worldGenSettingsAsset.settings.IsInitialized)
+        if (worldGenSettingsAsset == null)
         {
             Debug.LogWarning("WorldGenPreviewGenerator requires an assigned WorldGenSettingsAsset.");
             return;
@@ -102,22 +102,9 @@ public sealed class WorldGenPreviewGenerator : MonoBehaviour
         JobHandle handle = new WorldGenPreviewNoiseJobs.WorldSpacePerlinContinentalnessColorJob
         {
             size = size,
+            seed = seed,
             blocksPerPixel = (float)worldRegionSizeInBlocks / Mathf.Max(1, regionCellSizeInPixels),
-            scale = worldGenSettingsAsset.settings.continentalness.scale,
-            octaves = worldGenSettingsAsset.settings.continentalness.octaves,
-            persistence = worldGenSettingsAsset.settings.continentalness.persistence,
-            lacunarity = worldGenSettingsAsset.settings.continentalness.lacunarity,
-            offset = new float2(
-                worldGenSettingsAsset.settings.continentalness.offset.x,
-                worldGenSettingsAsset.settings.continentalness.offset.y),
-            seedOffset = seed * 0.000031f,
-            seaLevelThreshold = worldGenSettingsAsset.settings.continentalnessSeaLevel,
-            warpScaleMultiplier = worldGenSettingsAsset.settings.continentalnessWarpScaleMultiplier,
-            warpStrength = worldGenSettingsAsset.settings.continentalnessWarpStrength,
-            detailScaleMultiplier = worldGenSettingsAsset.settings.continentalnessDetailScaleMultiplier,
-            detailWeight = worldGenSettingsAsset.settings.continentalnessDetailWeight,
-            remapMin = worldGenSettingsAsset.settings.continentalnessRemapMin,
-            remapMax = worldGenSettingsAsset.settings.continentalnessRemapMax,
+            settings = worldGenSettingsAsset.ToSettings(),
             oceanDeepR = deepOceanColor.r,
             oceanDeepG = deepOceanColor.g,
             oceanDeepB = deepOceanColor.b,

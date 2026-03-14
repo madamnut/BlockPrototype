@@ -52,6 +52,134 @@ public struct ContinentalnessSettings
     public Color32 continentalCoreColor;
 }
 
+[System.Serializable]
+public struct ErosionSettings
+{
+    public bool useWarp;
+    public int warpOctaves;
+    public float warpFrequency;
+    public float warpAmplitude;
+    public float warpLacunarity;
+    public float warpGain;
+
+    public bool useMacro;
+    public int macroOctaves;
+    public float macroFrequency;
+    public float macroLacunarity;
+    public float macroGain;
+    public float macroWeight;
+
+    public bool useBroad;
+    public int broadOctaves;
+    public float broadFrequency;
+    public float broadLacunarity;
+    public float broadGain;
+    public float broadWeight;
+
+    public bool useDetail;
+    public int detailOctaves;
+    public float detailFrequency;
+    public float detailLacunarity;
+    public float detailGain;
+    public float detailWeight;
+}
+
+[System.Serializable]
+public struct RidgesSettings
+{
+    public bool useWarp;
+    public int warpOctaves;
+    public float warpFrequency;
+    public float warpAmplitude;
+    public float warpLacunarity;
+    public float warpGain;
+
+    public bool useMacro;
+    public int macroOctaves;
+    public float macroFrequency;
+    public float macroLacunarity;
+    public float macroGain;
+    public float macroWeight;
+
+    public bool useBroad;
+    public int broadOctaves;
+    public float broadFrequency;
+    public float broadLacunarity;
+    public float broadGain;
+    public float broadWeight;
+
+    public bool useDetail;
+    public int detailOctaves;
+    public float detailFrequency;
+    public float detailLacunarity;
+    public float detailGain;
+    public float detailWeight;
+}
+
+[System.Serializable]
+public struct TemperatureSettings
+{
+    public bool useWarp;
+    public int warpOctaves;
+    public float warpFrequency;
+    public float warpAmplitude;
+    public float warpLacunarity;
+    public float warpGain;
+
+    public bool useMacro;
+    public int macroOctaves;
+    public float macroFrequency;
+    public float macroLacunarity;
+    public float macroGain;
+    public float macroWeight;
+
+    public bool useBroad;
+    public int broadOctaves;
+    public float broadFrequency;
+    public float broadLacunarity;
+    public float broadGain;
+    public float broadWeight;
+
+    public bool useDetail;
+    public int detailOctaves;
+    public float detailFrequency;
+    public float detailLacunarity;
+    public float detailGain;
+    public float detailWeight;
+}
+
+[System.Serializable]
+public struct PrecipitationSettings
+{
+    public bool useWarp;
+    public int warpOctaves;
+    public float warpFrequency;
+    public float warpAmplitude;
+    public float warpLacunarity;
+    public float warpGain;
+
+    public bool useMacro;
+    public int macroOctaves;
+    public float macroFrequency;
+    public float macroLacunarity;
+    public float macroGain;
+    public float macroWeight;
+
+    public bool useBroad;
+    public int broadOctaves;
+    public float broadFrequency;
+    public float broadLacunarity;
+    public float broadGain;
+    public float broadWeight;
+
+    public bool useDetail;
+    public int detailOctaves;
+    public float detailFrequency;
+    public float detailLacunarity;
+    public float detailGain;
+    public float detailWeight;
+}
+
 [BurstCompile]
 public static class WorldGenPrototypeJobs
 {
@@ -86,9 +214,129 @@ public static class WorldGenPrototypeJobs
             float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
 
             float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, settings);
-            float continentalness = RemapRawContinentalness(rawContinentalness, useCdfRemap, cdfLut);
+            float continentalness = RemapRawNoise(rawContinentalness, useCdfRemap, cdfLut);
             values[index] = continentalness;
             pixels[index] = EvaluateContinentalnessColor(continentalness, settings);
+        }
+    }
+
+    [BurstCompile]
+    public struct ErosionPreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useCdfRemap;
+        public ErosionSettings settings;
+
+        [ReadOnly] public NativeArray<float> cdfLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawErosion = SampleRawErosion(seed, worldRegionX, worldRegionZ, settings);
+            float erosion = RemapRawNoise(rawErosion, useCdfRemap, cdfLut);
+            values[index] = erosion;
+            pixels[index] = EvaluateErosionColor(erosion);
+        }
+    }
+
+    [BurstCompile]
+    public struct RidgesPreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useCdfRemap;
+        public RidgesSettings settings;
+
+        [ReadOnly] public NativeArray<float> cdfLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, settings);
+            float ridges = RemapRawNoise(rawRidges, useCdfRemap, cdfLut);
+            values[index] = ridges;
+            pixels[index] = EvaluateRidgesColor(ridges);
+        }
+    }
+
+    [BurstCompile]
+    public struct TemperaturePreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useCdfRemap;
+        public TemperatureSettings settings;
+
+        [ReadOnly] public NativeArray<float> cdfLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawTemperature = SampleRawTemperature(seed, worldRegionX, worldRegionZ, settings);
+            float temperature = RemapRawNoise(rawTemperature, useCdfRemap, cdfLut);
+            values[index] = temperature;
+            pixels[index] = EvaluateScalarColor(temperature);
+        }
+    }
+
+    [BurstCompile]
+    public struct PrecipitationPreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useCdfRemap;
+        public PrecipitationSettings settings;
+
+        [ReadOnly] public NativeArray<float> cdfLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawPrecipitation = SampleRawPrecipitation(seed, worldRegionX, worldRegionZ, settings);
+            float precipitation = RemapRawNoise(rawPrecipitation, useCdfRemap, cdfLut);
+            values[index] = precipitation;
+            pixels[index] = EvaluateScalarColor(precipitation);
         }
     }
 
@@ -115,6 +363,110 @@ public static class WorldGenPrototypeJobs
             float worldRegionX = (sectorX * SectorSizeInRegions) + localRegionX;
             float worldRegionZ = (sectorZ * SectorSizeInRegions) + localRegionZ;
             samples[index] = SampleRawContinentalness(worldSeed, worldRegionX, worldRegionZ, settings);
+        }
+    }
+
+    [BurstCompile]
+    public struct RawErosionSampleJob : IJobParallelFor
+    {
+        public int sampleSeed;
+        public int startIndex;
+        public int sectorRange;
+        public ErosionSettings settings;
+
+        [WriteOnly] public NativeSlice<float> samples;
+
+        public void Execute(int index)
+        {
+            int sampleIndex = startIndex + index;
+            uint baseSalt = ComputeHash(sampleSeed, sampleIndex, 0x0B5297A4, 0x9E3779B9u);
+            int worldSeed = (int)ComputeHash(sampleSeed, sampleIndex, 0x1F123BB5, baseSalt);
+            int sectorSpan = math.max(1, (sectorRange * 2) + 1);
+            int sectorX = (int)(ComputeHash(sampleSeed, sampleIndex, 0x5F3759DF, baseSalt ^ 0xA341316Cu) % (uint)sectorSpan) - sectorRange;
+            int sectorZ = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x94D049BB), baseSalt ^ 0xC8013EA4u) % (uint)sectorSpan) - sectorRange;
+            float localRegionX = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x632BE59B), baseSalt ^ 0x85EBCA77u) * SectorSizeInRegions;
+            float localRegionZ = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x85157AF5), baseSalt ^ 0x27D4EB2Fu) * SectorSizeInRegions;
+            float worldRegionX = (sectorX * SectorSizeInRegions) + localRegionX;
+            float worldRegionZ = (sectorZ * SectorSizeInRegions) + localRegionZ;
+            samples[index] = SampleRawErosion(worldSeed, worldRegionX, worldRegionZ, settings);
+        }
+    }
+
+    [BurstCompile]
+    public struct RawRidgesSampleJob : IJobParallelFor
+    {
+        public int sampleSeed;
+        public int startIndex;
+        public int sectorRange;
+        public RidgesSettings settings;
+
+        [WriteOnly] public NativeSlice<float> samples;
+
+        public void Execute(int index)
+        {
+            int sampleIndex = startIndex + index;
+            uint baseSalt = ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x3C6EF372), 0x9E3779B9u);
+            int worldSeed = (int)ComputeHash(sampleSeed, sampleIndex, unchecked((int)0xDAA66D2B), baseSalt);
+            int sectorSpan = math.max(1, (sectorRange * 2) + 1);
+            int sectorX = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x7F4A7C15), baseSalt ^ 0xA341316Cu) % (uint)sectorSpan) - sectorRange;
+            int sectorZ = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x91E10DA5), baseSalt ^ 0xC8013EA4u) % (uint)sectorSpan) - sectorRange;
+            float localRegionX = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x52DCE729), baseSalt ^ 0x85EBCA77u) * SectorSizeInRegions;
+            float localRegionZ = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x38495AB5), baseSalt ^ 0x27D4EB2Fu) * SectorSizeInRegions;
+            float worldRegionX = (sectorX * SectorSizeInRegions) + localRegionX;
+            float worldRegionZ = (sectorZ * SectorSizeInRegions) + localRegionZ;
+            samples[index] = SampleRawRidges(worldSeed, worldRegionX, worldRegionZ, settings);
+        }
+    }
+
+    [BurstCompile]
+    public struct RawTemperatureSampleJob : IJobParallelFor
+    {
+        public int sampleSeed;
+        public int startIndex;
+        public int sectorRange;
+        public TemperatureSettings settings;
+
+        [WriteOnly] public NativeSlice<float> samples;
+
+        public void Execute(int index)
+        {
+            int sampleIndex = startIndex + index;
+            uint baseSalt = ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x2C1B3C6D), 0x9E3779B9u);
+            int worldSeed = (int)ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x7A4E6A13), baseSalt);
+            int sectorSpan = math.max(1, (sectorRange * 2) + 1);
+            int sectorX = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x5C8F1E2D), baseSalt ^ 0xA341316Cu) % (uint)sectorSpan) - sectorRange;
+            int sectorZ = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x6E2F9B17), baseSalt ^ 0xC8013EA4u) % (uint)sectorSpan) - sectorRange;
+            float localRegionX = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x1D73A5C9), baseSalt ^ 0x85EBCA77u) * SectorSizeInRegions;
+            float localRegionZ = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x4F61B8E3), baseSalt ^ 0x27D4EB2Fu) * SectorSizeInRegions;
+            float worldRegionX = (sectorX * SectorSizeInRegions) + localRegionX;
+            float worldRegionZ = (sectorZ * SectorSizeInRegions) + localRegionZ;
+            samples[index] = SampleRawTemperature(worldSeed, worldRegionX, worldRegionZ, settings);
+        }
+    }
+
+    [BurstCompile]
+    public struct RawPrecipitationSampleJob : IJobParallelFor
+    {
+        public int sampleSeed;
+        public int startIndex;
+        public int sectorRange;
+        public PrecipitationSettings settings;
+
+        [WriteOnly] public NativeSlice<float> samples;
+
+        public void Execute(int index)
+        {
+            int sampleIndex = startIndex + index;
+            uint baseSalt = ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x4A7C159B), 0x9E3779B9u);
+            int worldSeed = (int)ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x319642B5), baseSalt);
+            int sectorSpan = math.max(1, (sectorRange * 2) + 1);
+            int sectorX = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x8E9D5A21), baseSalt ^ 0xA341316Cu) % (uint)sectorSpan) - sectorRange;
+            int sectorZ = (int)(ComputeHash(sampleSeed, sampleIndex, unchecked((int)0x73B24D19), baseSalt ^ 0xC8013EA4u) % (uint)sectorSpan) - sectorRange;
+            float localRegionX = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x2654C6F1), baseSalt ^ 0x85EBCA77u) * SectorSizeInRegions;
+            float localRegionZ = HashToUnit(sampleSeed, sampleIndex, unchecked((int)0x5AB91E47), baseSalt ^ 0x27D4EB2Fu) * SectorSizeInRegions;
+            float worldRegionX = (sectorX * SectorSizeInRegions) + localRegionX;
+            float worldRegionZ = (sectorZ * SectorSizeInRegions) + localRegionZ;
+            samples[index] = SampleRawPrecipitation(worldSeed, worldRegionX, worldRegionZ, settings);
         }
     }
 
@@ -176,7 +528,27 @@ public static class WorldGenPrototypeJobs
 
     public static float SampleContinentalness(int seed, float worldRegionX, float worldRegionZ, ContinentalnessSettings settings)
     {
-        return RemapRawContinentalness(SampleRawContinentalness(seed, worldRegionX, worldRegionZ, settings), false, default);
+        return RemapRawNoise(SampleRawContinentalness(seed, worldRegionX, worldRegionZ, settings), false, default);
+    }
+
+    public static float SampleErosion(int seed, float worldRegionX, float worldRegionZ, ErosionSettings settings)
+    {
+        return RemapRawNoise(SampleRawErosion(seed, worldRegionX, worldRegionZ, settings), false, default);
+    }
+
+    public static float SampleRidges(int seed, float worldRegionX, float worldRegionZ, RidgesSettings settings)
+    {
+        return RemapRawNoise(SampleRawRidges(seed, worldRegionX, worldRegionZ, settings), false, default);
+    }
+
+    public static float SampleTemperature(int seed, float worldRegionX, float worldRegionZ, TemperatureSettings settings)
+    {
+        return RemapRawNoise(SampleRawTemperature(seed, worldRegionX, worldRegionZ, settings), false, default);
+    }
+
+    public static float SamplePrecipitation(int seed, float worldRegionX, float worldRegionZ, PrecipitationSettings settings)
+    {
+        return RemapRawNoise(SampleRawPrecipitation(seed, worldRegionX, worldRegionZ, settings), false, default);
     }
 
     public static float SampleRawContinentalness(int seed, float worldRegionX, float worldRegionZ, ContinentalnessSettings settings)
@@ -214,9 +586,153 @@ public static class WorldGenPrototypeJobs
         return math.saturate(continentalness);
     }
 
-    private static float RemapRawContinentalness(float rawContinentalness, bool useCdfRemap, NativeArray<float> cdfLut)
+    public static float SampleRawErosion(int seed, float worldRegionX, float worldRegionZ, ErosionSettings settings)
     {
-        float normalized = math.saturate(rawContinentalness);
+        float2 p = new float2(worldRegionX, worldRegionZ);
+        float2 warped = p;
+
+        if (settings.useWarp)
+        {
+            float warpX = (FractalPerlinNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x6C8E9CF5u) - 0.5f) * settings.warpAmplitude;
+            float warpZ = (FractalPerlinNoise(seed, (p + new float2(91f, 211f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xB5297A4Du) - 0.5f) * settings.warpAmplitude;
+            warped = p + new float2(warpX, warpZ);
+        }
+
+        float macro = settings.useMacro
+            ? FractalPerlinNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x68E31DA4u)
+            : 0f;
+        float broad = settings.useBroad
+            ? FractalPerlinNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0x1B56C4E9u)
+            : 0f;
+        float detail = settings.useDetail
+            ? FractalPerlinNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xC2B2AE35u)
+            : 0f;
+
+        float macroWeight = settings.useMacro ? settings.macroWeight : 0f;
+        float broadWeight = settings.useBroad ? settings.broadWeight : 0f;
+        float detailWeight = settings.useDetail ? settings.detailWeight : 0f;
+        float weightSum = macroWeight + broadWeight + detailWeight;
+        if (weightSum <= 0.0001f)
+        {
+            return 0.5f;
+        }
+
+        float erosion = ((macro * macroWeight) + (broad * broadWeight) + (detail * detailWeight)) / weightSum;
+        return math.saturate(erosion);
+    }
+
+    public static float SampleRawRidges(int seed, float worldRegionX, float worldRegionZ, RidgesSettings settings)
+    {
+        float2 p = new float2(worldRegionX, worldRegionZ);
+        float2 warped = p;
+
+        if (settings.useWarp)
+        {
+            float warpX = (FractalPerlinNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x4CF5AD43u) - 0.5f) * settings.warpAmplitude;
+            float warpZ = (FractalPerlinNoise(seed, (p + new float2(137f, 73f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xA24BAEDFu) - 0.5f) * settings.warpAmplitude;
+            warped = p + new float2(warpX, warpZ);
+        }
+
+        float macro = settings.useMacro
+            ? FractalPerlinNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x165667B1u)
+            : 0f;
+        float broad = settings.useBroad
+            ? FractalPerlinNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0xD3A2646Cu)
+            : 0f;
+        float detail = settings.useDetail
+            ? FractalPerlinNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xFD7046C5u)
+            : 0f;
+
+        float macroWeight = settings.useMacro ? settings.macroWeight : 0f;
+        float broadWeight = settings.useBroad ? settings.broadWeight : 0f;
+        float detailWeight = settings.useDetail ? settings.detailWeight : 0f;
+        float weightSum = macroWeight + broadWeight + detailWeight;
+        if (weightSum <= 0.0001f)
+        {
+            return 0.5f;
+        }
+
+        float ridges = ((macro * macroWeight) + (broad * broadWeight) + (detail * detailWeight)) / weightSum;
+        return math.saturate(ridges);
+    }
+
+    public static float SampleRawTemperature(int seed, float worldRegionX, float worldRegionZ, TemperatureSettings settings)
+    {
+        return SampleRawLayeredNoise(
+            seed,
+            worldRegionX,
+            worldRegionZ,
+            settings.useWarp,
+            settings.warpOctaves,
+            settings.warpFrequency,
+            settings.warpAmplitude,
+            settings.warpLacunarity,
+            settings.warpGain,
+            settings.useMacro,
+            settings.macroOctaves,
+            settings.macroFrequency,
+            settings.macroLacunarity,
+            settings.macroGain,
+            settings.macroWeight,
+            settings.useBroad,
+            settings.broadOctaves,
+            settings.broadFrequency,
+            settings.broadLacunarity,
+            settings.broadGain,
+            settings.broadWeight,
+            settings.useDetail,
+            settings.detailOctaves,
+            settings.detailFrequency,
+            settings.detailLacunarity,
+            settings.detailGain,
+            settings.detailWeight,
+            0x71A5C2D3u,
+            0x92C4E6F1u,
+            0x31D7A85Bu,
+            0xA671C8F3u,
+            0x58B92DE1u);
+    }
+
+    public static float SampleRawPrecipitation(int seed, float worldRegionX, float worldRegionZ, PrecipitationSettings settings)
+    {
+        return SampleRawLayeredNoise(
+            seed,
+            worldRegionX,
+            worldRegionZ,
+            settings.useWarp,
+            settings.warpOctaves,
+            settings.warpFrequency,
+            settings.warpAmplitude,
+            settings.warpLacunarity,
+            settings.warpGain,
+            settings.useMacro,
+            settings.macroOctaves,
+            settings.macroFrequency,
+            settings.macroLacunarity,
+            settings.macroGain,
+            settings.macroWeight,
+            settings.useBroad,
+            settings.broadOctaves,
+            settings.broadFrequency,
+            settings.broadLacunarity,
+            settings.broadGain,
+            settings.broadWeight,
+            settings.useDetail,
+            settings.detailOctaves,
+            settings.detailFrequency,
+            settings.detailLacunarity,
+            settings.detailGain,
+            settings.detailWeight,
+            0x4E7B3C11u,
+            0xB2D54F89u,
+            0x2648C9F7u,
+            0xD9A16E43u,
+            0x83F24B5Du);
+    }
+
+    private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
+    {
+        float normalized = math.saturate(rawValue);
         if (useCdfRemap && cdfLut.IsCreated && cdfLut.Length > 1)
         {
             float scaledIndex = normalized * (cdfLut.Length - 1);
@@ -267,6 +783,91 @@ public static class WorldGenPrototypeJobs
         }
 
         return settings.continentalCoreColor;
+    }
+
+    private static Color32 EvaluateErosionColor(float value)
+    {
+        byte intensity = (byte)math.round(math.clamp((1f - ((value + 1f) * 0.5f)) * 255f, 0f, 255f));
+        return new Color32(intensity, intensity, intensity, 255);
+    }
+
+    private static Color32 EvaluateRidgesColor(float value)
+    {
+        byte intensity = (byte)math.round(math.clamp((1f - ((value + 1f) * 0.5f)) * 255f, 0f, 255f));
+        return new Color32(intensity, intensity, intensity, 255);
+    }
+
+    private static Color32 EvaluateScalarColor(float value)
+    {
+        byte intensity = (byte)math.round(math.clamp((1f - ((value + 1f) * 0.5f)) * 255f, 0f, 255f));
+        return new Color32(intensity, intensity, intensity, 255);
+    }
+
+    private static float SampleRawLayeredNoise(
+        int seed,
+        float worldRegionX,
+        float worldRegionZ,
+        bool useWarp,
+        int warpOctaves,
+        float warpFrequency,
+        float warpAmplitude,
+        float warpLacunarity,
+        float warpGain,
+        bool useMacro,
+        int macroOctaves,
+        float macroFrequency,
+        float macroLacunarity,
+        float macroGain,
+        float macroWeight,
+        bool useBroad,
+        int broadOctaves,
+        float broadFrequency,
+        float broadLacunarity,
+        float broadGain,
+        float broadWeight,
+        bool useDetail,
+        int detailOctaves,
+        float detailFrequency,
+        float detailLacunarity,
+        float detailGain,
+        float detailWeight,
+        uint warpSaltX,
+        uint warpSaltZ,
+        uint macroSalt,
+        uint broadSalt,
+        uint detailSalt)
+    {
+        float2 p = new float2(worldRegionX, worldRegionZ);
+        float2 warped = p;
+
+        if (useWarp)
+        {
+            float warpX = (FractalPerlinNoise(seed, p * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltX) - 0.5f) * warpAmplitude;
+            float warpZ = (FractalPerlinNoise(seed, (p + new float2(113f, 197f)) * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltZ) - 0.5f) * warpAmplitude;
+            warped = p + new float2(warpX, warpZ);
+        }
+
+        float macro = useMacro
+            ? FractalPerlinNoise(seed, warped * macroFrequency, macroOctaves, macroLacunarity, macroGain, macroSalt)
+            : 0f;
+        float broad = useBroad
+            ? FractalPerlinNoise(seed, warped * broadFrequency, broadOctaves, broadLacunarity, broadGain, broadSalt)
+            : 0f;
+        float detail = useDetail
+            ? FractalPerlinNoise(seed, warped * detailFrequency, detailOctaves, detailLacunarity, detailGain, detailSalt)
+            : 0f;
+
+        float safeMacroWeight = useMacro ? macroWeight : 0f;
+        float safeBroadWeight = useBroad ? broadWeight : 0f;
+        float safeDetailWeight = useDetail ? detailWeight : 0f;
+        float weightSum = safeMacroWeight + safeBroadWeight + safeDetailWeight;
+        if (weightSum <= 0.0001f)
+        {
+            return 0.5f;
+        }
+
+        float value = ((macro * safeMacroWeight) + (broad * safeBroadWeight) + (detail * safeDetailWeight)) / weightSum;
+        return math.saturate(value);
     }
 
     private static float FractalPerlinNoise(int seed, float2 point, int octaves, float lacunarity, float gain, uint salt)

@@ -46,211 +46,95 @@ public sealed class VoxelTerrainData : IDisposable
         public NativeArray<int> columnHeights;
     }
 
-    private struct FractalNoiseJobSettings
-    {
-        public float scale;
-        public int octaves;
-        public float persistence;
-        public float lacunarity;
-        public float offsetX;
-        public float offsetY;
-    }
-
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
-    private struct GenerateChunkColumnJob : IJob
+    private struct GenerateChunkColumnJob : IJobParallelFor
     {
         public int chunkX;
         public int chunkZ;
         public int seed;
         public int minTerrainHeight;
+        public int seaLevel;
         public int maxTerrainHeight;
-        public float continentalnessSeaLevel;
-        public float continentalnessWeight;
-        public float continentalnessWarpScaleMultiplier;
-        public float continentalnessWarpStrength;
-        public float continentalnessDetailScaleMultiplier;
-        public float continentalnessDetailWeight;
-        public float continentalnessRemapMin;
-        public float continentalnessRemapMax;
-        public FractalNoiseJobSettings continentalness;
+        public bool useContinentalnessCdfRemap;
+        public ContinentalnessSettings continentalness;
 
         [NativeDisableContainerSafetyRestriction]
         public NativeArray<BlockType> blocks;
+        [ReadOnly] public NativeArray<float> continentalnessCdfLut;
         public NativeArray<int> columnHeights;
 
-        public void Execute()
+        public void Execute(int index)
         {
-            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            int localX = index % ChunkSize;
+            int localZ = index / ChunkSize;
+            int worldX = (chunkX * ChunkSize) + localX;
+            int worldZ = (chunkZ * ChunkSize) + localZ;
+            int terrainHeight = SampleSurfaceHeight(worldX, worldZ);
+
+            for (int worldY = 0; worldY <= terrainHeight; worldY++)
             {
-                for (int localX = 0; localX < ChunkSize; localX++)
-                {
-                    int worldX = (chunkX * ChunkSize) + localX;
-                    int worldZ = (chunkZ * ChunkSize) + localZ;
-                    int terrainHeight = SampleSurfaceHeight(worldX, worldZ);
-
-                    for (int worldY = 0; worldY <= terrainHeight; worldY++)
-                    {
-                        blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
-                    }
-
-                    columnHeights[(localZ * ChunkSize) + localX] = terrainHeight;
-                }
+                blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
             }
+
+            columnHeights[index] = terrainHeight;
         }
 
         private int SampleSurfaceHeight(int worldX, int worldZ)
         {
-            float seedOffset = seed * 0.000031f;
-            ApplyContinentalnessWarp(ref worldX, ref worldZ, seedOffset);
-            float continentalnessValue = SampleFractalPerlin(worldX, worldZ, continentalness, seedOffset);
-            FractalNoiseJobSettings detailSettings = continentalness;
-            detailSettings.scale *= math.max(1f, continentalnessDetailScaleMultiplier);
-            detailSettings.offsetX += 173.31f;
-            detailSettings.offsetY += 91.77f;
-            float continentalnessDetailValue = SampleFractalPerlin(worldX, worldZ, detailSettings, seedOffset);
-            float shapedContinentalness = ShapeContinentalness(
-                continentalnessValue,
-                continentalnessDetailValue,
-                continentalnessDetailWeight,
-                continentalnessRemapMin,
-                continentalnessRemapMax);
+            float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
+            float worldRegionZ = worldZ / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
+            float rawContinentalness = WorldGenPrototypeJobs.SampleRawContinentalness(
+                seed,
+                worldRegionX,
+                worldRegionZ,
+                continentalness);
+            float continentalnessValue = RemapRawNoise(
+                rawContinentalness,
+                useContinentalnessCdfRemap,
+                continentalnessCdfLut);
+
             return ComposeSurfaceHeight(
-                shapedContinentalness,
+                continentalnessValue,
                 minTerrainHeight,
+                seaLevel,
                 maxTerrainHeight,
-                continentalnessSeaLevel,
-                continentalnessWeight);
+                WorldHeight);
         }
 
         private static int ComposeSurfaceHeight(
             float continentalnessValue,
             int minHeight,
+            int seaLevel,
             int maxHeight,
-            float seaLevelThreshold,
-            float continentalnessMultiplier)
+            int worldHeight)
         {
-            float landness = math.saturate(math.unlerp(seaLevelThreshold, 1f, continentalnessValue));
-            float height01 = math.saturate(landness * continentalnessMultiplier);
-            int clampedMin = math.clamp(minHeight, 0, WorldHeight - 1);
-            int clampedMax = math.clamp(math.max(minHeight, maxHeight), 0, WorldHeight - 1);
-            return math.clamp((int)math.round(math.lerp(clampedMin, clampedMax, height01)), 0, WorldHeight - 1);
-        }
+            int clampedMin = math.clamp(minHeight, 0, worldHeight - 1);
+            int clampedSeaLevel = math.clamp(seaLevel, 0, worldHeight - 1);
+            int clampedMax = math.clamp(math.max(seaLevel, maxHeight), 0, worldHeight - 1);
 
-        private void ApplyContinentalnessWarp(ref int worldX, ref int worldZ, float seedOffset)
-        {
-            float warpScale = continentalness.scale * math.clamp(continentalnessWarpScaleMultiplier, 0.1f, 8f);
-            float warpStrength = math.max(0f, continentalnessWarpStrength);
-            if (warpStrength <= 0.0001f)
+            if (continentalnessValue < 0f)
             {
-                return;
+                float oceanT = math.saturate(continentalnessValue + 1f);
+                return math.clamp((int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
             }
 
-            float warpX = SampleFractalPerlin(worldX, worldZ, new FractalNoiseJobSettings
-            {
-                scale = warpScale,
-                octaves = continentalness.octaves,
-                persistence = continentalness.persistence,
-                lacunarity = continentalness.lacunarity,
-                offsetX = continentalness.offsetX + 401.17f,
-                offsetY = continentalness.offsetY + 233.91f,
-            }, seedOffset);
-            float warpZ = SampleFractalPerlin(worldX, worldZ, new FractalNoiseJobSettings
-            {
-                scale = warpScale,
-                octaves = continentalness.octaves,
-                persistence = continentalness.persistence,
-                lacunarity = continentalness.lacunarity,
-                offsetX = continentalness.offsetX + 719.43f,
-                offsetY = continentalness.offsetY + 587.29f,
-            }, seedOffset);
-
-            worldX = (int)math.round(worldX + (((warpX - 0.5f) * 2f) * warpStrength));
-            worldZ = (int)math.round(worldZ + (((warpZ - 0.5f) * 2f) * warpStrength));
+            float landT = math.saturate(continentalnessValue);
+            return math.clamp((int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT)), 0, worldHeight - 1);
         }
 
-        private static float ShapeContinentalness(
-            float baseContinentalness,
-            float detailContinentalness,
-            float detailWeight,
-            float remapMin,
-            float remapMax)
+        private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
         {
-            float baseRemapped = math.saturate(math.unlerp(remapMin, remapMax, baseContinentalness));
-            float baseSmoothed = baseRemapped * baseRemapped * (3f - (2f * baseRemapped));
-
-            float coastMask = 1f - math.abs((baseSmoothed * 2f) - 1f);
-            float detailSigned = (detailContinentalness - 0.5f) * 2f;
-            float coastAdjusted = math.saturate(baseSmoothed + (detailSigned * math.saturate(detailWeight) * coastMask));
-
-            float centered = (coastAdjusted * 2f) - 1f;
-            float contrasted = math.sign(centered) * math.pow(math.abs(centered), 0.72f);
-            return math.saturate((contrasted * 0.5f) + 0.5f);
-        }
-
-        private static float SampleFractalPerlin(int worldX, int worldZ, FractalNoiseJobSettings settings, float seedOffset)
-        {
-            int octaveCount = math.max(1, settings.octaves);
-            float amplitude = 1f;
-            float frequency = 1f;
-            float total = 0f;
-            float amplitudeSum = 0f;
-            float safeScale = math.max(0.00001f, settings.scale);
-            float persistence = math.saturate(settings.persistence);
-            float lacunarity = math.max(1f, settings.lacunarity);
-
-            for (int octave = 0; octave < octaveCount; octave++)
+            float normalized = math.saturate(rawValue);
+            if (useCdfRemap && cdfLut.IsCreated && cdfLut.Length > 1)
             {
-                float sampleX = (worldX * safeScale * frequency) + settings.offsetX + seedOffset;
-                float sampleZ = (worldZ * safeScale * frequency) + settings.offsetY + seedOffset;
-                total += SamplePerlin2D(sampleX, sampleZ) * amplitude;
-                amplitudeSum += amplitude;
-                amplitude *= persistence;
-                frequency *= lacunarity;
+                float scaledIndex = normalized * (cdfLut.Length - 1);
+                int lowerIndex = (int)math.floor(scaledIndex);
+                int upperIndex = math.min(lowerIndex + 1, cdfLut.Length - 1);
+                float t = scaledIndex - lowerIndex;
+                normalized = math.lerp(cdfLut[lowerIndex], cdfLut[upperIndex], t);
             }
 
-            return amplitudeSum <= 0f ? 0.5f : total / amplitudeSum;
-        }
-
-        private static float SamplePerlin2D(float x, float z)
-        {
-            float cellX = math.floor(x);
-            float cellZ = math.floor(z);
-            float localX = math.frac(x);
-            float localZ = math.frac(z);
-
-            Gradient(cellX, cellZ, out float g00x, out float g00z);
-            Gradient(cellX + 1f, cellZ, out float g10x, out float g10z);
-            Gradient(cellX, cellZ + 1f, out float g01x, out float g01z);
-            Gradient(cellX + 1f, cellZ + 1f, out float g11x, out float g11z);
-
-            float n00 = (g00x * localX) + (g00z * localZ);
-            float n10 = (g10x * (localX - 1f)) + (g10z * localZ);
-            float n01 = (g01x * localX) + (g01z * (localZ - 1f));
-            float n11 = (g11x * (localX - 1f)) + (g11z * (localZ - 1f));
-
-            float fadeX = localX * localX * localX * (localX * (localX * 6f - 15f) + 10f);
-            float fadeZ = localZ * localZ * localZ * (localZ * (localZ * 6f - 15f) + 10f);
-            float nx0 = math.lerp(n00, n10, fadeX);
-            float nx1 = math.lerp(n01, n11, fadeX);
-            float nxy = math.lerp(nx0, nx1, fadeZ);
-            return math.saturate((nxy * 0.70710677f) + 0.5f);
-        }
-
-        private static void Gradient(float cellX, float cellZ, out float gx, out float gz)
-        {
-            uint hash = Hash((int)cellX, (int)cellZ);
-            float angle = (hash / 4294967295f) * 6.28318530718f;
-            gx = math.cos(angle);
-            gz = math.sin(angle);
-        }
-
-        private static uint Hash(int xValue, int zValue)
-        {
-            uint x = (uint)xValue;
-            uint z = (uint)zValue;
-            uint h = (x * 374761393u) + (z * 668265263u);
-            h = (h ^ (h >> 13)) * 1274126177u;
-            return h ^ (h >> 16);
+            return (normalized * 2f) - 1f;
         }
     }
 
@@ -263,19 +147,31 @@ public sealed class VoxelTerrainData : IDisposable
     private readonly List<Vector2Int> _pendingChunkKeys = new();
     private readonly int _seed;
     private readonly VoxelTerrainGenerationSettings _settings;
+    private readonly float[] _managedContinentalnessCdfLut;
+    private NativeArray<float> _continentalnessCdfLut;
 
-    public VoxelTerrainData(int seed, VoxelTerrainGenerationSettings settings)
+    public VoxelTerrainData(int seed, VoxelTerrainGenerationSettings settings, float[] continentalnessCdfLut = null)
     {
         _seed = seed;
         _settings = settings;
+        _managedContinentalnessCdfLut = continentalnessCdfLut;
+
+        if (settings.useContinentalnessCdfRemap && continentalnessCdfLut != null && continentalnessCdfLut.Length > 1)
+        {
+            _continentalnessCdfLut = new NativeArray<float>(continentalnessCdfLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            for (int i = 0; i < continentalnessCdfLut.Length; i++)
+            {
+                _continentalnessCdfLut[i] = continentalnessCdfLut[i];
+            }
+        }
     }
 
     public int SeaLevel => _settings.seaLevel;
 
     public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
     {
-        int height = VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings);
-        float continentalness = VoxelWorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings);
+        int height = VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
+        float continentalness = VoxelWorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
 
         return new WorldGenDebugSample(
             height,
@@ -307,6 +203,11 @@ public sealed class VoxelTerrainData : IDisposable
         _pendingChunkColumns.Clear();
         _pendingChunkKeys.Clear();
         _chunkColumns.Clear();
+
+        if (_continentalnessCdfLut.IsCreated)
+        {
+            _continentalnessCdfLut.Dispose();
+        }
     }
 
     public void RequestChunkColumn(int chunkX, int chunkZ)
@@ -329,21 +230,16 @@ public sealed class VoxelTerrainData : IDisposable
             chunkZ = chunkZ,
             seed = _seed,
             minTerrainHeight = _settings.minTerrainHeight,
+            seaLevel = _settings.seaLevel,
             maxTerrainHeight = _settings.maxTerrainHeight,
-            continentalnessSeaLevel = _settings.continentalnessSeaLevel,
-            continentalnessWeight = _settings.continentalnessWeight,
-            continentalnessWarpScaleMultiplier = _settings.continentalnessWarpScaleMultiplier,
-            continentalnessWarpStrength = _settings.continentalnessWarpStrength,
-            continentalnessDetailScaleMultiplier = _settings.continentalnessDetailScaleMultiplier,
-            continentalnessDetailWeight = _settings.continentalnessDetailWeight,
-            continentalnessRemapMin = _settings.continentalnessRemapMin,
-            continentalnessRemapMax = _settings.continentalnessRemapMax,
-            continentalness = ToJobSettings(_settings.continentalness),
+            useContinentalnessCdfRemap = _settings.useContinentalnessCdfRemap,
+            continentalness = _settings.continentalness,
             blocks = pending.blocks,
+            continentalnessCdfLut = _continentalnessCdfLut,
             columnHeights = pending.columnHeights,
         };
 
-        pending.handle = job.Schedule();
+        pending.handle = job.Schedule(ChunkSize * ChunkSize, ChunkSize);
         _pendingChunkColumns.Add(key, pending);
         _pendingChunkKeys.Add(key);
     }
@@ -849,22 +745,9 @@ public sealed class VoxelTerrainData : IDisposable
         return false;
     }
 
-    private static FractalNoiseJobSettings ToJobSettings(VoxelTerrainNoiseSettings settings)
-    {
-        return new FractalNoiseJobSettings
-        {
-            scale = settings.scale,
-            octaves = settings.octaves,
-            persistence = settings.persistence,
-            lacunarity = settings.lacunarity,
-            offsetX = settings.offset.x,
-            offsetY = settings.offset.y,
-        };
-    }
-
     private int SampleSurfaceHeight(int worldX, int worldZ)
     {
-        return VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings);
+        return VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)
