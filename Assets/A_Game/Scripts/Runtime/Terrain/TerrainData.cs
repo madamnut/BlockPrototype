@@ -37,13 +37,15 @@ public sealed class TerrainData : IDisposable
         public readonly BlockType[] blocks;
         public readonly VoxelFluid[] fluids;
         public readonly ushort[] foliageIds;
+        public readonly int[] columnHeights;
         public int maxHeight;
 
-        public ChunkColumnData(BlockType[] blocks, VoxelFluid[] fluids, ushort[] foliageIds, int maxHeight)
+        public ChunkColumnData(BlockType[] blocks, VoxelFluid[] fluids, ushort[] foliageIds, int[] columnHeights, int maxHeight)
         {
             this.blocks = blocks;
             this.fluids = fluids;
             this.foliageIds = foliageIds;
+            this.columnHeights = columnHeights;
             this.maxHeight = maxHeight;
         }
     }
@@ -53,6 +55,29 @@ public sealed class TerrainData : IDisposable
         public JobHandle handle;
         public NativeArray<BlockType> blocks;
         public NativeArray<int> columnHeights;
+    }
+
+    [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+    private struct FillChunkColumnBlocksJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<int> columnHeights;
+
+        [NativeDisableContainerSafetyRestriction]
+        public NativeArray<BlockType> blocks;
+
+        public void Execute(int index)
+        {
+            int localX = index % ChunkSize;
+            int localZ = index / ChunkSize;
+            int terrainHeight = columnHeights[index];
+
+            for (int worldY = 0; worldY <= terrainHeight; worldY++)
+            {
+                blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
+                    ? BlockType.Grass
+                    : BlockType.Rock;
+            }
+        }
     }
 
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
@@ -193,6 +218,7 @@ public sealed class TerrainData : IDisposable
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
     private NativeArray<float> _continentalnessFilterLut;
+    private readonly TerrainGpuHeightGenerator _gpuHeightGenerator;
 
     public TerrainData(
         int seed,
@@ -200,7 +226,9 @@ public sealed class TerrainData : IDisposable
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
-        float[] continentalnessFilterLut = null)
+        float[] continentalnessFilterLut = null,
+        bool useGpuHeightGeneration = false,
+        ComputeShader terrainHeightComputeShader = null)
     {
         _seed = seed;
         _settings = settings;
@@ -212,6 +240,13 @@ public sealed class TerrainData : IDisposable
         _erosionCdfLut = CreateNativeLut(settings.useErosionRemap, erosionCdfLut);
         _ridgesCdfLut = CreateNativeLut(settings.useRidgesRemap, ridgesCdfLut);
         _continentalnessFilterLut = CreateNativeLut(continentalnessFilterLut != null && continentalnessFilterLut.Length > 1, continentalnessFilterLut);
+        if (useGpuHeightGeneration)
+        {
+            _gpuHeightGenerator = new TerrainGpuHeightGenerator(
+                terrainHeightComputeShader,
+                continentalnessCdfLut,
+                continentalnessFilterLut);
+        }
     }
 
     public int SeaLevel => _settings.seaLevel;
@@ -285,6 +320,8 @@ public sealed class TerrainData : IDisposable
         {
             _continentalnessFilterLut.Dispose();
         }
+
+        _gpuHeightGenerator?.Dispose();
     }
 
     public void RequestChunkColumn(int chunkX, int chunkZ)
@@ -300,6 +337,21 @@ public sealed class TerrainData : IDisposable
             blocks = new NativeArray<BlockType>(ChunkSize * WorldHeight * ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory),
             columnHeights = new NativeArray<int>(ChunkSize * ChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
         };
+
+        if (_gpuHeightGenerator != null &&
+            _gpuHeightGenerator.TryGenerateChunkHeights(chunkX, chunkZ, _seed, _settings, pending.columnHeights))
+        {
+            FillChunkColumnBlocksJob fillJob = new()
+            {
+                columnHeights = pending.columnHeights,
+                blocks = pending.blocks,
+            };
+
+            pending.handle = fillJob.Schedule(ChunkSize * ChunkSize, ChunkSize);
+            _pendingChunkColumns.Add(key, pending);
+            _pendingChunkKeys.Add(key);
+            return;
+        }
 
         GenerateChunkColumnJob job = new()
         {
@@ -444,6 +496,22 @@ public sealed class TerrainData : IDisposable
         return chunk.foliageIds[GetIndex(localX, worldY, localZ)];
     }
 
+    public int GetColumnHeight(int worldX, int worldZ)
+    {
+        int chunkX = FloorDiv(worldX, ChunkSize);
+        int chunkZ = FloorDiv(worldZ, ChunkSize);
+        Vector2Int key = new(chunkX, chunkZ);
+        if (!_chunkColumns.TryGetValue(key, out ChunkColumnData chunk) || chunk.columnHeights == null)
+        {
+            return -1;
+        }
+
+        int localX = Mod(worldX, ChunkSize);
+        int localZ = Mod(worldZ, ChunkSize);
+        int index = (localZ * ChunkSize) + localX;
+        return index >= 0 && index < chunk.columnHeights.Length ? chunk.columnHeights[index] : -1;
+    }
+
     public bool SetBlock(int worldX, int worldY, int worldZ, BlockType blockType)
     {
         if (!IsInBounds(worldX, worldY, worldZ))
@@ -457,6 +525,10 @@ public sealed class TerrainData : IDisposable
         int localX = Mod(worldX, ChunkSize);
         int localZ = Mod(worldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
+        int columnIndex = (localZ * ChunkSize) + localX;
+        int currentColumnHeight = chunk.columnHeights != null && columnIndex < chunk.columnHeights.Length
+            ? chunk.columnHeights[columnIndex]
+            : -1;
         if (chunk.blocks[index] == blockType)
         {
             return false;
@@ -472,6 +544,10 @@ public sealed class TerrainData : IDisposable
             {
                 chunk.maxHeight = worldY;
             }
+            if (chunk.columnHeights != null && columnIndex < chunk.columnHeights.Length && worldY > currentColumnHeight)
+            {
+                chunk.columnHeights[columnIndex] = worldY;
+            }
             else if (removedFoliageAbove && chunk.maxHeight <= worldY + 1)
             {
                 RecalculateChunkMaxHeight(chunk);
@@ -481,6 +557,10 @@ public sealed class TerrainData : IDisposable
         }
 
         bool removedUnsupportedFoliage = ClearUnsupportedFoliageAbove(chunk, localX, worldY, localZ);
+        if (chunk.columnHeights != null && columnIndex < chunk.columnHeights.Length && worldY >= currentColumnHeight)
+        {
+            chunk.columnHeights[columnIndex] = CalculateColumnSurfaceHeight(chunk, localX, localZ);
+        }
 
         if (worldY == chunk.maxHeight || (removedUnsupportedFoliage && chunk.maxHeight <= worldY + 1))
         {
@@ -778,10 +858,16 @@ public sealed class TerrainData : IDisposable
             }
         }
 
+        int[] managedColumnHeights = pending.columnHeights.ToArray();
         pending.blocks.Dispose();
         pending.columnHeights.Dispose();
 
-        _chunkColumns[key] = new ChunkColumnData(managedBlocks, managedFluids, managedFoliageIds, maxHeight);
+        _chunkColumns[key] = new ChunkColumnData(
+            managedBlocks,
+            managedFluids,
+            managedFoliageIds,
+            managedColumnHeights,
+            maxHeight);
     }
 
     private static void RecalculateChunkMaxHeight(ChunkColumnData chunk)
@@ -803,6 +889,19 @@ public sealed class TerrainData : IDisposable
         }
 
         chunk.maxHeight = -1;
+    }
+
+    private static int CalculateColumnSurfaceHeight(ChunkColumnData chunk, int localX, int localZ)
+    {
+        for (int worldY = WorldHeight - 1; worldY >= 0; worldY--)
+        {
+            if (chunk.blocks[GetIndex(localX, worldY, localZ)] != BlockType.Air)
+            {
+                return worldY;
+            }
+        }
+
+        return -1;
     }
 
     private static bool ClearUnsupportedFoliageAbove(ChunkColumnData chunk, int localX, int worldY, int localZ)

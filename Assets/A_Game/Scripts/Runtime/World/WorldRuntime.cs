@@ -24,6 +24,13 @@ public sealed class WorldRuntime : MonoBehaviour
     [FormerlySerializedAs("continentalnessCdfProfileAsset")]
     [SerializeField] private WorldGenRemapProfileAsset worldGenRemapProfileAsset;
 
+    [Header("GPU Terrain")]
+    [FormerlySerializedAs("useGpuHeightGeneration")]
+    [FormerlySerializedAs("useGpuSolidMeshing")]
+    [SerializeField] private bool useGpuTerrain;
+    [SerializeField] private ComputeShader terrainHeightComputeShader;
+    [SerializeField] private ComputeShader terrainSolidMeshComputeShader;
+
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
     [SerializeField, Min(1)] private int chunkColumnsMeshedPerFrame = 2;
@@ -47,6 +54,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private readonly List<Vector2Int> _pendingMeshKeyBuffer = new(64);
     private readonly Dictionary<Vector2Int, VoxelMesher.PendingChunkColumnMesh> _pendingChunkColumnMeshes = new();
+    private readonly Dictionary<Vector2Int, TerrainGpuMesher.PendingChunkColumnMesh> _pendingGpuChunkColumnMeshes = new();
 
     private TerrainData _terrain;
     private Transform _worldRoot;
@@ -58,6 +66,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private WorldInteraction _worldInteraction;
     private WaterReflection _waterReflection;
     private WorldStreaming _worldStreaming;
+    private TerrainGpuMesher _gpuSolidMesher;
     private NativeArray<ushort> _faceTextureLookup;
     private TerrainGenerationSettings terrainSettings;
 
@@ -145,6 +154,7 @@ public sealed class WorldRuntime : MonoBehaviour
         ConfigureWaterReflection();
         _waterReflection.ApplyFallback();
         _chunkView = new ChunkView(worldMaterial, fluidMaterial, foliageMaterial, chunkColumnPrefab);
+        _gpuSolidMesher = new TerrainGpuMesher(terrainSolidMeshComputeShader);
         BuildWorld();
         _worldDebug = new WorldDebug(transform, worldMaterial, selectionColor, chunkBoundaryColor);
         _worldDebug.Initialize();
@@ -210,6 +220,8 @@ public sealed class WorldRuntime : MonoBehaviour
         _waterReflection = null;
         _chunkView = null;
         _worldStreaming = null;
+        _gpuSolidMesher?.Dispose();
+        _gpuSolidMesher = null;
 
         _terrain?.Dispose();
         _terrain = null;
@@ -229,7 +241,9 @@ public sealed class WorldRuntime : MonoBehaviour
             GetContinentalnessRemapLut(),
             GetErosionRemapLut(),
             GetRidgesRemapLut(),
-            GetContinentalnessFilterLut());
+            GetContinentalnessFilterLut(),
+            useGpuTerrain,
+            terrainHeightComputeShader);
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -279,8 +293,16 @@ public sealed class WorldRuntime : MonoBehaviour
     private void ScheduleChunkColumnMesh(int chunkX, int chunkZ, int usedSubChunkCount)
     {
         Vector2Int chunkCoords = new(chunkX, chunkZ);
-        if (_pendingChunkColumnMeshes.ContainsKey(chunkCoords))
+        if (_pendingChunkColumnMeshes.ContainsKey(chunkCoords) || _pendingGpuChunkColumnMeshes.ContainsKey(chunkCoords))
         {
+            return;
+        }
+
+        if (useGpuTerrain &&
+            _gpuSolidMesher != null &&
+            _gpuSolidMesher.TryScheduleChunkColumnMesh(_terrain, blockDatabase, chunkX, chunkZ, usedSubChunkCount, out TerrainGpuMesher.PendingChunkColumnMesh gpuPending))
+        {
+            _pendingGpuChunkColumnMeshes.Add(chunkCoords, gpuPending);
             return;
         }
 
@@ -297,6 +319,11 @@ public sealed class WorldRuntime : MonoBehaviour
     private void CompletePendingChunkMeshJobs()
     {
         _pendingMeshKeyBuffer.Clear();
+        foreach (Vector2Int chunkCoords in _pendingGpuChunkColumnMeshes.Keys)
+        {
+            _pendingMeshKeyBuffer.Add(chunkCoords);
+        }
+
         foreach (Vector2Int chunkCoords in _pendingChunkColumnMeshes.Keys)
         {
             _pendingMeshKeyBuffer.Add(chunkCoords);
@@ -308,6 +335,15 @@ public sealed class WorldRuntime : MonoBehaviour
         for (int i = 0; i < _pendingMeshKeyBuffer.Count && completedCount < chunkColumnsMeshedPerFrame; i++)
         {
             Vector2Int chunkCoords = _pendingMeshKeyBuffer[i];
+            if (_pendingGpuChunkColumnMeshes.TryGetValue(chunkCoords, out TerrainGpuMesher.PendingChunkColumnMesh gpuPending) && gpuPending.IsCompleted)
+            {
+                ApplyGpuChunkColumnMesh(chunkCoords, gpuPending.Result);
+                gpuPending.Dispose();
+                _pendingGpuChunkColumnMeshes.Remove(chunkCoords);
+                completedCount++;
+                continue;
+            }
+
             if (!_pendingChunkColumnMeshes.TryGetValue(chunkCoords, out VoxelMesher.PendingChunkColumnMesh pendingColumn) || !pendingColumn.IsCompleted)
             {
                 continue;
@@ -340,6 +376,26 @@ public sealed class WorldRuntime : MonoBehaviour
         RefreshVisibleFluidRendererCache();
     }
 
+    private void ApplyGpuChunkColumnMesh(Vector2Int chunkCoords, TerrainGpuMesher.ChunkColumnMeshData meshData)
+    {
+        if (_chunkView == null)
+        {
+            return;
+        }
+
+        if (_worldStreaming == null || !_worldStreaming.IsChunkVisible(chunkCoords))
+        {
+            return;
+        }
+
+        _chunkView.ApplyGpuChunkColumnMesh(
+            chunkCoords,
+            meshData,
+            _terrain,
+            blockDatabase);
+        RefreshVisibleFluidRendererCache();
+    }
+
     private void ReleaseChunkColumn(Vector2Int chunkCoords)
     {
         if (_pendingChunkColumnMeshes.TryGetValue(chunkCoords, out VoxelMesher.PendingChunkColumnMesh pendingColumn))
@@ -348,12 +404,25 @@ public sealed class WorldRuntime : MonoBehaviour
             _pendingChunkColumnMeshes.Remove(chunkCoords);
         }
 
+        if (_pendingGpuChunkColumnMeshes.TryGetValue(chunkCoords, out TerrainGpuMesher.PendingChunkColumnMesh gpuPending))
+        {
+            gpuPending.Dispose();
+            _pendingGpuChunkColumnMeshes.Remove(chunkCoords);
+        }
+
         _chunkView?.ReleaseChunkColumn(chunkCoords);
         RefreshVisibleFluidRendererCache();
     }
 
     private void DisposePendingChunkMeshJobs()
     {
+        foreach (KeyValuePair<Vector2Int, TerrainGpuMesher.PendingChunkColumnMesh> pair in _pendingGpuChunkColumnMeshes)
+        {
+            pair.Value.Dispose();
+        }
+
+        _pendingGpuChunkColumnMeshes.Clear();
+
         foreach (KeyValuePair<Vector2Int, VoxelMesher.PendingChunkColumnMesh> pair in _pendingChunkColumnMeshes)
         {
             pair.Value.Dispose();
@@ -369,6 +438,22 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             pendingColumn.Dispose();
             _pendingChunkColumnMeshes.Remove(chunkCoords);
+        }
+
+        if (_pendingGpuChunkColumnMeshes.TryGetValue(chunkCoords, out TerrainGpuMesher.PendingChunkColumnMesh gpuPending))
+        {
+            gpuPending.Dispose();
+            _pendingGpuChunkColumnMeshes.Remove(chunkCoords);
+        }
+
+        if (useGpuTerrain &&
+            _gpuSolidMesher != null &&
+            _terrain != null &&
+            _terrain.TryGetUsedSubChunkCount(chunkX, chunkZ, out int usedSubChunkCount) &&
+            _gpuSolidMesher.TryScheduleChunkColumnMesh(_terrain, blockDatabase, chunkX, chunkZ, usedSubChunkCount, out TerrainGpuMesher.PendingChunkColumnMesh newGpuPending))
+        {
+            _pendingGpuChunkColumnMeshes[chunkCoords] = newGpuPending;
+            return;
         }
 
         _chunkView?.RefreshLoadedSubChunk(chunkX, subChunkY, chunkZ, _terrain, blockDatabase);
@@ -597,6 +682,18 @@ public sealed class WorldRuntime : MonoBehaviour
         if (blockDatabase != null)
         {
             isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Rock);
+        }
+
+        if (useGpuTerrain)
+        {
+            if (!SystemInfo.supportsComputeShaders)
+            {
+                Debug.LogWarning("WorldRuntime GPU terrain is enabled, but compute shaders are not supported on this device. Falling back to CPU terrain generation.", this);
+            }
+            else if (terrainHeightComputeShader == null || terrainSolidMeshComputeShader == null)
+            {
+                Debug.LogWarning("WorldRuntime GPU terrain is enabled, but one or more terrain compute shaders are missing. Falling back to CPU terrain generation.", this);
+            }
         }
 
         return isValid;

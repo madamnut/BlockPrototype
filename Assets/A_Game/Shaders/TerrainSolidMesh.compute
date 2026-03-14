@@ -1,0 +1,303 @@
+#pragma kernel BuildSolidSubChunkMesh
+
+struct TerrainMeshVertex
+{
+    float3 position;
+    float3 normal;
+    float2 uv;
+    uint packedColor;
+};
+
+StructuredBuffer<int> _HeightNeighborhood;
+RWStructuredBuffer<TerrainMeshVertex> _Vertices;
+RWStructuredBuffer<int> _Indices;
+RWStructuredBuffer<uint> _Counters;
+
+int _SubChunkY;
+int _ChunkSize;
+int _SubChunkSize;
+int _NeighborhoodSize;
+int _GrassTopLayer;
+int _GrassRightLayer;
+int _GrassFrontLayer;
+int _RockRightLayer;
+int _RockFrontLayer;
+
+int GetHeight(int sampleX, int sampleZ)
+{
+    return _HeightNeighborhood[(sampleZ * _NeighborhoodSize) + sampleX];
+}
+
+uint EncodeTextureLayer(uint textureLayer)
+{
+    uint low = textureLayer & 0xFFu;
+    uint high = (textureLayer >> 8) & 0xFFu;
+    return low | (high << 8) | (255u << 24);
+}
+
+void EmitVertex(uint index, float3 position, float3 normal, float2 uv, uint packedColor)
+{
+    TerrainMeshVertex vertex;
+    vertex.position = position;
+    vertex.normal = normal;
+    vertex.uv = uv;
+    vertex.packedColor = packedColor;
+    _Vertices[index] = vertex;
+}
+
+void EmitQuad(
+    float3 a,
+    float3 b,
+    float3 c,
+    float3 d,
+    float3 normal,
+    float2 uvA,
+    float2 uvB,
+    float2 uvC,
+    float2 uvD,
+    uint packedColor)
+{
+    uint vertexStart;
+    uint indexStart;
+    InterlockedAdd(_Counters[0], 4u, vertexStart);
+    InterlockedAdd(_Counters[1], 6u, indexStart);
+
+    EmitVertex(vertexStart + 0u, a, normal, uvA, packedColor);
+    EmitVertex(vertexStart + 1u, b, normal, uvB, packedColor);
+    EmitVertex(vertexStart + 2u, c, normal, uvC, packedColor);
+    EmitVertex(vertexStart + 3u, d, normal, uvD, packedColor);
+
+    _Indices[indexStart + 0u] = (int)(vertexStart + 0u);
+    _Indices[indexStart + 1u] = (int)(vertexStart + 1u);
+    _Indices[indexStart + 2u] = (int)(vertexStart + 2u);
+    _Indices[indexStart + 3u] = (int)(vertexStart + 0u);
+    _Indices[indexStart + 4u] = (int)(vertexStart + 2u);
+    _Indices[indexStart + 5u] = (int)(vertexStart + 3u);
+}
+
+[numthreads(8, 8, 1)]
+void BuildSolidSubChunkMesh(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (dispatchThreadId.x >= (uint)_ChunkSize || dispatchThreadId.y >= (uint)_ChunkSize)
+    {
+        return;
+    }
+
+    int localX = (int)dispatchThreadId.x;
+    int localZ = (int)dispatchThreadId.y;
+    int sampleX = localX + 1;
+    int sampleZ = localZ + 1;
+    int currentHeight = GetHeight(sampleX, sampleZ);
+    if (currentHeight < 0)
+    {
+        return;
+    }
+
+    int startY = _SubChunkY * _SubChunkSize;
+    int endY = startY + _SubChunkSize;
+    float topLocalY = (currentHeight + 1) - startY;
+
+    if (currentHeight >= startY && currentHeight < endY)
+    {
+        uint packedGrass = EncodeTextureLayer((uint)_GrassTopLayer);
+        EmitQuad(
+            float3(localX, topLocalY, localZ),
+            float3(localX, topLocalY, localZ + 1),
+            float3(localX + 1, topLocalY, localZ + 1),
+            float3(localX + 1, topLocalY, localZ),
+            float3(0, 1, 0),
+            float2(0, 0),
+            float2(1, 0),
+            float2(1, 1),
+            float2(0, 1),
+            packedGrass);
+    }
+
+    int leftHeight = GetHeight(sampleX - 1, sampleZ);
+    if (currentHeight > leftHeight)
+    {
+        int bottomY = max(leftHeight + 1, startY);
+        int topY = min(currentHeight + 1, endY);
+        if (topY > bottomY)
+        {
+            int rockTopY = min(currentHeight, endY);
+            if (rockTopY > bottomY)
+            {
+                float rockBottomLocalY = bottomY - startY;
+                float rockTopLocalY = rockTopY - startY;
+                uint packedRock = EncodeTextureLayer((uint)_RockRightLayer);
+                EmitQuad(
+                    float3(localX, rockBottomLocalY, localZ),
+                    float3(localX, rockBottomLocalY, localZ + 1),
+                    float3(localX, rockTopLocalY, localZ + 1),
+                    float3(localX, rockTopLocalY, localZ),
+                    float3(-1, 0, 0),
+                    float2(0, 0),
+                    float2(1, 0),
+                    float2(1, rockTopY - bottomY),
+                    float2(0, rockTopY - bottomY),
+                    packedRock);
+            }
+
+            int grassBottomY = max(currentHeight, startY);
+            if (topY > grassBottomY)
+            {
+                float grassBottomLocalY = grassBottomY - startY;
+                float grassTopLocalY = topY - startY;
+                uint packedGrass = EncodeTextureLayer((uint)_GrassRightLayer);
+                EmitQuad(
+                    float3(localX, grassBottomLocalY, localZ),
+                    float3(localX, grassBottomLocalY, localZ + 1),
+                    float3(localX, grassTopLocalY, localZ + 1),
+                    float3(localX, grassTopLocalY, localZ),
+                    float3(-1, 0, 0),
+                    float2(0, 0),
+                    float2(1, 0),
+                    float2(1, topY - grassBottomY),
+                    float2(0, topY - grassBottomY),
+                    packedGrass);
+            }
+        }
+    }
+
+    int rightHeight = GetHeight(sampleX + 1, sampleZ);
+    if (currentHeight > rightHeight)
+    {
+        int bottomY = max(rightHeight + 1, startY);
+        int topY = min(currentHeight + 1, endY);
+        if (topY > bottomY)
+        {
+            int rockTopY = min(currentHeight, endY);
+            if (rockTopY > bottomY)
+            {
+                float rockBottomLocalY = bottomY - startY;
+                float rockTopLocalY = rockTopY - startY;
+                uint packedRock = EncodeTextureLayer((uint)_RockRightLayer);
+                EmitQuad(
+                    float3(localX + 1, rockBottomLocalY, localZ),
+                    float3(localX + 1, rockTopLocalY, localZ),
+                    float3(localX + 1, rockTopLocalY, localZ + 1),
+                    float3(localX + 1, rockBottomLocalY, localZ + 1),
+                    float3(1, 0, 0),
+                    float2(0, 0),
+                    float2(0, rockTopY - bottomY),
+                    float2(1, rockTopY - bottomY),
+                    float2(1, 0),
+                    packedRock);
+            }
+
+            int grassBottomY = max(currentHeight, startY);
+            if (topY > grassBottomY)
+            {
+                float grassBottomLocalY = grassBottomY - startY;
+                float grassTopLocalY = topY - startY;
+                uint packedGrass = EncodeTextureLayer((uint)_GrassRightLayer);
+                EmitQuad(
+                    float3(localX + 1, grassBottomLocalY, localZ),
+                    float3(localX + 1, grassTopLocalY, localZ),
+                    float3(localX + 1, grassTopLocalY, localZ + 1),
+                    float3(localX + 1, grassBottomLocalY, localZ + 1),
+                    float3(1, 0, 0),
+                    float2(0, 0),
+                    float2(0, topY - grassBottomY),
+                    float2(1, topY - grassBottomY),
+                    float2(1, 0),
+                    packedGrass);
+            }
+        }
+    }
+
+    int backHeight = GetHeight(sampleX, sampleZ - 1);
+    if (currentHeight > backHeight)
+    {
+        int bottomY = max(backHeight + 1, startY);
+        int topY = min(currentHeight + 1, endY);
+        if (topY > bottomY)
+        {
+            int rockTopY = min(currentHeight, endY);
+            if (rockTopY > bottomY)
+            {
+                float rockBottomLocalY = bottomY - startY;
+                float rockTopLocalY = rockTopY - startY;
+                uint packedRock = EncodeTextureLayer((uint)_RockFrontLayer);
+                EmitQuad(
+                    float3(localX, rockBottomLocalY, localZ),
+                    float3(localX, rockTopLocalY, localZ),
+                    float3(localX + 1, rockTopLocalY, localZ),
+                    float3(localX + 1, rockBottomLocalY, localZ),
+                    float3(0, 0, -1),
+                    float2(0, 0),
+                    float2(0, rockTopY - bottomY),
+                    float2(1, rockTopY - bottomY),
+                    float2(1, 0),
+                    packedRock);
+            }
+
+            int grassBottomY = max(currentHeight, startY);
+            if (topY > grassBottomY)
+            {
+                float grassBottomLocalY = grassBottomY - startY;
+                float grassTopLocalY = topY - startY;
+                uint packedGrass = EncodeTextureLayer((uint)_GrassFrontLayer);
+                EmitQuad(
+                    float3(localX, grassBottomLocalY, localZ),
+                    float3(localX, grassTopLocalY, localZ),
+                    float3(localX + 1, grassTopLocalY, localZ),
+                    float3(localX + 1, grassBottomLocalY, localZ),
+                    float3(0, 0, -1),
+                    float2(0, 0),
+                    float2(0, topY - grassBottomY),
+                    float2(1, topY - grassBottomY),
+                    float2(1, 0),
+                    packedGrass);
+            }
+        }
+    }
+
+    int frontHeight = GetHeight(sampleX, sampleZ + 1);
+    if (currentHeight > frontHeight)
+    {
+        int bottomY = max(frontHeight + 1, startY);
+        int topY = min(currentHeight + 1, endY);
+        if (topY > bottomY)
+        {
+            int rockTopY = min(currentHeight, endY);
+            if (rockTopY > bottomY)
+            {
+                float rockBottomLocalY = bottomY - startY;
+                float rockTopLocalY = rockTopY - startY;
+                uint packedRock = EncodeTextureLayer((uint)_RockFrontLayer);
+                EmitQuad(
+                    float3(localX, rockBottomLocalY, localZ + 1),
+                    float3(localX + 1, rockBottomLocalY, localZ + 1),
+                    float3(localX + 1, rockTopLocalY, localZ + 1),
+                    float3(localX, rockTopLocalY, localZ + 1),
+                    float3(0, 0, 1),
+                    float2(0, 0),
+                    float2(1, 0),
+                    float2(1, rockTopY - bottomY),
+                    float2(0, rockTopY - bottomY),
+                    packedRock);
+            }
+
+            int grassBottomY = max(currentHeight, startY);
+            if (topY > grassBottomY)
+            {
+                float grassBottomLocalY = grassBottomY - startY;
+                float grassTopLocalY = topY - startY;
+                uint packedGrass = EncodeTextureLayer((uint)_GrassFrontLayer);
+                EmitQuad(
+                    float3(localX, grassBottomLocalY, localZ + 1),
+                    float3(localX + 1, grassBottomLocalY, localZ + 1),
+                    float3(localX + 1, grassTopLocalY, localZ + 1),
+                    float3(localX, grassTopLocalY, localZ + 1),
+                    float3(0, 0, 1),
+                    float2(0, 0),
+                    float2(1, 0),
+                    float2(1, topY - grassBottomY),
+                    float2(0, topY - grassBottomY),
+                    packedGrass);
+            }
+        }
+    }
+}

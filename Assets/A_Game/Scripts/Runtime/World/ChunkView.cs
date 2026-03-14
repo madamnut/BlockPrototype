@@ -118,6 +118,32 @@ public sealed class ChunkView
         SyncSolidChunkColliders(column);
     }
 
+    public void ApplyGpuChunkColumnMesh(
+        Vector2Int chunkCoords,
+        TerrainGpuMesher.ChunkColumnMeshData meshData,
+        TerrainData terrain,
+        BlockDatabase blockDatabase)
+    {
+        ChunkColumnInstance column = GetOrCreateChunkColumnInstance(chunkCoords.x, chunkCoords.y);
+        column.Root.SetActive(false);
+
+        bool hasGeometry = false;
+        for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
+        {
+            SubChunkInstance solidSubChunk = column.SolidSubChunks[subChunkY];
+            TerrainGpuMesher.SubChunkMeshData gpuSubChunk = meshData != null ? meshData.subChunks[subChunkY] : null;
+            bool subChunkHasGeometry = ApplyGpuSubChunkMesh(solidSubChunk.Mesh, gpuSubChunk, $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
+            SetSubChunkVisible(solidSubChunk, subChunkHasGeometry);
+            hasGeometry |= subChunkHasGeometry;
+
+            hasGeometry |= RefreshFluidSubChunk(column, terrain, chunkCoords.x, subChunkY, chunkCoords.y);
+            hasGeometry |= RefreshFoliageSubChunk(column, terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
+        }
+
+        column.Root.SetActive(hasGeometry);
+        SyncSolidChunkColliders(column);
+    }
+
     public void RefreshLoadedSubChunk(int chunkX, int subChunkY, int chunkZ, TerrainData terrain, BlockDatabase blockDatabase)
     {
         Vector2Int chunkCoords = new(chunkX, chunkZ);
@@ -396,6 +422,31 @@ public sealed class ChunkView
         bool hasGeometry = VoxelMesher.RebuildSubChunkMesh(subChunk.Mesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
         SetSubChunkVisible(subChunk, hasGeometry);
         return hasGeometry;
+    }
+
+    private static bool ApplyGpuSubChunkMesh(Mesh mesh, TerrainGpuMesher.SubChunkMeshData meshData, string meshName)
+    {
+        if (mesh == null)
+        {
+            return false;
+        }
+
+        mesh.Clear();
+        if (meshData == null || !meshData.HasGeometry)
+        {
+            return false;
+        }
+
+        mesh.name = meshName;
+        mesh.indexFormat = IndexFormat.UInt32;
+        mesh.vertices = meshData.vertices;
+        mesh.triangles = meshData.indices;
+        mesh.uv = meshData.uvs;
+        mesh.normals = meshData.normals;
+        mesh.colors32 = meshData.colors;
+        mesh.RecalculateBounds();
+        mesh.UploadMeshData(false);
+        return true;
     }
 
     private static bool RefreshFluidSubChunk(ChunkColumnInstance column, TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
