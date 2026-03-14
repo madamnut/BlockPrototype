@@ -38,7 +38,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
     [Header("World Gen Settings")]
     [FormerlySerializedAs("continentalnessSettingsAsset")]
     [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
-    [SerializeField] private ContinentalnessCdfProfileAsset continentalnessCdfProfileAsset;
+    [FormerlySerializedAs("continentalnessCdfProfileAsset")]
+    [SerializeField] private WorldGenRemapProfileAsset worldGenRemapProfileAsset;
 
     [Header("Grid")]
     [SerializeField] private bool drawGrid = true;
@@ -61,8 +62,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private NativeArray<float> cachedRidgesCdfLut;
     private NativeArray<float> cachedTemperatureCdfLut;
     private NativeArray<float> cachedPrecipitationCdfLut;
-    private ContinentalnessCdfProfileAsset cachedCdfProfileAsset;
-    private int cachedCdfBakeVersion = -1;
+    private WorldGenRemapProfileAsset cachedRemapProfileAsset;
+    private int cachedRemapBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
 
     private readonly struct ContinentalnessStats
@@ -102,7 +103,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
         UnbindButton(temperatureButton, ToggleTemperatureMode);
         UnbindButton(precipitationButton, TogglePrecipitationMode);
         UnbindButton(gridButton, ToggleGrid);
-        DisposeCachedCdfLut();
+        DisposeCachedRemapLut();
         DestroyTexture(ref previewTexture);
         DestroyTexture(ref gridTexture);
     }
@@ -123,27 +124,27 @@ public sealed class WorldGenPrototype : MonoBehaviour
         {
             case GenerationMode.Continentalness:
                 stats = GenerateContinentalnessPreview(seed);
-                label = $"CDF Remap: {UseContinentalnessCdfRemap()}";
+                label = $"Remap: {UseContinentalnessRemap()}";
                 break;
             case GenerationMode.Erosion:
                 stats = GenerateErosionPreview(seed);
-                label = $"CDF Remap: {UseErosionCdfRemap()}";
+                label = $"Remap: {UseErosionRemap()}";
                 break;
             case GenerationMode.Weirdness:
                 stats = GenerateRidgesPreview(seed);
-                label = $"CDF Remap: {UseRidgesCdfRemap()}";
+                label = $"Remap: {UseRidgesRemap()}";
                 break;
             case GenerationMode.Pv:
                 stats = GeneratePvPreview(seed);
-                label = $"Source: Weirdness, CDF Remap: {UseRidgesCdfRemap()}";
+                label = $"Source: Weirdness, Remap: {UseRidgesRemap()}";
                 break;
             case GenerationMode.Temperature:
                 stats = GenerateTemperaturePreview(seed);
-                label = $"CDF Remap: {UseTemperatureCdfRemap()}";
+                label = $"Remap: {UseTemperatureRemap()}";
                 break;
             case GenerationMode.Precipitation:
                 stats = GeneratePrecipitationPreview(seed);
-                label = $"CDF Remap: {UsePrecipitationCdfRemap()}";
+                label = $"Remap: {UsePrecipitationRemap()}";
                 break;
             default:
                 return;
@@ -250,8 +251,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         ContinentalnessSettings settings = BuildContinentalnessSettings();
-        bool useCdfRemap = UseContinentalnessCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UseContinentalnessRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedContinentalnessCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -306,8 +307,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         ErosionSettings settings = BuildErosionSettings();
-        bool useCdfRemap = UseErosionCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UseErosionRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedErosionCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -362,8 +363,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         RidgesSettings settings = BuildRidgesSettings();
-        bool useCdfRemap = UseRidgesCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UseRidgesRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -418,8 +419,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         RidgesSettings settings = BuildRidgesSettings();
-        bool useCdfRemap = UseRidgesCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UseRidgesRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -474,8 +475,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         TemperatureSettings settings = BuildTemperatureSettings();
-        bool useCdfRemap = UseTemperatureCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UseTemperatureRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedTemperatureCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -530,8 +531,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         PrecipitationSettings settings = BuildPrecipitationSettings();
-        bool useCdfRemap = UsePrecipitationCdfRemap();
-        EnsureCdfLutCache();
+        bool useCdfRemap = UsePrecipitationRemap();
+        EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedPrecipitationCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -696,11 +697,11 @@ public sealed class WorldGenPrototype : MonoBehaviour
         return worldGenSettingsAsset.ToPrecipitationSettings();
     }
 
-    private void EnsureCdfLutCache()
+    private void EnsureRemapLutCache()
     {
-        if (!UseCdfRemap())
+        if (!UseRemap())
         {
-            DisposeCachedCdfLut();
+            DisposeCachedRemapLut();
             return;
         }
 
@@ -710,94 +711,94 @@ public sealed class WorldGenPrototype : MonoBehaviour
             !cachedRidgesCdfLut.IsCreated ||
             !cachedTemperatureCdfLut.IsCreated ||
             !cachedPrecipitationCdfLut.IsCreated ||
-            cachedCdfProfileAsset != continentalnessCdfProfileAsset ||
-            cachedCdfBakeVersion != continentalnessCdfProfileAsset.BakeVersion;
+            cachedRemapProfileAsset != worldGenRemapProfileAsset ||
+            cachedRemapBakeVersion != worldGenRemapProfileAsset.BakeVersion;
 
         if (!needsRefresh)
         {
             return;
         }
 
-        DisposeCachedCdfLut();
-        float[] continentalnessSourceLut = continentalnessCdfProfileAsset.BakedContinentalnessCdfLut;
+        DisposeCachedRemapLut();
+        float[] continentalnessSourceLut = worldGenRemapProfileAsset.BakedContinentalnessRemapLut;
         cachedContinentalnessCdfLut = new NativeArray<float>(continentalnessSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < continentalnessSourceLut.Length; i++)
         {
             cachedContinentalnessCdfLut[i] = continentalnessSourceLut[i];
         }
 
-        float[] erosionSourceLut = continentalnessCdfProfileAsset.BakedErosionCdfLut;
+        float[] erosionSourceLut = worldGenRemapProfileAsset.BakedErosionRemapLut;
         cachedErosionCdfLut = new NativeArray<float>(erosionSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < erosionSourceLut.Length; i++)
         {
             cachedErosionCdfLut[i] = erosionSourceLut[i];
         }
 
-        float[] ridgesSourceLut = continentalnessCdfProfileAsset.BakedRidgesCdfLut;
+        float[] ridgesSourceLut = worldGenRemapProfileAsset.BakedRidgesRemapLut;
         cachedRidgesCdfLut = new NativeArray<float>(ridgesSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < ridgesSourceLut.Length; i++)
         {
             cachedRidgesCdfLut[i] = ridgesSourceLut[i];
         }
 
-        float[] temperatureSourceLut = continentalnessCdfProfileAsset.BakedTemperatureCdfLut;
+        float[] temperatureSourceLut = worldGenRemapProfileAsset.BakedTemperatureRemapLut;
         cachedTemperatureCdfLut = new NativeArray<float>(temperatureSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < temperatureSourceLut.Length; i++)
         {
             cachedTemperatureCdfLut[i] = temperatureSourceLut[i];
         }
 
-        float[] precipitationSourceLut = continentalnessCdfProfileAsset.BakedPrecipitationCdfLut;
+        float[] precipitationSourceLut = worldGenRemapProfileAsset.BakedPrecipitationRemapLut;
         cachedPrecipitationCdfLut = new NativeArray<float>(precipitationSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < precipitationSourceLut.Length; i++)
         {
             cachedPrecipitationCdfLut[i] = precipitationSourceLut[i];
         }
 
-        cachedCdfProfileAsset = continentalnessCdfProfileAsset;
-        cachedCdfBakeVersion = continentalnessCdfProfileAsset.BakeVersion;
+        cachedRemapProfileAsset = worldGenRemapProfileAsset;
+        cachedRemapBakeVersion = worldGenRemapProfileAsset.BakeVersion;
     }
 
-    private bool UseCdfRemap()
+    private bool UseRemap()
     {
-        return UseContinentalnessCdfRemap() || UseErosionCdfRemap() || UseRidgesCdfRemap() || UseTemperatureCdfRemap() || UsePrecipitationCdfRemap();
+        return UseContinentalnessRemap() || UseErosionRemap() || UseRidgesRemap() || UseTemperatureRemap() || UsePrecipitationRemap();
     }
 
-    private bool UseContinentalnessCdfRemap()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseContinentalnessCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasContinentalnessRemap;
-    }
-
-    private bool UseErosionCdfRemap()
+    private bool UseContinentalnessRemap()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseErosionCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasErosionRemap;
+               worldGenSettingsAsset.UseContinentalnessRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasContinentalnessRemap;
     }
 
-    private bool UseRidgesCdfRemap()
+    private bool UseErosionRemap()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseRidgesCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasRidgesRemap;
+               worldGenSettingsAsset.UseErosionRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasErosionRemap;
     }
 
-    private bool UseTemperatureCdfRemap()
+    private bool UseRidgesRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasTemperatureRemap;
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseRidgesRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasRidgesRemap;
     }
 
-    private bool UsePrecipitationCdfRemap()
+    private bool UseTemperatureRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasPrecipitationRemap;
+        return worldGenRemapProfileAsset != null && worldGenRemapProfileAsset.HasTemperatureRemap;
     }
 
-    private void DisposeCachedCdfLut()
+    private bool UsePrecipitationRemap()
+    {
+        return worldGenRemapProfileAsset != null && worldGenRemapProfileAsset.HasPrecipitationRemap;
+    }
+
+    private void DisposeCachedRemapLut()
     {
         if (cachedContinentalnessCdfLut.IsCreated)
         {
@@ -824,8 +825,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
             cachedPrecipitationCdfLut.Dispose();
         }
 
-        cachedCdfProfileAsset = null;
-        cachedCdfBakeVersion = -1;
+        cachedRemapProfileAsset = null;
+        cachedRemapBakeVersion = -1;
     }
 
     private void SetButtonVisual(Button button, bool isActive)

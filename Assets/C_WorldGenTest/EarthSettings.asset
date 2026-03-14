@@ -13,11 +13,13 @@ MonoBehaviour:
   m_Name: EarthSettings
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenSettingsAsset
   seaLevel: 63
-  minTerrainHeight: 0
-  maxTerrainHeight: 180
-  useContinentalnessCdfRemap: 1
-  useErosionCdfRemap: 1
-  useRidgesCdfRemap: 0
+  minTerrainHeight: 30
+  maxTerrainHeight: 160
+  useContinentalnessRemap: 1
+  useErosionRemap: 1
+  useRidgesRemap: 0
+  useContinentalnessFilter: 1
+  continentalnessFilter: {fileID: 11400000, guid: 118c2c2628880f540af697877783b81f, type: 2}
   useWarp: 1
   warpOctaves: 4
   warpFrequency: 4
@@ -145,10 +147,10 @@ MonoBehaviour:
   oceanUpperBound: -0.2
   oceanColor: {r: 0.08, g: 0.25, b: 0.52, a: 1}
   shallowOceanColor: {r: 0.2, g: 0.5, b: 0.74, a: 1}
-  coastUpperBound: 0.1
+  coastUpperBound: 0.05
   coastColor: {r: 0.9, g: 0.84, b: 0.64, a: 1}
-  inlandUpperBound: 0.5
+  inlandUpperBound: 0.4
   inlandColor: {r: 0.36, g: 0.63, b: 0.29, a: 1}
-  deepInlandUpperBound: 0.95
+  deepInlandUpperBound: 0.7
   deepInlandColor: {r: 0.23, g: 0.48, b: 0.17, a: 1}
   continentalCoreColor: {r: 0.47, g: 0.38, b: 0.24, a: 1}

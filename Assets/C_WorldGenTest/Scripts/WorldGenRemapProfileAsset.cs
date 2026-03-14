@@ -2,9 +2,9 @@ using UnityEngine.Serialization;
 using UnityEngine;
 
 [CreateAssetMenu(
-    fileName = "ContinentalnessCdfProfile",
-    menuName = "World/WorldGen/CDF Profile")]
-public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
+    fileName = "WorldGenRemapProfile",
+    menuName = "World/WorldGen/Remap Profile")]
+public sealed class WorldGenRemapProfileAsset : ScriptableObject
 {
     [Header("Bake Source")]
     [SerializeField] private WorldGenSettingsAsset sourceSettingsAsset;
@@ -17,11 +17,16 @@ public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
 
     [Header("Baked Data")]
     [FormerlySerializedAs("bakedCdfLut")]
-    [SerializeField, HideInInspector] private float[] bakedContinentalnessCdfLut = new float[0];
-    [SerializeField, HideInInspector] private float[] bakedErosionCdfLut = new float[0];
-    [SerializeField, HideInInspector] private float[] bakedRidgesCdfLut = new float[0];
-    [SerializeField, HideInInspector] private float[] bakedTemperatureCdfLut = new float[0];
-    [SerializeField, HideInInspector] private float[] bakedPrecipitationCdfLut = new float[0];
+    [FormerlySerializedAs("bakedContinentalnessCdfLut")]
+    [SerializeField, HideInInspector] private float[] bakedContinentalnessRemapLut = new float[0];
+    [FormerlySerializedAs("bakedErosionCdfLut")]
+    [SerializeField, HideInInspector] private float[] bakedErosionRemapLut = new float[0];
+    [FormerlySerializedAs("bakedRidgesCdfLut")]
+    [SerializeField, HideInInspector] private float[] bakedRidgesRemapLut = new float[0];
+    [FormerlySerializedAs("bakedTemperatureCdfLut")]
+    [SerializeField, HideInInspector] private float[] bakedTemperatureRemapLut = new float[0];
+    [FormerlySerializedAs("bakedPrecipitationCdfLut")]
+    [SerializeField, HideInInspector] private float[] bakedPrecipitationRemapLut = new float[0];
     [FormerlySerializedAs("bakedSampleCount")]
     [SerializeField, HideInInspector] private int bakedContinentalnessSampleCount;
     [SerializeField, HideInInspector] private int bakedErosionSampleCount;
@@ -41,19 +46,19 @@ public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
     public int SampleCount => Mathf.Max(1024, sampleCount);
     public int BakeRandomSeed => bakeRandomSeed;
     public int SectorRange => Mathf.Max(1, sectorRange);
-    public float[] BakedContinentalnessCdfLut => bakedContinentalnessCdfLut;
-    public float[] BakedErosionCdfLut => bakedErosionCdfLut;
-    public float[] BakedRidgesCdfLut => bakedRidgesCdfLut;
-    public float[] BakedTemperatureCdfLut => bakedTemperatureCdfLut;
-    public float[] BakedPrecipitationCdfLut => bakedPrecipitationCdfLut;
+    public float[] BakedContinentalnessRemapLut => bakedContinentalnessRemapLut;
+    public float[] BakedErosionRemapLut => bakedErosionRemapLut;
+    public float[] BakedRidgesRemapLut => bakedRidgesRemapLut;
+    public float[] BakedTemperatureRemapLut => bakedTemperatureRemapLut;
+    public float[] BakedPrecipitationRemapLut => bakedPrecipitationRemapLut;
     public int BakeVersion => bakeVersion;
     public string BakedSummary => $"{bakedContinentalnessSummary}\n{bakedErosionSummary}\n{bakedRidgesSummary}\n{bakedTemperatureSummary}\n{bakedPrecipitationSummary}";
 
-    public bool HasContinentalnessRemap => bakedContinentalnessCdfLut != null && bakedContinentalnessCdfLut.Length > 1;
-    public bool HasErosionRemap => bakedErosionCdfLut != null && bakedErosionCdfLut.Length > 1;
-    public bool HasRidgesRemap => bakedRidgesCdfLut != null && bakedRidgesCdfLut.Length > 1;
-    public bool HasTemperatureRemap => bakedTemperatureCdfLut != null && bakedTemperatureCdfLut.Length > 1;
-    public bool HasPrecipitationRemap => bakedPrecipitationCdfLut != null && bakedPrecipitationCdfLut.Length > 1;
+    public bool HasContinentalnessRemap => bakedContinentalnessRemapLut != null && bakedContinentalnessRemapLut.Length > 1;
+    public bool HasErosionRemap => bakedErosionRemapLut != null && bakedErosionRemapLut.Length > 1;
+    public bool HasRidgesRemap => bakedRidgesRemapLut != null && bakedRidgesRemapLut.Length > 1;
+    public bool HasTemperatureRemap => bakedTemperatureRemapLut != null && bakedTemperatureRemapLut.Length > 1;
+    public bool HasPrecipitationRemap => bakedPrecipitationRemapLut != null && bakedPrecipitationRemapLut.Length > 1;
 
     public void StoreBakedLuts(
         float[] continentalnessLut,
@@ -82,21 +87,21 @@ public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
         float precipitationRawAverage,
         float precipitationRawMax)
     {
-        bakedContinentalnessCdfLut = continentalnessLut ?? new float[0];
-        bakedErosionCdfLut = erosionLut ?? new float[0];
-        bakedRidgesCdfLut = ridgesLut ?? new float[0];
-        bakedTemperatureCdfLut = temperatureLut ?? new float[0];
-        bakedPrecipitationCdfLut = precipitationLut ?? new float[0];
+        bakedContinentalnessRemapLut = continentalnessLut ?? new float[0];
+        bakedErosionRemapLut = erosionLut ?? new float[0];
+        bakedRidgesRemapLut = ridgesLut ?? new float[0];
+        bakedTemperatureRemapLut = temperatureLut ?? new float[0];
+        bakedPrecipitationRemapLut = precipitationLut ?? new float[0];
         bakedContinentalnessSampleCount = continentalnessSampleCount;
         bakedErosionSampleCount = erosionSampleCount;
         bakedRidgesSampleCount = ridgesSampleCount;
         bakedTemperatureSampleCount = temperatureSampleCount;
         bakedPrecipitationSampleCount = precipitationSampleCount;
         bakeVersion++;
-        bakedContinentalnessSummary = $"Continentalness: Samples {continentalnessSampleCount}, Raw Min/Avg/Max {continentalnessRawMin:F4} / {continentalnessRawAverage:F4} / {continentalnessRawMax:F4}, LUT {bakedContinentalnessCdfLut.Length}";
-        bakedErosionSummary = $"Erosion: Samples {erosionSampleCount}, Raw Min/Avg/Max {erosionRawMin:F4} / {erosionRawAverage:F4} / {erosionRawMax:F4}, LUT {bakedErosionCdfLut.Length}";
-        bakedRidgesSummary = $"Peaks/Ridges: Samples {ridgesSampleCount}, Raw Min/Avg/Max {ridgesRawMin:F4} / {ridgesRawAverage:F4} / {ridgesRawMax:F4}, LUT {bakedRidgesCdfLut.Length}";
-        bakedTemperatureSummary = $"Temperature: Samples {temperatureSampleCount}, Raw Min/Avg/Max {temperatureRawMin:F4} / {temperatureRawAverage:F4} / {temperatureRawMax:F4}, LUT {bakedTemperatureCdfLut.Length}";
-        bakedPrecipitationSummary = $"Precipitation: Samples {precipitationSampleCount}, Raw Min/Avg/Max {precipitationRawMin:F4} / {precipitationRawAverage:F4} / {precipitationRawMax:F4}, LUT {bakedPrecipitationCdfLut.Length}";
+        bakedContinentalnessSummary = $"Continentalness: Samples {continentalnessSampleCount}, Raw Min/Avg/Max {continentalnessRawMin:F4} / {continentalnessRawAverage:F4} / {continentalnessRawMax:F4}, Remap LUT {bakedContinentalnessRemapLut.Length}";
+        bakedErosionSummary = $"Erosion: Samples {erosionSampleCount}, Raw Min/Avg/Max {erosionRawMin:F4} / {erosionRawAverage:F4} / {erosionRawMax:F4}, Remap LUT {bakedErosionRemapLut.Length}";
+        bakedRidgesSummary = $"Peaks/Ridges: Samples {ridgesSampleCount}, Raw Min/Avg/Max {ridgesRawMin:F4} / {ridgesRawAverage:F4} / {ridgesRawMax:F4}, Remap LUT {bakedRidgesRemapLut.Length}";
+        bakedTemperatureSummary = $"Temperature: Samples {temperatureSampleCount}, Raw Min/Avg/Max {temperatureRawMin:F4} / {temperatureRawAverage:F4} / {temperatureRawMax:F4}, Remap LUT {bakedTemperatureRemapLut.Length}";
+        bakedPrecipitationSummary = $"Precipitation: Samples {precipitationSampleCount}, Raw Min/Avg/Max {precipitationRawMin:F4} / {precipitationRawAverage:F4} / {precipitationRawMax:F4}, Remap LUT {bakedPrecipitationRemapLut.Length}";
     }
 }

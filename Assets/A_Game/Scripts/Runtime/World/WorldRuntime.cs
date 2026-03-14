@@ -21,7 +21,8 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
     [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
-    [SerializeField] private ContinentalnessCdfProfileAsset continentalnessCdfProfileAsset;
+    [FormerlySerializedAs("continentalnessCdfProfileAsset")]
+    [SerializeField] private WorldGenRemapProfileAsset worldGenRemapProfileAsset;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -225,9 +226,10 @@ public sealed class WorldRuntime : MonoBehaviour
         _terrain = new TerrainData(
             seed,
             terrainSettings,
-            GetContinentalnessCdfLut(),
-            GetErosionCdfLut(),
-            GetRidgesCdfLut());
+            GetContinentalnessRemapLut(),
+            GetErosionRemapLut(),
+            GetRidgesRemapLut(),
+            GetContinentalnessFilterLut());
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -628,57 +630,72 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             terrainSettings = TerrainGenerationSettings.FromWorldGenSettings(
                 worldGenSettingsAsset,
-                UseContinentalnessCdfRemap(),
-                UseErosionCdfRemap(),
-                UseRidgesCdfRemap());
+                UseContinentalnessRemap(),
+                UseErosionRemap(),
+                UseRidgesRemap());
             return;
         }
 
         terrainSettings = default;
     }
 
-    private bool UseContinentalnessCdfRemap()
+    private bool UseContinentalnessRemap()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseContinentalnessCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasContinentalnessRemap;
+               worldGenSettingsAsset.UseContinentalnessRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasContinentalnessRemap;
     }
 
-    private float[] GetContinentalnessCdfLut()
+    private float[] GetContinentalnessRemapLut()
     {
-        return UseContinentalnessCdfRemap()
-            ? continentalnessCdfProfileAsset.BakedContinentalnessCdfLut
+        return UseContinentalnessRemap()
+            ? worldGenRemapProfileAsset.BakedContinentalnessRemapLut
             : null;
     }
 
-    private bool UseErosionCdfRemap()
+    private bool UseErosionRemap()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseErosionCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasErosionRemap;
+               worldGenSettingsAsset.UseErosionRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasErosionRemap;
     }
 
-    private float[] GetErosionCdfLut()
+    private float[] GetErosionRemapLut()
     {
-        return UseErosionCdfRemap()
-            ? continentalnessCdfProfileAsset.BakedErosionCdfLut
+        return UseErosionRemap()
+            ? worldGenRemapProfileAsset.BakedErosionRemapLut
             : null;
     }
 
-    private bool UseRidgesCdfRemap()
+    private bool UseRidgesRemap()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseRidgesCdfRemap &&
-               continentalnessCdfProfileAsset != null &&
-               continentalnessCdfProfileAsset.HasRidgesRemap;
+               worldGenSettingsAsset.UseRidgesRemap &&
+               worldGenRemapProfileAsset != null &&
+               worldGenRemapProfileAsset.HasRidgesRemap;
     }
 
-    private float[] GetRidgesCdfLut()
+    private float[] GetRidgesRemapLut()
     {
-        return UseRidgesCdfRemap()
-            ? continentalnessCdfProfileAsset.BakedRidgesCdfLut
+        return UseRidgesRemap()
+            ? worldGenRemapProfileAsset.BakedRidgesRemapLut
+            : null;
+    }
+
+    private bool UseContinentalnessFilter()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseContinentalnessFilter &&
+               worldGenSettingsAsset.ContinentalnessFilter != null &&
+               worldGenSettingsAsset.ContinentalnessFilter.HasBakedLut;
+    }
+
+    private float[] GetContinentalnessFilterLut()
+    {
+        return UseContinentalnessFilter()
+            ? worldGenSettingsAsset.ContinentalnessFilter.BakedLut
             : null;
     }
 

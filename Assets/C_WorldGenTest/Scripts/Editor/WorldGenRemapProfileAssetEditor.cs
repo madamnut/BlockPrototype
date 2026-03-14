@@ -3,20 +3,20 @@ using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(ContinentalnessCdfProfileAsset))]
-public sealed class ContinentalnessCdfProfileAssetEditor : Editor
+[CustomEditor(typeof(WorldGenRemapProfileAsset))]
+public sealed class WorldGenRemapProfileAssetEditor : Editor
 {
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
 
-        ContinentalnessCdfProfileAsset asset = (ContinentalnessCdfProfileAsset)target;
+        WorldGenRemapProfileAsset asset = (WorldGenRemapProfileAsset)target;
         EditorGUILayout.Space();
         EditorGUILayout.HelpBox(asset.BakedSummary, MessageType.Info);
 
         using (new EditorGUI.DisabledScope(asset.SourceSettingsAsset == null))
         {
-            if (GUILayout.Button("Bake CDF LUTs"))
+            if (GUILayout.Button("Bake Remap LUTs"))
             {
                 Bake(asset);
             }
@@ -24,17 +24,17 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
 
         if (asset.SourceSettingsAsset == null)
         {
-            EditorGUILayout.HelpBox("Assign a WorldGenSettingsAsset to bake a CDF LUT.", MessageType.Warning);
+            EditorGUILayout.HelpBox("Assign a WorldGenSettingsAsset to bake a remap LUT.", MessageType.Warning);
         }
     }
 
-    private static void Bake(ContinentalnessCdfProfileAsset asset)
+    private static void Bake(WorldGenRemapProfileAsset asset)
     {
         const int sampleBatchSize = 32768;
         WorldGenSettingsAsset settingsAsset = asset.SourceSettingsAsset;
         if (settingsAsset == null)
         {
-            Debug.LogError("[ContinentalnessCdfProfile] Bake failed. Source settings asset is not assigned.");
+            Debug.LogError("[WorldGenRemapProfile] Bake failed. Source settings asset is not assigned.");
             return;
         }
 
@@ -80,7 +80,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 out float continentalnessRawMax);
             if (!completedContinentalness)
             {
-                Debug.LogWarning("[ContinentalnessCdfProfile] Bake canceled.");
+                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
                 return;
             }
 
@@ -105,7 +105,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 out float erosionRawMax);
             if (!completedErosion)
             {
-                Debug.LogWarning("[ContinentalnessCdfProfile] Bake canceled.");
+                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
                 return;
             }
 
@@ -130,7 +130,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 out float ridgesRawMax);
             if (!completedRidges)
             {
-                Debug.LogWarning("[ContinentalnessCdfProfile] Bake canceled.");
+                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
                 return;
             }
 
@@ -155,7 +155,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 out float temperatureRawMax);
             if (!completedTemperature)
             {
-                Debug.LogWarning("[ContinentalnessCdfProfile] Bake canceled.");
+                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
                 return;
             }
 
@@ -180,7 +180,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 out float precipitationRawMax);
             if (!completedPrecipitation)
             {
-                Debug.LogWarning("[ContinentalnessCdfProfile] Bake canceled.");
+                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
                 return;
             }
 
@@ -212,7 +212,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
                 precipitationRawMax);
             EditorUtility.SetDirty(asset);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[ContinentalnessCdfProfile] Baked LUTs.\n{asset.BakedSummary}");
+            Debug.Log($"[WorldGenRemapProfile] Baked remap LUTs.\n{asset.BakedSummary}");
         }
         finally
         {
@@ -292,7 +292,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
             NativeSlice<float> batchSlice = new NativeSlice<float>(samples, sampledCount, currentBatchCount);
             float progress = sampledCount / (float)sampleCount;
             if (EditorUtility.DisplayCancelableProgressBar(
-                    "Bake Noise CDF",
+                    "Bake Noise Remap",
                     $"Sampling raw {label.ToLowerInvariant()} {sampledCount}/{sampleCount}",
                     progress * 0.4f))
             {
@@ -308,7 +308,7 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
             sampledCount += currentBatchCount;
         }
 
-        EditorUtility.DisplayProgressBar("Bake Noise CDF", $"Calculating raw {label.ToLowerInvariant()} stats {sampleCount}/{sampleCount}", 0.45f);
+        EditorUtility.DisplayProgressBar("Bake Noise Remap", $"Calculating raw {label.ToLowerInvariant()} stats {sampleCount}/{sampleCount}", 0.45f);
         JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
         {
             values = samples,
@@ -316,32 +316,39 @@ public sealed class ContinentalnessCdfProfileAssetEditor : Editor
         }.Schedule();
         statsHandle.Complete();
 
-        EditorUtility.DisplayProgressBar("Bake Noise CDF", $"Sorting raw {label.ToLowerInvariant()} samples {sampleCount}/{sampleCount}", 0.5f);
-        NativeSortExtension.Sort(samples);
-
         rawMin = stats[0];
         rawMax = stats[1];
         rawAverage = stats[2];
         lut = new float[lutResolution];
-        int cursor = 0;
 
         for (int i = 0; i < lutResolution; i++)
         {
             if ((i & 31) == 0)
             {
                 float progress = 0.5f + ((i / (float)lutResolution) * 0.5f);
-                EditorUtility.DisplayProgressBar("Bake Noise CDF", $"Building {label.ToLowerInvariant()} CDF LUT {i}/{lutResolution}", progress);
+                EditorUtility.DisplayProgressBar("Bake Noise Remap", $"Building {label.ToLowerInvariant()} remap LUT {i}/{lutResolution}", progress);
             }
 
             float raw = i / (float)(lutResolution - 1);
-            while (cursor < samples.Length && samples[cursor] <= raw)
-            {
-                cursor++;
-            }
-
-            lut[i] = cursor / (float)samples.Length;
+            lut[i] = EvaluateAnchoredRemap(raw, rawMin, rawAverage, rawMax);
         }
 
         return true;
+    }
+
+    private static float EvaluateAnchoredRemap(float raw, float rawMin, float rawAverage, float rawMax)
+    {
+        const float epsilon = 0.000001f;
+
+        if (raw <= rawAverage)
+        {
+            float lowerDenominator = Mathf.Max(epsilon, rawAverage - rawMin);
+            float t = Mathf.Clamp01((raw - rawMin) / lowerDenominator);
+            return Mathf.Lerp(0f, 0.5f, t);
+        }
+
+        float upperDenominator = Mathf.Max(epsilon, rawMax - rawAverage);
+        float upperT = Mathf.Clamp01((raw - rawAverage) / upperDenominator);
+        return Mathf.Lerp(0.5f, 1f, upperT);
     }
 }

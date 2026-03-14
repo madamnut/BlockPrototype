@@ -6,6 +6,7 @@ public sealed class WorldGenSettingsAssetEditor : Editor
 {
     private static bool showRuntimeTerrainValues = true;
     private static bool showCdfRemapValues = true;
+    private static bool showFilterValues = true;
     private static bool showContinentalnessValues = true;
     private static bool showErosionValues = true;
     private static bool showRidgesValues = true;
@@ -26,10 +27,16 @@ public sealed class WorldGenSettingsAssetEditor : Editor
 
         DrawFoldoutSection(
             ref showCdfRemapValues,
-            "CDF Remap",
-            "useContinentalnessCdfRemap",
-            "useErosionCdfRemap",
-            "useRidgesCdfRemap");
+            "Value Remap",
+            "useContinentalnessRemap",
+            "useErosionRemap",
+            "useRidgesRemap");
+
+        DrawFoldoutSection(
+            ref showFilterValues,
+            "Filters",
+            "useContinentalnessFilter",
+            "continentalnessFilter");
 
         DrawFoldoutSection(
             ref showContinentalnessValues,

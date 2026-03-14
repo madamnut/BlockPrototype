@@ -3321,7 +3321,7 @@ MonoBehaviour:
   precipitationButton: {fileID: 357737921}
   gridButton: {fileID: 289635179}
   worldGenSettingsAsset: {fileID: 11400000, guid: 32d8acc8826718042af5ebfd2c04f81e, type: 2}
-  continentalnessCdfProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
+  worldGenRemapProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
   drawGrid: 0
   gridColor: {r: 1, g: 0, b: 0, a: 0.55}
   sectorIndexX: 0

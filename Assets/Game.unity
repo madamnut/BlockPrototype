@@ -1439,14 +1439,13 @@ MonoBehaviour:
   blockDatabase: {fileID: 11400000, guid: 193aec77485fe1b42bbdc1420bde93c5, type: 2}
   interactionCamera: {fileID: 330585545}
   chunkColumnPrefab: {fileID: 6545087223548192322, guid: dd6bb9761279da842a3e351fe345faf3, type: 3}
-  renderSizeInChunks: 31
+  renderSizeInChunks: 65
   generationPaddingInChunks: 1
-  seed: 83151
+  seed: 4801153
   worldGenSettingsAsset: {fileID: 11400000, guid: 32d8acc8826718042af5ebfd2c04f81e, type: 2}
-  continentalnessCdfProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
+  worldGenRemapProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
   completedChunkGenerationsPerFrame: 4
   chunkColumnsMeshedPerFrame: 4
-  lod1ExtraRadiusInChunks: 0
   interactionDistance: 16
   selectionColor: {r: 1, g: 1, b: 1, a: 1}
   chunkBoundaryColor: {r: 0.2, g: 0.9, b: 1, a: 0.16}

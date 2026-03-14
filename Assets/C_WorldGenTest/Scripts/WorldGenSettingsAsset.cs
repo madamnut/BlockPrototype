@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(
     fileName = "WorldGenSettings",
@@ -10,10 +11,17 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int minTerrainHeight = 0;
     [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int maxTerrainHeight = 180;
 
-    [Header("CDF Remap")]
-    [SerializeField] private bool useContinentalnessCdfRemap = true;
-    [SerializeField] private bool useErosionCdfRemap = true;
-    [SerializeField] private bool useRidgesCdfRemap = true;
+    [Header("Value Remap")]
+    [FormerlySerializedAs("useContinentalnessCdfRemap")]
+    [SerializeField] private bool useContinentalnessRemap = true;
+    [FormerlySerializedAs("useErosionCdfRemap")]
+    [SerializeField] private bool useErosionRemap = true;
+    [FormerlySerializedAs("useRidgesCdfRemap")]
+    [SerializeField] private bool useRidgesRemap = true;
+
+    [Header("Filters")]
+    [SerializeField] private bool useContinentalnessFilter;
+    [SerializeField] private ContFilterAsset continentalnessFilter;
 
     [Header("Warp")]
     [SerializeField] private bool useWarp = true;
@@ -196,9 +204,11 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     public int SeaLevel => Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
     public int MinTerrainHeight => Mathf.Clamp(minTerrainHeight, 0, TerrainData.WorldHeight - 1);
     public int MaxTerrainHeight => Mathf.Clamp(Mathf.Max(minTerrainHeight, maxTerrainHeight), 0, TerrainData.WorldHeight - 1);
-    public bool UseContinentalnessCdfRemap => useContinentalnessCdfRemap;
-    public bool UseErosionCdfRemap => useErosionCdfRemap;
-    public bool UseRidgesCdfRemap => useRidgesCdfRemap;
+    public bool UseContinentalnessRemap => useContinentalnessRemap;
+    public bool UseErosionRemap => useErosionRemap;
+    public bool UseRidgesRemap => useRidgesRemap;
+    public bool UseContinentalnessFilter => useContinentalnessFilter && continentalnessFilter != null;
+    public ContFilterAsset ContinentalnessFilter => continentalnessFilter;
 
     public ContinentalnessSettings ToSettings()
     {

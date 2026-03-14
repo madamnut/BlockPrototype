@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [Serializable]
 public struct TerrainGenerationSettings
@@ -7,9 +8,9 @@ public struct TerrainGenerationSettings
     [Range(0, TerrainData.WorldHeight - 1)] public int seaLevel;
     [Range(0, TerrainData.WorldHeight - 1)] public int minTerrainHeight;
     [Range(0, TerrainData.WorldHeight - 1)] public int maxTerrainHeight;
-    public bool useContinentalnessCdfRemap;
-    public bool useErosionCdfRemap;
-    public bool useRidgesCdfRemap;
+    [FormerlySerializedAs("useContinentalnessCdfRemap")] public bool useContinentalnessRemap;
+    [FormerlySerializedAs("useErosionCdfRemap")] public bool useErosionRemap;
+    [FormerlySerializedAs("useRidgesCdfRemap")] public bool useRidgesRemap;
     public ContinentalnessSettings continentalness;
     public ErosionSettings erosion;
     public RidgesSettings ridges;
@@ -22,9 +23,9 @@ public struct TerrainGenerationSettings
         seaLevel = 63,
         minTerrainHeight = 0,
         maxTerrainHeight = 180,
-        useContinentalnessCdfRemap = false,
-        useErosionCdfRemap = false,
-        useRidgesCdfRemap = false,
+        useContinentalnessRemap = false,
+        useErosionRemap = false,
+        useRidgesRemap = false,
         continentalness = WorldGenSettingsAsset.CreateDefaultSettings(),
         erosion = WorldGenSettingsAsset.CreateDefaultErosionSettings(),
         ridges = WorldGenSettingsAsset.CreateDefaultRidgesSettings(),
@@ -32,16 +33,16 @@ public struct TerrainGenerationSettings
 
     public static TerrainGenerationSettings FromWorldGenSettings(
         WorldGenSettingsAsset worldGenSettingsAsset,
-        bool useContinentalnessCdfRemap,
-        bool useErosionCdfRemap,
-        bool useRidgesCdfRemap)
+        bool useContinentalnessRemap,
+        bool useErosionRemap,
+        bool useRidgesRemap)
     {
         if (worldGenSettingsAsset == null)
         {
             TerrainGenerationSettings defaults = Default;
-            defaults.useContinentalnessCdfRemap = useContinentalnessCdfRemap;
-            defaults.useErosionCdfRemap = useErosionCdfRemap;
-            defaults.useRidgesCdfRemap = useRidgesCdfRemap;
+            defaults.useContinentalnessRemap = useContinentalnessRemap;
+            defaults.useErosionRemap = useErosionRemap;
+            defaults.useRidgesRemap = useRidgesRemap;
             return defaults;
         }
 
@@ -50,9 +51,9 @@ public struct TerrainGenerationSettings
             seaLevel = worldGenSettingsAsset.SeaLevel,
             minTerrainHeight = worldGenSettingsAsset.MinTerrainHeight,
             maxTerrainHeight = worldGenSettingsAsset.MaxTerrainHeight,
-            useContinentalnessCdfRemap = useContinentalnessCdfRemap,
-            useErosionCdfRemap = useErosionCdfRemap,
-            useRidgesCdfRemap = useRidgesCdfRemap,
+            useContinentalnessRemap = useContinentalnessRemap,
+            useErosionRemap = useErosionRemap,
+            useRidgesRemap = useRidgesRemap,
             continentalness = worldGenSettingsAsset.ToSettings(),
             erosion = worldGenSettingsAsset.ToErosionSettings(),
             ridges = worldGenSettingsAsset.ToRidgesSettings(),
