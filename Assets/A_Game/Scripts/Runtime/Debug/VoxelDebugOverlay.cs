@@ -153,6 +153,14 @@ public sealed class VoxelDebugOverlay : MonoBehaviour
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.Append("Cont: ");
             _upperLeftBuilder.Append(sample.continentalness.ToString("F2"));
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Eros: ");
+            _upperLeftBuilder.Append(sample.erosion.ToString("F2"));
+            _upperLeftBuilder.Append("  Weird: ");
+            _upperLeftBuilder.Append(sample.weirdness.ToString("F2"));
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("PV: ");
+            _upperLeftBuilder.Append(sample.pv.ToString("F2"));
         }
 
         upperLeftText.text = _upperLeftBuilder.ToString();

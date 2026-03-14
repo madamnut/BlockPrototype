@@ -15,6 +15,9 @@ MonoBehaviour:
   seaLevel: 63
   minTerrainHeight: 0
   maxTerrainHeight: 180
+  useContinentalnessCdfRemap: 1
+  useErosionCdfRemap: 1
+  useRidgesCdfRemap: 0
   useWarp: 1
   warpOctaves: 4
   warpFrequency: 4
@@ -63,7 +66,7 @@ MonoBehaviour:
   erosionDetailLacunarity: 2
   erosionDetailGain: 0.42
   erosionDetailWeight: 0.2
-  ridgesUseWarp: 1
+  ridgesUseWarp: 0
   ridgesWarpOctaves: 3
   ridgesWarpFrequency: 1
   ridgesWarpAmplitude: 3
@@ -71,7 +74,7 @@ MonoBehaviour:
   ridgesWarpGain: 0.5
   ridgesUseMacro: 1
   ridgesMacroOctaves: 1
-  ridgesMacroFrequency: 1.5
+  ridgesMacroFrequency: 1
   ridgesMacroLacunarity: 3
   ridgesMacroGain: 0.5
   ridgesMacroWeight: 0.6

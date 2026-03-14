@@ -10,6 +10,11 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField, Range(0, VoxelTerrainData.WorldHeight - 1)] private int minTerrainHeight = 0;
     [SerializeField, Range(0, VoxelTerrainData.WorldHeight - 1)] private int maxTerrainHeight = 180;
 
+    [Header("CDF Remap")]
+    [SerializeField] private bool useContinentalnessCdfRemap = true;
+    [SerializeField] private bool useErosionCdfRemap = true;
+    [SerializeField] private bool useRidgesCdfRemap = true;
+
     [Header("Warp")]
     [SerializeField] private bool useWarp = true;
     [SerializeField, Min(1)] private int warpOctaves = 2;
@@ -191,6 +196,9 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     public int SeaLevel => Mathf.Clamp(seaLevel, 0, VoxelTerrainData.WorldHeight - 1);
     public int MinTerrainHeight => Mathf.Clamp(minTerrainHeight, 0, VoxelTerrainData.WorldHeight - 1);
     public int MaxTerrainHeight => Mathf.Clamp(Mathf.Max(minTerrainHeight, maxTerrainHeight), 0, VoxelTerrainData.WorldHeight - 1);
+    public bool UseContinentalnessCdfRemap => useContinentalnessCdfRemap;
+    public bool UseErosionCdfRemap => useErosionCdfRemap;
+    public bool UseRidgesCdfRemap => useRidgesCdfRemap;
 
     public ContinentalnessSettings ToSettings()
     {

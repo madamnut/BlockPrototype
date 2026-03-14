@@ -8,7 +8,11 @@ public struct VoxelTerrainGenerationSettings
     [Range(0, VoxelTerrainData.WorldHeight - 1)] public int minTerrainHeight;
     [Range(0, VoxelTerrainData.WorldHeight - 1)] public int maxTerrainHeight;
     public bool useContinentalnessCdfRemap;
+    public bool useErosionCdfRemap;
+    public bool useRidgesCdfRemap;
     public ContinentalnessSettings continentalness;
+    public ErosionSettings erosion;
+    public RidgesSettings ridges;
 
     public bool IsInitialized =>
         maxTerrainHeight > minTerrainHeight;
@@ -19,17 +23,25 @@ public struct VoxelTerrainGenerationSettings
         minTerrainHeight = 0,
         maxTerrainHeight = 180,
         useContinentalnessCdfRemap = false,
+        useErosionCdfRemap = false,
+        useRidgesCdfRemap = false,
         continentalness = WorldGenSettingsAsset.CreateDefaultSettings(),
+        erosion = WorldGenSettingsAsset.CreateDefaultErosionSettings(),
+        ridges = WorldGenSettingsAsset.CreateDefaultRidgesSettings(),
     };
 
     public static VoxelTerrainGenerationSettings FromWorldGenSettings(
         WorldGenSettingsAsset worldGenSettingsAsset,
-        bool useContinentalnessCdfRemap)
+        bool useContinentalnessCdfRemap,
+        bool useErosionCdfRemap,
+        bool useRidgesCdfRemap)
     {
         if (worldGenSettingsAsset == null)
         {
             VoxelTerrainGenerationSettings defaults = Default;
             defaults.useContinentalnessCdfRemap = useContinentalnessCdfRemap;
+            defaults.useErosionCdfRemap = useErosionCdfRemap;
+            defaults.useRidgesCdfRemap = useRidgesCdfRemap;
             return defaults;
         }
 
@@ -39,7 +51,11 @@ public struct VoxelTerrainGenerationSettings
             minTerrainHeight = worldGenSettingsAsset.MinTerrainHeight,
             maxTerrainHeight = worldGenSettingsAsset.MaxTerrainHeight,
             useContinentalnessCdfRemap = useContinentalnessCdfRemap,
+            useErosionCdfRemap = useErosionCdfRemap,
+            useRidgesCdfRemap = useRidgesCdfRemap,
             continentalness = worldGenSettingsAsset.ToSettings(),
+            erosion = worldGenSettingsAsset.ToErosionSettings(),
+            ridges = worldGenSettingsAsset.ToRidgesSettings(),
         };
     }
 }

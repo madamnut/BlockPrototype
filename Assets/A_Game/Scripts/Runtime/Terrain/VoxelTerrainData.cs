@@ -13,13 +13,22 @@ public sealed class VoxelTerrainData : IDisposable
     {
         public readonly int height;
         public readonly float continentalness;
+        public readonly float erosion;
+        public readonly float weirdness;
+        public readonly float pv;
 
         public WorldGenDebugSample(
             int height,
-            float continentalness)
+            float continentalness,
+            float erosion,
+            float weirdness,
+            float pv)
         {
             this.height = height;
             this.continentalness = continentalness;
+            this.erosion = erosion;
+            this.weirdness = weirdness;
+            this.pv = pv;
         }
     }
 
@@ -56,11 +65,17 @@ public sealed class VoxelTerrainData : IDisposable
         public int seaLevel;
         public int maxTerrainHeight;
         public bool useContinentalnessCdfRemap;
+        public bool useErosionCdfRemap;
+        public bool useRidgesCdfRemap;
         public ContinentalnessSettings continentalness;
+        public ErosionSettings erosion;
+        public RidgesSettings ridges;
 
         [NativeDisableContainerSafetyRestriction]
         public NativeArray<BlockType> blocks;
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
+        [ReadOnly] public NativeArray<float> erosionCdfLut;
+        [ReadOnly] public NativeArray<float> ridgesCdfLut;
         public NativeArray<int> columnHeights;
 
         public void Execute(int index)
@@ -92,9 +107,30 @@ public sealed class VoxelTerrainData : IDisposable
                 rawContinentalness,
                 useContinentalnessCdfRemap,
                 continentalnessCdfLut);
+            float rawErosion = WorldGenPrototypeJobs.SampleRawErosion(
+                seed,
+                worldRegionX,
+                worldRegionZ,
+                erosion);
+            float erosionValue = RemapRawNoise(
+                rawErosion,
+                useErosionCdfRemap,
+                erosionCdfLut);
+            float rawRidges = WorldGenPrototypeJobs.SampleRawRidges(
+                seed,
+                worldRegionX,
+                worldRegionZ,
+                ridges);
+            float weirdness = RemapRawNoise(
+                rawRidges,
+                useRidgesCdfRemap,
+                ridgesCdfLut);
+            float pv = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdness);
 
             return ComposeSurfaceHeight(
                 continentalnessValue,
+                erosionValue,
+                pv,
                 minTerrainHeight,
                 seaLevel,
                 maxTerrainHeight,
@@ -103,6 +139,8 @@ public sealed class VoxelTerrainData : IDisposable
 
         private static int ComposeSurfaceHeight(
             float continentalnessValue,
+            float erosionValue,
+            float pv,
             int minHeight,
             int seaLevel,
             int maxHeight,
@@ -112,14 +150,28 @@ public sealed class VoxelTerrainData : IDisposable
             int clampedSeaLevel = math.clamp(seaLevel, 0, worldHeight - 1);
             int clampedMax = math.clamp(math.max(seaLevel, maxHeight), 0, worldHeight - 1);
 
+            int baseHeight;
             if (continentalnessValue < 0f)
             {
                 float oceanT = math.saturate(continentalnessValue + 1f);
-                return math.clamp((int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
+                baseHeight = math.clamp((int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
+            }
+            else
+            {
+                float landT = math.saturate(continentalnessValue);
+                baseHeight = math.clamp((int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT)), 0, worldHeight - 1);
             }
 
-            float landT = math.saturate(continentalnessValue);
-            return math.clamp((int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT)), 0, worldHeight - 1);
+            float inlandMask = math.smoothstep(-0.05f, 0.35f, continentalnessValue);
+            float erosion01 = (erosionValue + 1f) * 0.5f;
+            float reliefStrength = math.lerp(42f, 8f, erosion01);
+            float uplift = math.pow(math.max(0f, pv), 1.25f);
+            float depression = math.pow(math.max(0f, -pv), 1.6f);
+            float finalHeight = baseHeight +
+                                (uplift * inlandMask * reliefStrength) -
+                                (depression * inlandMask * reliefStrength * 0.85f);
+
+            return math.clamp((int)math.round(finalHeight), 0, worldHeight - 1);
         }
 
         private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
@@ -148,34 +200,52 @@ public sealed class VoxelTerrainData : IDisposable
     private readonly int _seed;
     private readonly VoxelTerrainGenerationSettings _settings;
     private readonly float[] _managedContinentalnessCdfLut;
+    private readonly float[] _managedErosionCdfLut;
+    private readonly float[] _managedRidgesCdfLut;
     private NativeArray<float> _continentalnessCdfLut;
+    private NativeArray<float> _erosionCdfLut;
+    private NativeArray<float> _ridgesCdfLut;
 
-    public VoxelTerrainData(int seed, VoxelTerrainGenerationSettings settings, float[] continentalnessCdfLut = null)
+    public VoxelTerrainData(
+        int seed,
+        VoxelTerrainGenerationSettings settings,
+        float[] continentalnessCdfLut = null,
+        float[] erosionCdfLut = null,
+        float[] ridgesCdfLut = null)
     {
         _seed = seed;
         _settings = settings;
         _managedContinentalnessCdfLut = continentalnessCdfLut;
-
-        if (settings.useContinentalnessCdfRemap && continentalnessCdfLut != null && continentalnessCdfLut.Length > 1)
-        {
-            _continentalnessCdfLut = new NativeArray<float>(continentalnessCdfLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            for (int i = 0; i < continentalnessCdfLut.Length; i++)
-            {
-                _continentalnessCdfLut[i] = continentalnessCdfLut[i];
-            }
-        }
+        _managedErosionCdfLut = erosionCdfLut;
+        _managedRidgesCdfLut = ridgesCdfLut;
+        _continentalnessCdfLut = CreateNativeCdfLut(settings.useContinentalnessCdfRemap, continentalnessCdfLut);
+        _erosionCdfLut = CreateNativeCdfLut(settings.useErosionCdfRemap, erosionCdfLut);
+        _ridgesCdfLut = CreateNativeCdfLut(settings.useRidgesCdfRemap, ridgesCdfLut);
     }
 
     public int SeaLevel => _settings.seaLevel;
 
     public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
     {
-        int height = VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
+        int height = VoxelWorldGenSampler.SampleSurfaceHeight(
+            worldX,
+            worldZ,
+            _seed,
+            _settings,
+            _managedContinentalnessCdfLut,
+            _managedErosionCdfLut,
+            _managedRidgesCdfLut);
         float continentalness = VoxelWorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
+        float erosion = VoxelWorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
+        float weirdness = VoxelWorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+        float pv = VoxelWorldGenSampler.SamplePv(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
 
         return new WorldGenDebugSample(
             height,
-            continentalness);
+            continentalness,
+            erosion,
+            weirdness,
+            pv);
     }
 
     public void Dispose()
@@ -208,6 +278,16 @@ public sealed class VoxelTerrainData : IDisposable
         {
             _continentalnessCdfLut.Dispose();
         }
+
+        if (_erosionCdfLut.IsCreated)
+        {
+            _erosionCdfLut.Dispose();
+        }
+
+        if (_ridgesCdfLut.IsCreated)
+        {
+            _ridgesCdfLut.Dispose();
+        }
     }
 
     public void RequestChunkColumn(int chunkX, int chunkZ)
@@ -233,9 +313,15 @@ public sealed class VoxelTerrainData : IDisposable
             seaLevel = _settings.seaLevel,
             maxTerrainHeight = _settings.maxTerrainHeight,
             useContinentalnessCdfRemap = _settings.useContinentalnessCdfRemap,
+            useErosionCdfRemap = _settings.useErosionCdfRemap,
+            useRidgesCdfRemap = _settings.useRidgesCdfRemap,
             continentalness = _settings.continentalness,
+            erosion = _settings.erosion,
+            ridges = _settings.ridges,
             blocks = pending.blocks,
             continentalnessCdfLut = _continentalnessCdfLut,
+            erosionCdfLut = _erosionCdfLut,
+            ridgesCdfLut = _ridgesCdfLut,
             columnHeights = pending.columnHeights,
         };
 
@@ -747,7 +833,14 @@ public sealed class VoxelTerrainData : IDisposable
 
     private int SampleSurfaceHeight(int worldX, int worldZ)
     {
-        return VoxelWorldGenSampler.SampleSurfaceHeight(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
+        return VoxelWorldGenSampler.SampleSurfaceHeight(
+            worldX,
+            worldZ,
+            _seed,
+            _settings,
+            _managedContinentalnessCdfLut,
+            _managedErosionCdfLut,
+            _managedRidgesCdfLut);
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)
@@ -769,5 +862,21 @@ public sealed class VoxelTerrainData : IDisposable
     {
         int result = value % modulus;
         return result < 0 ? result + modulus : result;
+    }
+
+    private static NativeArray<float> CreateNativeCdfLut(bool useCdfRemap, float[] managedLut)
+    {
+        if (!useCdfRemap || managedLut == null || managedLut.Length <= 1)
+        {
+            return new NativeArray<float>(0, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        }
+
+        NativeArray<float> nativeLut = new NativeArray<float>(managedLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < managedLut.Length; i++)
+        {
+            nativeLut[i] = managedLut[i];
+        }
+
+        return nativeLut;
     }
 }

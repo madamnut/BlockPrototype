@@ -281,7 +281,12 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     private void BuildWorld()
     {
         _terrain?.Dispose();
-        _terrain = new VoxelTerrainData(seed, terrainSettings, GetContinentalnessCdfLut());
+        _terrain = new VoxelTerrainData(
+            seed,
+            terrainSettings,
+            GetContinentalnessCdfLut(),
+            GetErosionCdfLut(),
+            GetRidgesCdfLut());
 
         DisposePendingChunkMeshJobs();
         DestroyAllChunkColumnInstances();
@@ -2244,7 +2249,9 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
         {
             terrainSettings = VoxelTerrainGenerationSettings.FromWorldGenSettings(
                 worldGenSettingsAsset,
-                UseContinentalnessCdfRemap());
+                UseContinentalnessCdfRemap(),
+                UseErosionCdfRemap(),
+                UseRidgesCdfRemap());
             return;
         }
 
@@ -2253,13 +2260,46 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
 
     private bool UseContinentalnessCdfRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasContinentalnessRemap;
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseContinentalnessCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasContinentalnessRemap;
     }
 
     private float[] GetContinentalnessCdfLut()
     {
         return UseContinentalnessCdfRemap()
             ? continentalnessCdfProfileAsset.BakedContinentalnessCdfLut
+            : null;
+    }
+
+    private bool UseErosionCdfRemap()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseErosionCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasErosionRemap;
+    }
+
+    private float[] GetErosionCdfLut()
+    {
+        return UseErosionCdfRemap()
+            ? continentalnessCdfProfileAsset.BakedErosionCdfLut
+            : null;
+    }
+
+    private bool UseRidgesCdfRemap()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseRidgesCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasRidgesRemap;
+    }
+
+    private float[] GetRidgesCdfLut()
+    {
+        return UseRidgesCdfRemap()
+            ? continentalnessCdfProfileAsset.BakedRidgesCdfLut
             : null;
     }
 

@@ -15,7 +15,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         None,
         Continentalness,
         Erosion,
-        PeaksRidges,
+        Weirdness,
+        Pv,
         Temperature,
         Precipitation,
     }
@@ -27,7 +28,9 @@ public sealed class WorldGenPrototype : MonoBehaviour
     [SerializeField] private Button generateButton;
     [SerializeField] private Button continentalnessButton;
     [SerializeField] private Button erosionButton;
-    [SerializeField] private Button peaksRidgesButton;
+    [FormerlySerializedAs("peaksRidgesButton")]
+    [SerializeField] private Button weirdnessButton;
+    [SerializeField] private Button pvButton;
     [SerializeField] private Button temperatureButton;
     [SerializeField] private Button precipitationButton;
     [SerializeField] private Button gridButton;
@@ -81,7 +84,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         BindButton(generateButton, GeneratePreview);
         BindButton(continentalnessButton, ToggleContinentalnessMode);
         BindButton(erosionButton, ToggleErosionMode);
-        BindButton(peaksRidgesButton, TogglePeaksRidgesMode);
+        BindButton(weirdnessButton, ToggleWeirdnessMode);
+        BindButton(pvButton, TogglePvMode);
         BindButton(temperatureButton, ToggleTemperatureMode);
         BindButton(precipitationButton, TogglePrecipitationMode);
         BindButton(gridButton, ToggleGrid);
@@ -93,7 +97,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
         UnbindButton(generateButton, GeneratePreview);
         UnbindButton(continentalnessButton, ToggleContinentalnessMode);
         UnbindButton(erosionButton, ToggleErosionMode);
-        UnbindButton(peaksRidgesButton, TogglePeaksRidgesMode);
+        UnbindButton(weirdnessButton, ToggleWeirdnessMode);
+        UnbindButton(pvButton, TogglePvMode);
         UnbindButton(temperatureButton, ToggleTemperatureMode);
         UnbindButton(precipitationButton, TogglePrecipitationMode);
         UnbindButton(gridButton, ToggleGrid);
@@ -124,9 +129,13 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 stats = GenerateErosionPreview(seed);
                 label = $"CDF Remap: {UseErosionCdfRemap()}";
                 break;
-            case GenerationMode.PeaksRidges:
+            case GenerationMode.Weirdness:
                 stats = GenerateRidgesPreview(seed);
                 label = $"CDF Remap: {UseRidgesCdfRemap()}";
+                break;
+            case GenerationMode.Pv:
+                stats = GeneratePvPreview(seed);
+                label = $"Source: Weirdness, CDF Remap: {UseRidgesCdfRemap()}";
                 break;
             case GenerationMode.Temperature:
                 stats = GenerateTemperaturePreview(seed);
@@ -158,9 +167,15 @@ public sealed class WorldGenPrototype : MonoBehaviour
         UpdateButtonVisuals();
     }
 
-    private void TogglePeaksRidgesMode()
+    private void ToggleWeirdnessMode()
     {
-        mode = mode == GenerationMode.PeaksRidges ? GenerationMode.None : GenerationMode.PeaksRidges;
+        mode = mode == GenerationMode.Weirdness ? GenerationMode.None : GenerationMode.Weirdness;
+        UpdateButtonVisuals();
+    }
+
+    private void TogglePvMode()
+    {
+        mode = mode == GenerationMode.Pv ? GenerationMode.None : GenerationMode.Pv;
         UpdateButtonVisuals();
     }
 
@@ -397,6 +412,62 @@ public sealed class WorldGenPrototype : MonoBehaviour
         }
     }
 
+    private ContinentalnessStats GeneratePvPreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        RidgesSettings settings = BuildRidgesSettings();
+        bool useCdfRemap = UseRidgesCdfRemap();
+        EnsureCdfLutCache();
+        NativeArray<float> cdfLut = cachedRidgesCdfLut;
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.PvPreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useCdfRemap = useCdfRemap,
+                settings = settings,
+                cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
     private ContinentalnessStats GenerateTemperaturePreview(int seed)
     {
         int previewSize = previewTexture.width;
@@ -563,7 +634,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         SetButtonVisual(continentalnessButton, mode == GenerationMode.Continentalness);
         SetButtonVisual(erosionButton, mode == GenerationMode.Erosion);
-        SetButtonVisual(peaksRidgesButton, mode == GenerationMode.PeaksRidges);
+        SetButtonVisual(weirdnessButton, mode == GenerationMode.Weirdness);
+        SetButtonVisual(pvButton, mode == GenerationMode.Pv);
         SetButtonVisual(temperatureButton, mode == GenerationMode.Temperature);
         SetButtonVisual(precipitationButton, mode == GenerationMode.Precipitation);
         SetButtonVisual(gridButton, drawGrid);
@@ -688,22 +760,31 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
     private bool UseCdfRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.EnableRemap;
+        return UseContinentalnessCdfRemap() || UseErosionCdfRemap() || UseRidgesCdfRemap() || UseTemperatureCdfRemap() || UsePrecipitationCdfRemap();
     }
 
     private bool UseContinentalnessCdfRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasContinentalnessRemap;
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseContinentalnessCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasContinentalnessRemap;
     }
 
     private bool UseErosionCdfRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasErosionRemap;
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseErosionCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasErosionRemap;
     }
 
     private bool UseRidgesCdfRemap()
     {
-        return continentalnessCdfProfileAsset != null && continentalnessCdfProfileAsset.HasRidgesRemap;
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseRidgesCdfRemap &&
+               continentalnessCdfProfileAsset != null &&
+               continentalnessCdfProfileAsset.HasRidgesRemap;
     }
 
     private bool UseTemperatureCdfRemap()

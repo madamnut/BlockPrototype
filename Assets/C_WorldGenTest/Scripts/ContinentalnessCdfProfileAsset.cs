@@ -6,9 +6,6 @@ using UnityEngine;
     menuName = "World/WorldGen/CDF Profile")]
 public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
 {
-    [Header("Runtime")]
-    [SerializeField] private bool enableRemap = true;
-
     [Header("Bake Source")]
     [SerializeField] private WorldGenSettingsAsset sourceSettingsAsset;
 
@@ -39,7 +36,6 @@ public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
     [SerializeField, HideInInspector] private string bakedTemperatureSummary = "Temperature: Not baked";
     [SerializeField, HideInInspector] private string bakedPrecipitationSummary = "Precipitation: Not baked";
 
-    public bool EnableRemap => enableRemap;
     public WorldGenSettingsAsset SourceSettingsAsset => sourceSettingsAsset;
     public int LutResolution => Mathf.Max(16, lutResolution);
     public int SampleCount => Mathf.Max(1024, sampleCount);
@@ -53,11 +49,11 @@ public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
     public int BakeVersion => bakeVersion;
     public string BakedSummary => $"{bakedContinentalnessSummary}\n{bakedErosionSummary}\n{bakedRidgesSummary}\n{bakedTemperatureSummary}\n{bakedPrecipitationSummary}";
 
-    public bool HasContinentalnessRemap => enableRemap && bakedContinentalnessCdfLut != null && bakedContinentalnessCdfLut.Length > 1;
-    public bool HasErosionRemap => enableRemap && bakedErosionCdfLut != null && bakedErosionCdfLut.Length > 1;
-    public bool HasRidgesRemap => enableRemap && bakedRidgesCdfLut != null && bakedRidgesCdfLut.Length > 1;
-    public bool HasTemperatureRemap => enableRemap && bakedTemperatureCdfLut != null && bakedTemperatureCdfLut.Length > 1;
-    public bool HasPrecipitationRemap => enableRemap && bakedPrecipitationCdfLut != null && bakedPrecipitationCdfLut.Length > 1;
+    public bool HasContinentalnessRemap => bakedContinentalnessCdfLut != null && bakedContinentalnessCdfLut.Length > 1;
+    public bool HasErosionRemap => bakedErosionCdfLut != null && bakedErosionCdfLut.Length > 1;
+    public bool HasRidgesRemap => bakedRidgesCdfLut != null && bakedRidgesCdfLut.Length > 1;
+    public bool HasTemperatureRemap => bakedTemperatureCdfLut != null && bakedTemperatureCdfLut.Length > 1;
+    public bool HasPrecipitationRemap => bakedPrecipitationCdfLut != null && bakedPrecipitationCdfLut.Length > 1;
 
     public void StoreBakedLuts(
         float[] continentalnessLut,

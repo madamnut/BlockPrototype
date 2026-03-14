@@ -281,6 +281,37 @@ public static class WorldGenPrototypeJobs
     }
 
     [BurstCompile]
+    public struct PvPreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useCdfRemap;
+        public RidgesSettings settings;
+
+        [ReadOnly] public NativeArray<float> cdfLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, settings);
+            float weirdness = RemapRawNoise(rawRidges, useCdfRemap, cdfLut);
+            float pv = CalculatePvFromWeirdness(weirdness);
+            values[index] = pv;
+            pixels[index] = EvaluateScalarColor(pv);
+        }
+    }
+
+    [BurstCompile]
     public struct TemperaturePreviewJob : IJobParallelFor
     {
         public int size;
@@ -539,6 +570,12 @@ public static class WorldGenPrototypeJobs
     public static float SampleRidges(int seed, float worldRegionX, float worldRegionZ, RidgesSettings settings)
     {
         return RemapRawNoise(SampleRawRidges(seed, worldRegionX, worldRegionZ, settings), false, default);
+    }
+
+    public static float CalculatePvFromWeirdness(float weirdness)
+    {
+        float clampedWeirdness = math.clamp(weirdness, -1f, 1f);
+        return 1f - math.abs((3f * math.abs(clampedWeirdness)) - 2f);
     }
 
     public static float SampleTemperature(int seed, float worldRegionX, float worldRegionZ, TemperatureSettings settings)
