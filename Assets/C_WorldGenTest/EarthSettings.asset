@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 491bf644b7f953f49a800d330d45e763, type: 3}
-  m_Name: WorldGenSettings
+  m_Name: EarthSettings
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenSettingsAsset
   seaLevel: 63
   minTerrainHeight: 0
@@ -66,7 +66,7 @@ MonoBehaviour:
   ridgesUseWarp: 1
   ridgesWarpOctaves: 3
   ridgesWarpFrequency: 1
-  ridgesWarpAmplitude: 1
+  ridgesWarpAmplitude: 3
   ridgesWarpLacunarity: 2
   ridgesWarpGain: 0.5
   ridgesUseMacro: 1
@@ -75,13 +75,13 @@ MonoBehaviour:
   ridgesMacroLacunarity: 3
   ridgesMacroGain: 0.5
   ridgesMacroWeight: 0.6
-  ridgesUseBroad: 1
+  ridgesUseBroad: 0
   ridgesBroadOctaves: 3
   ridgesBroadFrequency: 0.5
   ridgesBroadLacunarity: 2
   ridgesBroadGain: 0.48
   ridgesBroadWeight: 0.4
-  ridgesUseDetail: 1
+  ridgesUseDetail: 0
   ridgesDetailOctaves: 3
   ridgesDetailFrequency: 0.25
   ridgesDetailLacunarity: 2

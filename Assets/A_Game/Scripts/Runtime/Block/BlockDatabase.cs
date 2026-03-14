@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "BlockDatabase", menuName = "Block/Database")]
+[CreateAssetMenu(fileName = "BlockDatabase", menuName = "World/Block/Texture DB")]
 public sealed class BlockDatabase : ScriptableObject
 {
     [SerializeField] private BlockDefinition[] definitions = new BlockDefinition[0];

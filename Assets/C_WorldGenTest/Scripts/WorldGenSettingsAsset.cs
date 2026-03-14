@@ -2,7 +2,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "WorldGenSettings",
-    menuName = "World Gen Prototype/World Gen Settings")]
+    menuName = "World/WorldGen/Settings")]
 public sealed class WorldGenSettingsAsset : ScriptableObject
 {
     [Header("Runtime Terrain")]

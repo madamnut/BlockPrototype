@@ -39,7 +39,6 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
     [SerializeField] private Material fluidMaterial;
     [SerializeField] private Material foliageMaterial;
     [SerializeField] private BlockDatabase blockDatabase;
-    [SerializeField] private BiomeGraph worldBiomeGraph;
     [SerializeField] private Camera interactionCamera;
     [SerializeField] private GameObject chunkColumnPrefab;
 
@@ -168,16 +167,6 @@ public sealed class VoxelWorldRuntime : MonoBehaviour
         position = new Vector2Int(Mathf.FloorToInt(samplePosition.x), Mathf.FloorToInt(samplePosition.z));
         sample = _terrain.SampleWorldGen(position.x, position.y);
         return true;
-    }
-
-    public string GetWorldGenBiomeLabel(float temperature, float precipitation)
-    {
-        if (worldBiomeGraph != null && worldBiomeGraph.TryGetBiome(temperature, precipitation, out BiomeGraphEntry entry))
-        {
-            return string.IsNullOrWhiteSpace(entry.BiomeName) ? "Unnamed" : entry.BiomeName;
-        }
-
-        return "Unassigned";
     }
 
     private void Reset()

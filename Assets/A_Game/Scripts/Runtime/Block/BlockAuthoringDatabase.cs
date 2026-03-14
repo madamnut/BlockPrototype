@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "BlockAuthoringDatabase", menuName = "Block/Authoring Database")]
+[CreateAssetMenu(fileName = "BlockAuthoringDatabase", menuName = "World/Block/Texture Authoring")]
 public sealed class BlockAuthoringDatabase : ScriptableObject
 {
     [SerializeField] private UnityEngine.Object textureRootFolder;

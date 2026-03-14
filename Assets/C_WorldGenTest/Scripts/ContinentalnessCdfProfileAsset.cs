@@ -3,7 +3,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "ContinentalnessCdfProfile",
-    menuName = "World Gen Prototype/Continentalness CDF Profile")]
+    menuName = "World/WorldGen/CDF Profile")]
 public sealed class ContinentalnessCdfProfileAsset : ScriptableObject
 {
     [Header("Runtime")]
