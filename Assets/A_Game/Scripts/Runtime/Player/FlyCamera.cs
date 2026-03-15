@@ -29,7 +29,10 @@ public sealed class FlyCamera : MonoBehaviour
     [SerializeField] private Transform playerRoot;
     [SerializeField] private Transform headTransform;
     [SerializeField] private Transform bodyTransform;
-    [SerializeField] private CapsuleCollider playerCollider;
+    
+    [Header("Player Bounds")]
+    [SerializeField, Min(0.1f)] private float playerWidth = 0.6f;
+    [SerializeField, Min(0.1f)] private float playerHeight = 1.8f;
 
     [Header("Movement")]
     [FormerlySerializedAs("moveSpeed")]
@@ -44,17 +47,13 @@ public sealed class FlyCamera : MonoBehaviour
     [SerializeField] private float spaceDoubleTapWindow = 0.3f;
 
     [Header("Collision")]
-    [SerializeField] private LayerMask collisionMask = ~0;
     [SerializeField] private float collisionSkinWidth = 0.02f;
     [SerializeField] private float groundCheckDistance = 0.08f;
 
     [Header("Third Person Camera")]
     [SerializeField, Min(0.5f)] private float thirdPersonBackDistance = 4f;
     [SerializeField, Min(0.5f)] private float thirdPersonFrontDistance = 3f;
-    [SerializeField, Min(0.05f)] private float cameraCollisionRadius = 0.2f;
 
-    private readonly RaycastHit[] _movementHits = new RaycastHit[8];
-    private readonly RaycastHit[] _cameraHits = new RaycastHit[8];
     private readonly List<Renderer> _playerRenderers = new(8);
     private readonly List<ShadowCastingMode> _defaultShadowModes = new(8);
 
@@ -66,6 +65,7 @@ public sealed class FlyCamera : MonoBehaviour
     private bool _isGrounded;
     private CameraMode _currentCameraMode = CameraMode.FirstPerson;
     private MovementMode _currentMovementMode = MovementMode.Fly;
+    private WorldRuntime _worldRuntime;
 
     public CameraMode CurrentCameraMode => _currentCameraMode;
 
@@ -86,9 +86,24 @@ public sealed class FlyCamera : MonoBehaviour
         _ => _currentMovementMode.ToString(),
     };
 
+    public bool TryGetCollisionBounds(out Bounds bounds)
+    {
+        bounds = default;
+        if (playerRoot == null)
+        {
+            return false;
+        }
+
+        Vector3 size = GetCollisionSize();
+        Vector3 center = playerRoot.position + (Vector3.up * (size.y * 0.5f));
+        bounds = new Bounds(center, size);
+        return true;
+    }
+
     private void Awake()
     {
         ResolveReferences();
+        RemoveLegacyPlayerCollider();
 
         Vector3 angles = playerRoot != null ? playerRoot.eulerAngles : transform.eulerAngles;
         _pitch = Mathf.Clamp(NormalizeAngle(angles.x), CameraPitchMin, CameraPitchMax);
@@ -268,79 +283,46 @@ public sealed class FlyCamera : MonoBehaviour
             return;
         }
 
-        Vector3 currentPosition = playerRoot.position;
-        Vector3 remaining = displacement;
-
-        for (int iteration = 0; iteration < 3; iteration++)
+        TerrainData terrain = _worldRuntime != null ? _worldRuntime.Terrain : null;
+        if (_currentMovementMode == MovementMode.Fly || terrain == null)
         {
-            if (remaining.sqrMagnitude <= 0.000001f)
-            {
-                break;
-            }
-
-            Vector3 direction = remaining.normalized;
-            float castDistance = remaining.magnitude;
-
-            GetCapsule(currentPosition, out Vector3 top, out Vector3 bottom, out float radius);
-            int hitCount = Physics.CapsuleCastNonAlloc(
-                top,
-                bottom,
-                radius,
-                direction,
-                _movementHits,
-                castDistance + collisionSkinWidth,
-                collisionMask,
-                QueryTriggerInteraction.Ignore);
-
-            if (!TryGetClosestValidHit(_movementHits, hitCount, out RaycastHit hit))
-            {
-                currentPosition += remaining;
-                break;
-            }
-
-            float travelDistance = Mathf.Max(hit.distance - collisionSkinWidth, 0f);
-            currentPosition += direction * travelDistance;
-
-            if (Vector3.Dot(hit.normal, Vector3.up) > 0.55f && _verticalVelocity < 0f)
-            {
-                _verticalVelocity = -2f;
-            }
-            else if (Vector3.Dot(hit.normal, Vector3.down) > 0.55f && _verticalVelocity > 0f)
-            {
-                _verticalVelocity = 0f;
-            }
-
-            remaining -= direction * travelDistance;
-            remaining = Vector3.ProjectOnPlane(remaining, hit.normal);
+            playerRoot.position += displacement;
+            return;
         }
 
-        playerRoot.position = currentPosition;
+        WorldCollision.MoveResult result = WorldCollision.MoveAabb(
+            terrain,
+            playerRoot.position,
+            displacement,
+            GetScaledCollisionWidth(),
+            GetScaledCollisionHeight(),
+            collisionSkinWidth);
+
+        playerRoot.position = result.position;
+        if (result.grounded && _verticalVelocity < 0f)
+        {
+            _verticalVelocity = -2f;
+        }
+
+        if (result.hitCeiling && _verticalVelocity > 0f)
+        {
+            _verticalVelocity = 0f;
+        }
     }
 
     private bool CheckGrounded()
     {
-        if (playerRoot == null || playerCollider == null)
+        if (playerRoot == null || _worldRuntime == null || _worldRuntime.Terrain == null)
         {
             return false;
         }
 
-        GetCapsule(playerRoot.position, out Vector3 top, out Vector3 bottom, out float radius);
-        int hitCount = Physics.CapsuleCastNonAlloc(
-            top,
-            bottom,
-            radius,
-            Vector3.down,
-            _movementHits,
-            groundCheckDistance + collisionSkinWidth,
-            collisionMask,
-            QueryTriggerInteraction.Ignore);
-
-        if (!TryGetClosestValidHit(_movementHits, hitCount, out RaycastHit hit))
-        {
-            return false;
-        }
-
-        return Vector3.Dot(hit.normal, Vector3.up) > 0.55f;
+        return WorldCollision.IsGrounded(
+            _worldRuntime.Terrain,
+            playerRoot.position,
+            GetScaledCollisionWidth(),
+            GetScaledCollisionHeight(),
+            groundCheckDistance + collisionSkinWidth);
     }
 
     private void UpdateCameraTransform()
@@ -383,54 +365,14 @@ public sealed class FlyCamera : MonoBehaviour
         }
 
         direction /= desiredDistance;
-
-        int hitCount = Physics.SphereCastNonAlloc(
-            pivot,
-            cameraCollisionRadius,
-            direction,
-            _cameraHits,
-            desiredDistance,
-            collisionMask,
-            QueryTriggerInteraction.Ignore);
-
-        if (!TryGetClosestValidHit(_cameraHits, hitCount, out RaycastHit hit))
+        TerrainData terrain = _worldRuntime != null ? _worldRuntime.Terrain : null;
+        if (terrain == null || !WorldCollision.RaycastSolid(terrain, pivot, direction, desiredDistance, out float hitDistance))
         {
             return desiredPosition;
         }
 
-        float safeDistance = Mathf.Max(hit.distance - collisionSkinWidth, 0.05f);
+        float safeDistance = Mathf.Max(hitDistance - collisionSkinWidth, 0.05f);
         return pivot + (direction * safeDistance);
-    }
-
-    private bool TryGetClosestValidHit(RaycastHit[] hits, int hitCount, out RaycastHit closestHit)
-    {
-        closestHit = default;
-        float closestDistance = float.MaxValue;
-        bool found = false;
-
-        for (int i = 0; i < hitCount; i++)
-        {
-            RaycastHit hit = hits[i];
-            Collider hitCollider = hit.collider;
-            if (hitCollider == null)
-            {
-                continue;
-            }
-
-            if (playerRoot != null && hitCollider.transform.IsChildOf(playerRoot))
-            {
-                continue;
-            }
-
-            if (hit.distance < closestDistance)
-            {
-                closestDistance = hit.distance;
-                closestHit = hit;
-                found = true;
-            }
-        }
-
-        return found;
     }
 
     private void SyncPlayerLook()
@@ -528,10 +470,7 @@ public sealed class FlyCamera : MonoBehaviour
 
         if (playerRoot == null)
         {
-            if (GetComponent<CapsuleCollider>() != null)
-            {
-                playerRoot = transform;
-            }
+            playerRoot = transform;
         }
 
         if (playerRoot == null)
@@ -561,30 +500,51 @@ public sealed class FlyCamera : MonoBehaviour
             }
         }
 
-        if (playerCollider == null && playerRoot != null)
+        if (_worldRuntime == null)
         {
-            playerCollider = playerRoot.GetComponent<CapsuleCollider>();
+            _worldRuntime = FindAnyObjectByType<WorldRuntime>();
         }
+
+        RemoveLegacyPlayerCollider();
     }
 
     private bool HasRequiredReferences()
     {
-        return controlledCamera != null && playerRoot != null && headTransform != null && playerCollider != null;
+        return controlledCamera != null && playerRoot != null && headTransform != null;
     }
 
-    private void GetCapsule(Vector3 playerPosition, out Vector3 top, out Vector3 bottom, out float radius)
+    private void RemoveLegacyPlayerCollider()
     {
-        Vector3 lossyScale = playerRoot.lossyScale;
-        float radiusScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
-        float heightScale = Mathf.Abs(lossyScale.y);
+        if (playerRoot == null)
+        {
+            return;
+        }
 
-        radius = playerCollider.radius * radiusScale;
-        float height = Mathf.Max(playerCollider.height * heightScale, radius * 2f);
-        Vector3 center = playerPosition + playerCollider.center;
-        float halfSegment = Mathf.Max((height * 0.5f) - radius, 0f);
+        CapsuleCollider legacyCollider = playerRoot.GetComponent<CapsuleCollider>();
+        if (legacyCollider != null)
+        {
+            Object.Destroy(legacyCollider);
+        }
+    }
 
-        top = center + (Vector3.up * halfSegment);
-        bottom = center - (Vector3.up * halfSegment);
+    private Vector3 GetCollisionSize()
+    {
+        Vector3 scale = playerRoot != null ? playerRoot.lossyScale : Vector3.one;
+        return new Vector3(
+            playerWidth * Mathf.Abs(scale.x),
+            playerHeight * Mathf.Abs(scale.y),
+            playerWidth * Mathf.Abs(scale.z));
+    }
+
+    private float GetScaledCollisionWidth()
+    {
+        Vector3 size = GetCollisionSize();
+        return Mathf.Max(size.x, size.z);
+    }
+
+    private float GetScaledCollisionHeight()
+    {
+        return GetCollisionSize().y;
     }
 
     private static Vector3 ReadMoveInput(Keyboard keyboard)

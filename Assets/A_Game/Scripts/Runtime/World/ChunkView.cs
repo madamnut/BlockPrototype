@@ -4,21 +4,57 @@ using UnityEngine.Rendering;
 
 public sealed class ChunkView
 {
+    private sealed class CombinedMeshBuffers
+    {
+        public readonly List<Vector3> vertices = new(1024);
+        public readonly List<Vector2> uvs = new(1024);
+        public readonly List<Vector3> normals = new(1024);
+        public readonly List<Color32> colors = new(1024);
+        public readonly List<Vector3> sourceVertices = new(1024);
+        public readonly List<Vector2> sourceUvs = new(1024);
+        public readonly List<Vector3> sourceNormals = new(1024);
+        public readonly List<int> sourceTriangles = new(1536);
+        public readonly List<int>[] triangles =
+        {
+            new(1536),
+            new(768),
+            new(768),
+        };
+
+        public void Clear()
+        {
+            vertices.Clear();
+            uvs.Clear();
+            normals.Clear();
+            colors.Clear();
+            sourceVertices.Clear();
+            sourceUvs.Clear();
+            sourceNormals.Clear();
+            sourceTriangles.Clear();
+
+            for (int i = 0; i < triangles.Length; i++)
+            {
+                triangles[i].Clear();
+            }
+        }
+    }
+
     private sealed class SubChunkInstance
     {
         public GameObject GameObject;
         public MeshFilter MeshFilter;
         public MeshRenderer MeshRenderer;
-        public MeshCollider MeshCollider;
         public Mesh Mesh;
+        public Mesh SolidMesh;
+        public Mesh FluidMesh;
+        public Mesh FoliageMesh;
+        public bool HasFluidGeometry;
     }
 
     private sealed class ChunkColumnInstance
     {
         public GameObject Root;
-        public SubChunkInstance[] SolidSubChunks = new SubChunkInstance[TerrainData.SubChunkCountY];
-        public SubChunkInstance[] FluidSubChunks = new SubChunkInstance[TerrainData.SubChunkCountY];
-        public SubChunkInstance[] FoliageSubChunks = new SubChunkInstance[TerrainData.SubChunkCountY];
+        public SubChunkInstance[] SubChunks = new SubChunkInstance[TerrainData.SubChunkCountY];
     }
 
     private readonly Material _worldMaterial;
@@ -27,6 +63,7 @@ public sealed class ChunkView
     private readonly GameObject _chunkColumnPrefab;
     private readonly Dictionary<Vector2Int, ChunkColumnInstance> _chunkColumnInstances = new();
     private readonly Stack<ChunkColumnInstance> _chunkColumnPool = new();
+    private readonly CombinedMeshBuffers _combinedMeshBuffers = new();
     private Transform _worldRoot;
 
     public ChunkView(Material worldMaterial, Material fluidMaterial, Material foliageMaterial, GameObject chunkColumnPrefab)
@@ -47,6 +84,22 @@ public sealed class ChunkView
         return _chunkColumnInstances.ContainsKey(chunkCoords);
     }
 
+    public void PrewarmChunkColumnPool(int count)
+    {
+        int targetCount = Mathf.Max(0, count);
+        while (_chunkColumnPool.Count < targetCount)
+        {
+            ChunkColumnInstance column = CreateChunkColumnInstance();
+            if (column == null)
+            {
+                break;
+            }
+
+            column.Root.SetActive(false);
+            _chunkColumnPool.Push(column);
+        }
+    }
+
     public void ReleaseChunkColumn(Vector2Int chunkCoords)
     {
         if (!_chunkColumnInstances.TryGetValue(chunkCoords, out ChunkColumnInstance column))
@@ -55,11 +108,9 @@ public sealed class ChunkView
         }
 
         column.Root.SetActive(false);
-        for (int subChunkY = 0; subChunkY < column.SolidSubChunks.Length; subChunkY++)
+        for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
         {
-            SetSubChunkVisible(column.SolidSubChunks[subChunkY], false);
-            SetSubChunkVisible(column.FluidSubChunks[subChunkY], false);
-            SetSubChunkVisible(column.FoliageSubChunks[subChunkY], false);
+            SetSubChunkVisible(column.SubChunks[subChunkY], false);
         }
 
         _chunkColumnInstances.Remove(chunkCoords);
@@ -88,60 +139,40 @@ public sealed class ChunkView
         BlockDatabase blockDatabase)
     {
         ChunkColumnInstance column = GetOrCreateChunkColumnInstance(chunkCoords.x, chunkCoords.y);
+        if (column == null)
+        {
+            return;
+        }
+
         column.Root.SetActive(false);
 
         bool hasGeometry = false;
         for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
         {
-            SubChunkInstance solidSubChunk = column.SolidSubChunks[subChunkY];
+            SubChunkInstance subChunk = column.SubChunks[subChunkY];
             VoxelMesher.PendingSubChunkMeshData pendingSubChunk = pendingColumn.subChunks[subChunkY];
-            if (pendingSubChunk == null)
-            {
-                SetSubChunkVisible(solidSubChunk, false);
-            }
-            else
-            {
-                bool subChunkHasGeometry = VoxelMesher.ApplyPendingSubChunkMesh(
-                    pendingSubChunk,
-                    solidSubChunk.Mesh,
-                    $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
 
-                SetSubChunkVisible(solidSubChunk, subChunkHasGeometry);
-                hasGeometry |= subChunkHasGeometry;
+            bool hasSolidGeometry = false;
+            if (pendingSubChunk != null)
+            {
+                pendingSubChunk.Complete();
+                hasSolidGeometry = pendingSubChunk.HasGeometry;
             }
 
-            hasGeometry |= RefreshFluidSubChunk(column, terrain, chunkCoords.x, subChunkY, chunkCoords.y);
-            hasGeometry |= RefreshFoliageSubChunk(column, terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
+            subChunk.SolidMesh.Clear();
+            bool hasFluidGeometry = RebuildFluidSubChunk(subChunk, terrain, chunkCoords.x, subChunkY, chunkCoords.y);
+            bool hasFoliageGeometry = RebuildFoliageSubChunk(subChunk, terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
+
+            bool subChunkHasGeometry = RebuildCombinedSubChunkMesh(
+                subChunk,
+                pendingSubChunk,
+                $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
+            subChunk.HasFluidGeometry = hasFluidGeometry;
+            SetSubChunkVisible(subChunk, subChunkHasGeometry);
+            hasGeometry |= hasSolidGeometry || hasFluidGeometry || hasFoliageGeometry;
         }
 
         column.Root.SetActive(hasGeometry);
-        SyncSolidChunkColliders(column);
-    }
-
-    public void ApplyGpuChunkColumnMesh(
-        Vector2Int chunkCoords,
-        TerrainGpuMesher.ChunkColumnMeshData meshData,
-        TerrainData terrain,
-        BlockDatabase blockDatabase)
-    {
-        ChunkColumnInstance column = GetOrCreateChunkColumnInstance(chunkCoords.x, chunkCoords.y);
-        column.Root.SetActive(false);
-
-        bool hasGeometry = false;
-        for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
-        {
-            SubChunkInstance solidSubChunk = column.SolidSubChunks[subChunkY];
-            TerrainGpuMesher.SubChunkMeshData gpuSubChunk = meshData != null ? meshData.subChunks[subChunkY] : null;
-            bool subChunkHasGeometry = ApplyGpuSubChunkMesh(solidSubChunk.Mesh, gpuSubChunk, $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
-            SetSubChunkVisible(solidSubChunk, subChunkHasGeometry);
-            hasGeometry |= subChunkHasGeometry;
-
-            hasGeometry |= RefreshFluidSubChunk(column, terrain, chunkCoords.x, subChunkY, chunkCoords.y);
-            hasGeometry |= RefreshFoliageSubChunk(column, terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
-        }
-
-        column.Root.SetActive(hasGeometry);
-        SyncSolidChunkColliders(column);
     }
 
     public void RefreshLoadedSubChunk(int chunkX, int subChunkY, int chunkZ, TerrainData terrain, BlockDatabase blockDatabase)
@@ -152,11 +183,15 @@ public sealed class ChunkView
             return;
         }
 
-        RefreshSolidSubChunk(column, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
-        RefreshFluidSubChunk(column, terrain, chunkX, subChunkY, chunkZ);
-        RefreshFoliageSubChunk(column, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        SubChunkInstance subChunk = column.SubChunks[subChunkY];
+        bool hasSolidGeometry = RefreshSolidSubChunk(subChunk, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        bool hasFluidGeometry = RebuildFluidSubChunk(subChunk, terrain, chunkX, subChunkY, chunkZ);
+        bool hasFoliageGeometry = RebuildFoliageSubChunk(subChunk, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        bool subChunkHasGeometry = RebuildCombinedSubChunkMesh(subChunk, null, $"SubChunk_{chunkX}_{subChunkY}_{chunkZ}");
+
+        subChunk.HasFluidGeometry = hasFluidGeometry;
+        SetSubChunkVisible(subChunk, subChunkHasGeometry);
         column.Root.SetActive(HasAnyVisibleGeometry(column));
-        SyncSolidChunkColliders(column);
     }
 
     public void PopulateVisibleFluidRenderers(WaterReflection waterReflection)
@@ -174,10 +209,10 @@ public sealed class ChunkView
                 continue;
             }
 
-            for (int subChunkY = 0; subChunkY < column.FluidSubChunks.Length; subChunkY++)
+            for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
             {
-                SubChunkInstance subChunk = column.FluidSubChunks[subChunkY];
-                if (IsSubChunkVisible(subChunk) && subChunk.MeshRenderer != null)
+                SubChunkInstance subChunk = column.SubChunks[subChunkY];
+                if (IsSubChunkVisible(subChunk) && subChunk.MeshRenderer != null && subChunk.HasFluidGeometry)
                 {
                     waterReflection.AddVisibleFluidRenderer(subChunk.MeshRenderer);
                 }
@@ -194,22 +229,21 @@ public sealed class ChunkView
         }
 
         column = _chunkColumnPool.Count > 0 ? _chunkColumnPool.Pop() : CreateChunkColumnInstance();
+        if (column == null)
+        {
+            return null;
+        }
+
         column.Root.transform.SetParent(_worldRoot, false);
         column.Root.transform.localPosition = new Vector3(chunkX * TerrainData.ChunkSize, 0f, chunkZ * TerrainData.ChunkSize);
         column.Root.name = $"ChunkColumn_{chunkX}_{chunkZ}";
         column.Root.SetActive(false);
 
-        for (int subChunkY = 0; subChunkY < column.SolidSubChunks.Length; subChunkY++)
+        for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
         {
-            SubChunkInstance solidSubChunk = column.SolidSubChunks[subChunkY];
-            SubChunkInstance fluidSubChunk = column.FluidSubChunks[subChunkY];
-            SubChunkInstance foliageSubChunk = column.FoliageSubChunks[subChunkY];
-            solidSubChunk.GameObject.transform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
-            fluidSubChunk.GameObject.transform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
-            foliageSubChunk.GameObject.transform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
-            SetSubChunkVisible(solidSubChunk, false);
-            SetSubChunkVisible(fluidSubChunk, false);
-            SetSubChunkVisible(foliageSubChunk, false);
+            SubChunkInstance subChunk = column.SubChunks[subChunkY];
+            subChunk.GameObject.transform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
+            SetSubChunkVisible(subChunk, false);
         }
 
         _chunkColumnInstances.Add(chunkCoords, column);
@@ -218,20 +252,24 @@ public sealed class ChunkView
 
     private ChunkColumnInstance CreateChunkColumnInstance()
     {
-        if (TryCreateChunkColumnInstanceFromPrefab(out ChunkColumnInstance prefabColumn))
+        if (_chunkColumnPrefab != null)
         {
-            prefabColumn.Root.SetActive(false);
-            return prefabColumn;
+            if (TryCreateChunkColumnInstanceFromPrefab(out ChunkColumnInstance prefabColumn))
+            {
+                prefabColumn.Root.SetActive(false);
+                return prefabColumn;
+            }
+
+            Debug.LogError("ChunkView chunkColumnPrefab does not match the new single-SubChunk binding layout. Regenerate or update the prefab instead of falling back.");
+            return null;
         }
 
-        GameObject rootObject = CreateChunkColumnRootObject();
+        GameObject rootObject = CreateChunkColumnRootObject(usePrefab: false);
         ChunkColumnInstance column = new() { Root = rootObject };
 
         for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
         {
-            column.SolidSubChunks[subChunkY] = CreateSubChunkInstance(rootObject.transform, subChunkY, _worldMaterial, true, true, true);
-            column.FluidSubChunks[subChunkY] = CreateSubChunkInstance(rootObject.transform, subChunkY, _fluidMaterial, false, false, false);
-            column.FoliageSubChunks[subChunkY] = CreateSubChunkInstance(rootObject.transform, subChunkY, _foliageMaterial, false, true, true);
+            column.SubChunks[subChunkY] = CreateSubChunkInstance(rootObject.transform, subChunkY);
         }
 
         rootObject.SetActive(false);
@@ -246,7 +284,7 @@ public sealed class ChunkView
             return false;
         }
 
-        GameObject rootObject = CreateChunkColumnRootObject();
+        GameObject rootObject = CreateChunkColumnRootObject(usePrefab: true);
         Chunk binding = rootObject.GetComponent<Chunk>();
         if (binding == null || !HasValidPrefabBinding(binding))
         {
@@ -257,37 +295,15 @@ public sealed class ChunkView
         column = new ChunkColumnInstance { Root = rootObject };
         for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
         {
-            column.SolidSubChunks[subChunkY] = CreateSubChunkInstanceFromBinding(
-                binding.SolidSubChunks[subChunkY],
-                subChunkY,
-                _worldMaterial,
-                createCollider: true,
-                castShadows: true,
-                receiveShadows: true);
-
-            column.FluidSubChunks[subChunkY] = CreateSubChunkInstanceFromBinding(
-                binding.FluidSubChunks[subChunkY],
-                subChunkY,
-                _fluidMaterial,
-                createCollider: false,
-                castShadows: false,
-                receiveShadows: false);
-
-            column.FoliageSubChunks[subChunkY] = CreateSubChunkInstanceFromBinding(
-                binding.FoliageSubChunks[subChunkY],
-                subChunkY,
-                _foliageMaterial,
-                createCollider: false,
-                castShadows: true,
-                receiveShadows: true);
+            column.SubChunks[subChunkY] = CreateSubChunkInstanceFromBinding(binding.SubChunks[subChunkY], subChunkY);
         }
 
         return true;
     }
 
-    private GameObject CreateChunkColumnRootObject()
+    private GameObject CreateChunkColumnRootObject(bool usePrefab)
     {
-        if (_chunkColumnPrefab != null)
+        if (usePrefab && _chunkColumnPrefab != null)
         {
             GameObject instance = Object.Instantiate(_chunkColumnPrefab);
             instance.name = _chunkColumnPrefab.name;
@@ -299,9 +315,7 @@ public sealed class ChunkView
 
     private static bool HasValidPrefabBinding(Chunk binding)
     {
-        return HasValidBindingArray(binding.SolidSubChunks) &&
-               HasValidBindingArray(binding.FluidSubChunks) &&
-               HasValidBindingArray(binding.FoliageSubChunks);
+        return HasValidBindingArray(binding.SubChunks);
     }
 
     private static bool HasValidBindingArray(SubChunk[] bindings)
@@ -322,37 +336,13 @@ public sealed class ChunkView
         return true;
     }
 
-    private static SubChunkInstance CreateSubChunkInstanceFromBinding(
-        SubChunk binding,
-        int subChunkY,
-        Material material,
-        bool createCollider,
-        bool castShadows,
-        bool receiveShadows)
+    private SubChunkInstance CreateSubChunkInstanceFromBinding(SubChunk binding, int subChunkY)
     {
         MeshFilter meshFilter = binding.MeshFilter;
         MeshRenderer meshRenderer = binding.MeshRenderer;
-        MeshCollider meshCollider = binding.MeshCollider;
+        ConfigureSubChunkRenderer(meshRenderer);
 
-        if (meshCollider == null && createCollider)
-        {
-            meshCollider = binding.gameObject.AddComponent<MeshCollider>();
-            meshCollider.cookingOptions =
-                MeshColliderCookingOptions.CookForFasterSimulation |
-                MeshColliderCookingOptions.EnableMeshCleaning |
-                MeshColliderCookingOptions.WeldColocatedVertices |
-                MeshColliderCookingOptions.UseFastMidphase;
-        }
-
-        meshRenderer.sharedMaterial = material;
-        meshRenderer.shadowCastingMode = castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
-        meshRenderer.receiveShadows = receiveShadows;
-        meshRenderer.lightProbeUsage = LightProbeUsage.Off;
-        meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
-        meshRenderer.allowOcclusionWhenDynamic = false;
-        meshRenderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
-
-        Mesh mesh = new() { name = $"SubChunkMesh_{subChunkY}", indexFormat = IndexFormat.UInt32 };
+        Mesh mesh = CreateRuntimeMesh($"SubChunkMesh_{subChunkY}");
         meshFilter.sharedMesh = mesh;
 
         SubChunkInstance instance = new()
@@ -360,41 +350,27 @@ public sealed class ChunkView
             GameObject = binding.gameObject,
             MeshFilter = meshFilter,
             MeshRenderer = meshRenderer,
-            MeshCollider = meshCollider,
             Mesh = mesh,
+            SolidMesh = CreateRuntimeMesh($"SolidSubChunkMesh_{subChunkY}"),
+            FluidMesh = CreateRuntimeMesh($"FluidSubChunkMesh_{subChunkY}"),
+            FoliageMesh = CreateRuntimeMesh($"FoliageSubChunkMesh_{subChunkY}"),
+            HasFluidGeometry = false,
         };
 
         SetSubChunkVisible(instance, false);
         return instance;
     }
 
-    private static SubChunkInstance CreateSubChunkInstance(Transform parent, int subChunkY, Material material, bool createCollider, bool castShadows, bool receiveShadows)
+    private SubChunkInstance CreateSubChunkInstance(Transform parent, int subChunkY)
     {
         GameObject subChunkObject = new($"SubChunk_{subChunkY}");
         subChunkObject.transform.SetParent(parent, false);
 
         MeshFilter meshFilter = subChunkObject.AddComponent<MeshFilter>();
         MeshRenderer meshRenderer = subChunkObject.AddComponent<MeshRenderer>();
-        meshRenderer.sharedMaterial = material;
-        meshRenderer.shadowCastingMode = castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
-        meshRenderer.receiveShadows = receiveShadows;
-        meshRenderer.lightProbeUsage = LightProbeUsage.Off;
-        meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
-        meshRenderer.allowOcclusionWhenDynamic = false;
-        meshRenderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+        ConfigureSubChunkRenderer(meshRenderer);
 
-        MeshCollider meshCollider = null;
-        if (createCollider)
-        {
-            meshCollider = subChunkObject.AddComponent<MeshCollider>();
-            meshCollider.cookingOptions =
-                MeshColliderCookingOptions.CookForFasterSimulation |
-                MeshColliderCookingOptions.EnableMeshCleaning |
-                MeshColliderCookingOptions.WeldColocatedVertices |
-                MeshColliderCookingOptions.UseFastMidphase;
-        }
-
-        Mesh mesh = new() { name = $"SubChunkMesh_{subChunkY}", indexFormat = IndexFormat.UInt32 };
+        Mesh mesh = CreateRuntimeMesh($"SubChunkMesh_{subChunkY}");
         meshFilter.sharedMesh = mesh;
 
         SubChunkInstance instance = new()
@@ -402,79 +378,204 @@ public sealed class ChunkView
             GameObject = subChunkObject,
             MeshFilter = meshFilter,
             MeshRenderer = meshRenderer,
-            MeshCollider = meshCollider,
             Mesh = mesh,
+            SolidMesh = CreateRuntimeMesh($"SolidSubChunkMesh_{subChunkY}"),
+            FluidMesh = CreateRuntimeMesh($"FluidSubChunkMesh_{subChunkY}"),
+            FoliageMesh = CreateRuntimeMesh($"FoliageSubChunkMesh_{subChunkY}"),
+            HasFluidGeometry = false,
         };
 
         SetSubChunkVisible(instance, false);
         return instance;
     }
 
-    private static bool RefreshSolidSubChunk(ChunkColumnInstance column, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    private void ConfigureSubChunkRenderer(MeshRenderer meshRenderer)
+    {
+        meshRenderer.sharedMaterials = new[] { _worldMaterial, _fluidMaterial, _foliageMaterial };
+        meshRenderer.shadowCastingMode = ShadowCastingMode.On;
+        meshRenderer.receiveShadows = true;
+        meshRenderer.lightProbeUsage = LightProbeUsage.Off;
+        meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+        meshRenderer.allowOcclusionWhenDynamic = false;
+        meshRenderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+    }
+
+    private static Mesh CreateRuntimeMesh(string name)
+    {
+        return new Mesh
+        {
+            name = name,
+            indexFormat = IndexFormat.UInt32,
+        };
+    }
+
+    private static bool RefreshSolidSubChunk(SubChunkInstance subChunk, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (!terrain.HasSolidBlocksInSubChunk(chunkX, subChunkY, chunkZ))
         {
-            SetSubChunkVisible(column.SolidSubChunks[subChunkY], false);
+            subChunk.SolidMesh.Clear();
             return false;
         }
 
-        SubChunkInstance subChunk = column.SolidSubChunks[subChunkY];
-        bool hasGeometry = VoxelMesher.RebuildSubChunkMesh(subChunk.Mesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
-        SetSubChunkVisible(subChunk, hasGeometry);
-        return hasGeometry;
+        return VoxelMesher.RebuildSubChunkMesh(subChunk.SolidMesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
     }
 
-    private static bool ApplyGpuSubChunkMesh(Mesh mesh, TerrainGpuMesher.SubChunkMeshData meshData, string meshName)
+    private static bool RebuildFluidSubChunk(SubChunkInstance subChunk, TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
     {
-        if (mesh == null)
+        if (!terrain.HasFluidInSubChunk(chunkX, subChunkY, chunkZ))
         {
+            subChunk.FluidMesh.Clear();
             return false;
         }
 
+        return VoxelFluidMesher.RebuildSubChunkMesh(subChunk.FluidMesh, terrain, chunkX, subChunkY, chunkZ);
+    }
+
+    private static bool RebuildFoliageSubChunk(SubChunkInstance subChunk, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    {
+        if (!terrain.HasFoliageInSubChunk(chunkX, subChunkY, chunkZ))
+        {
+            subChunk.FoliageMesh.Clear();
+            return false;
+        }
+
+        return VoxelFoliageMesher.RebuildSubChunkMesh(subChunk.FoliageMesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+    }
+
+    private bool RebuildCombinedSubChunkMesh(SubChunkInstance subChunk, VoxelMesher.PendingSubChunkMeshData pendingSolidSubChunk, string meshName)
+    {
+        Mesh mesh = subChunk.Mesh;
         mesh.Clear();
-        if (meshData == null || !meshData.HasGeometry)
+        _combinedMeshBuffers.Clear();
+
+        bool hasAnyGeometry = false;
+        hasAnyGeometry |= AppendPendingSolidMesh(pendingSolidSubChunk, 0);
+        hasAnyGeometry |= AppendSourceMesh(subChunk.SolidMesh, 0);
+        hasAnyGeometry |= AppendSourceMesh(subChunk.FluidMesh, 1);
+        hasAnyGeometry |= AppendSourceMesh(subChunk.FoliageMesh, 2);
+
+        if (!hasAnyGeometry)
         {
             return false;
         }
 
         mesh.name = meshName;
         mesh.indexFormat = IndexFormat.UInt32;
-        mesh.vertices = meshData.vertices;
-        mesh.triangles = meshData.indices;
-        mesh.uv = meshData.uvs;
-        mesh.normals = meshData.normals;
-        mesh.colors32 = meshData.colors;
+        mesh.SetVertices(_combinedMeshBuffers.vertices);
+        mesh.SetUVs(0, _combinedMeshBuffers.uvs);
+        mesh.SetNormals(_combinedMeshBuffers.normals);
+        mesh.SetColors(_combinedMeshBuffers.colors);
+        mesh.subMeshCount = 3;
+        mesh.SetTriangles(_combinedMeshBuffers.triangles[0], 0, false);
+        mesh.SetTriangles(_combinedMeshBuffers.triangles[1], 1, false);
+        mesh.SetTriangles(_combinedMeshBuffers.triangles[2], 2, true);
         mesh.RecalculateBounds();
         mesh.UploadMeshData(false);
         return true;
     }
 
-    private static bool RefreshFluidSubChunk(ChunkColumnInstance column, TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
+    private bool AppendPendingSolidMesh(VoxelMesher.PendingSubChunkMeshData pending, int subMeshIndex)
     {
-        if (!terrain.HasFluidInSubChunk(chunkX, subChunkY, chunkZ))
+        if (pending == null)
         {
-            SetSubChunkVisible(column.FluidSubChunks[subChunkY], false);
             return false;
         }
 
-        SubChunkInstance subChunk = column.FluidSubChunks[subChunkY];
-        bool hasGeometry = VoxelFluidMesher.RebuildSubChunkMesh(subChunk.Mesh, terrain, chunkX, subChunkY, chunkZ);
-        SetSubChunkVisible(subChunk, hasGeometry);
-        return hasGeometry;
+        pending.Complete();
+        if (!pending.HasGeometry)
+        {
+            return false;
+        }
+
+        int vertexOffset = _combinedMeshBuffers.vertices.Count;
+        for (int i = 0; i < pending.vertices.Length; i++)
+        {
+            _combinedMeshBuffers.vertices.Add(pending.vertices[i]);
+        }
+
+        for (int i = 0; i < pending.uvs.Length; i++)
+        {
+            _combinedMeshBuffers.uvs.Add(pending.uvs[i]);
+        }
+
+        for (int i = 0; i < pending.normals.Length; i++)
+        {
+            _combinedMeshBuffers.normals.Add(pending.normals[i]);
+        }
+
+        for (int i = 0; i < pending.colors.Length; i++)
+        {
+            _combinedMeshBuffers.colors.Add(pending.colors[i]);
+        }
+
+        List<int> destinationTriangles = _combinedMeshBuffers.triangles[subMeshIndex];
+        for (int i = 0; i < pending.indices.Length; i++)
+        {
+            destinationTriangles.Add(pending.indices[i] + vertexOffset);
+        }
+
+        return true;
     }
 
-    private static bool RefreshFoliageSubChunk(ChunkColumnInstance column, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    private bool AppendSourceMesh(Mesh sourceMesh, int subMeshIndex)
     {
-        if (!terrain.HasFoliageInSubChunk(chunkX, subChunkY, chunkZ))
+        if (sourceMesh == null || sourceMesh.vertexCount == 0)
         {
-            SetSubChunkVisible(column.FoliageSubChunks[subChunkY], false);
             return false;
         }
 
-        SubChunkInstance subChunk = column.FoliageSubChunks[subChunkY];
-        bool hasGeometry = VoxelFoliageMesher.RebuildSubChunkMesh(subChunk.Mesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
-        SetSubChunkVisible(subChunk, hasGeometry);
-        return hasGeometry;
+        sourceMesh.GetVertices(_combinedMeshBuffers.sourceVertices);
+        List<Vector3> sourceVertices = _combinedMeshBuffers.sourceVertices;
+        int vertexOffset = _combinedMeshBuffers.vertices.Count;
+        _combinedMeshBuffers.vertices.AddRange(_combinedMeshBuffers.sourceVertices);
+
+        sourceMesh.GetUVs(0, _combinedMeshBuffers.sourceUvs);
+        if (_combinedMeshBuffers.sourceUvs.Count == sourceVertices.Count)
+        {
+            _combinedMeshBuffers.uvs.AddRange(_combinedMeshBuffers.sourceUvs);
+        }
+        else
+        {
+            for (int i = 0; i < sourceVertices.Count; i++)
+            {
+                _combinedMeshBuffers.uvs.Add(Vector2.zero);
+            }
+        }
+
+        sourceMesh.GetNormals(_combinedMeshBuffers.sourceNormals);
+        if (_combinedMeshBuffers.sourceNormals.Count == sourceVertices.Count)
+        {
+            _combinedMeshBuffers.normals.AddRange(_combinedMeshBuffers.sourceNormals);
+        }
+        else
+        {
+            for (int i = 0; i < sourceVertices.Count; i++)
+            {
+                _combinedMeshBuffers.normals.Add(Vector3.up);
+            }
+        }
+
+        Color32[] sourceColors = sourceMesh.colors32;
+        if (sourceColors != null && sourceColors.Length == sourceVertices.Count)
+        {
+            _combinedMeshBuffers.colors.AddRange(sourceColors);
+        }
+        else
+        {
+            for (int i = 0; i < sourceVertices.Count; i++)
+            {
+                _combinedMeshBuffers.colors.Add(new Color32(255, 255, 255, 255));
+            }
+        }
+
+        sourceMesh.GetTriangles(_combinedMeshBuffers.sourceTriangles, 0, false);
+        List<int> destinationTriangles = _combinedMeshBuffers.triangles[subMeshIndex];
+        for (int i = 0; i < _combinedMeshBuffers.sourceTriangles.Count; i++)
+        {
+            destinationTriangles.Add(_combinedMeshBuffers.sourceTriangles[i] + vertexOffset);
+        }
+
+        return true;
     }
 
     private static void SetSubChunkVisible(SubChunkInstance subChunk, bool visible)
@@ -487,11 +588,7 @@ public sealed class ChunkView
         if (!visible)
         {
             subChunk.GameObject.SetActive(false);
-            if (subChunk.MeshCollider != null)
-            {
-                subChunk.MeshCollider.sharedMesh = null;
-            }
-
+            subChunk.HasFluidGeometry = false;
             if (subChunk.Mesh != null)
             {
                 subChunk.Mesh.Clear();
@@ -500,34 +597,7 @@ public sealed class ChunkView
             return;
         }
 
-        if (subChunk.MeshCollider != null)
-        {
-            subChunk.MeshCollider.sharedMesh = null;
-            subChunk.MeshCollider.sharedMesh = subChunk.Mesh;
-        }
-
         subChunk.GameObject.SetActive(true);
-    }
-
-    private static void SyncSolidChunkColliders(ChunkColumnInstance column)
-    {
-        if (column == null || column.Root == null || !column.Root.activeInHierarchy)
-        {
-            return;
-        }
-
-        for (int subChunkY = 0; subChunkY < column.SolidSubChunks.Length; subChunkY++)
-        {
-            SubChunkInstance subChunk = column.SolidSubChunks[subChunkY];
-            if (!IsSubChunkVisible(subChunk) || subChunk.MeshCollider == null || subChunk.Mesh == null || subChunk.Mesh.vertexCount == 0)
-            {
-                continue;
-            }
-
-            subChunk.MeshCollider.sharedMesh = null;
-            subChunk.MeshCollider.sharedMesh = subChunk.Mesh;
-            subChunk.MeshCollider.enabled = true;
-        }
     }
 
     private static void DestroyChunkColumnInstance(ChunkColumnInstance column)
@@ -537,11 +607,9 @@ public sealed class ChunkView
             return;
         }
 
-        for (int subChunkY = 0; subChunkY < column.SolidSubChunks.Length; subChunkY++)
+        for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
         {
-            DestroySubChunkInstance(column.SolidSubChunks[subChunkY]);
-            DestroySubChunkInstance(column.FluidSubChunks[subChunkY]);
-            DestroySubChunkInstance(column.FoliageSubChunks[subChunkY]);
+            DestroySubChunkInstance(column.SubChunks[subChunkY]);
         }
 
         if (column.Root != null)
@@ -557,11 +625,6 @@ public sealed class ChunkView
             return;
         }
 
-        if (subChunk.MeshCollider != null)
-        {
-            subChunk.MeshCollider.sharedMesh = null;
-        }
-
         if (subChunk.MeshFilter != null)
         {
             subChunk.MeshFilter.sharedMesh = null;
@@ -570,6 +633,21 @@ public sealed class ChunkView
         if (subChunk.Mesh != null)
         {
             Object.Destroy(subChunk.Mesh);
+        }
+
+        if (subChunk.SolidMesh != null)
+        {
+            Object.Destroy(subChunk.SolidMesh);
+        }
+
+        if (subChunk.FluidMesh != null)
+        {
+            Object.Destroy(subChunk.FluidMesh);
+        }
+
+        if (subChunk.FoliageMesh != null)
+        {
+            Object.Destroy(subChunk.FoliageMesh);
         }
     }
 
@@ -582,7 +660,7 @@ public sealed class ChunkView
 
         for (int i = 0; i < TerrainData.SubChunkCountY; i++)
         {
-            if (IsSubChunkVisible(column.SolidSubChunks[i]) || IsSubChunkVisible(column.FluidSubChunks[i]) || IsSubChunkVisible(column.FoliageSubChunks[i]))
+            if (IsSubChunkVisible(column.SubChunks[i]))
             {
                 return true;
             }

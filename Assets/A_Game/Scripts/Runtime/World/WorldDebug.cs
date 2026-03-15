@@ -9,11 +9,13 @@ public sealed class WorldDebug
     {
         public readonly bool selectionVisible;
         public readonly bool chunkBoundariesVisible;
+        public readonly bool playerCollisionVisible;
 
-        public OverlayVisibility(bool selectionVisible, bool chunkBoundariesVisible)
+        public OverlayVisibility(bool selectionVisible, bool chunkBoundariesVisible, bool playerCollisionVisible)
         {
             this.selectionVisible = selectionVisible;
             this.chunkBoundariesVisible = chunkBoundariesVisible;
+            this.playerCollisionVisible = playerCollisionVisible;
         }
     }
 
@@ -24,11 +26,13 @@ public sealed class WorldDebug
     private readonly GameObject[] _chunkBoundaryPlanes = new GameObject[8];
 
     private GameObject _selectionOutline;
+    private GameObject _playerCollisionOutline;
     private Material _selectionMaterial;
     private GameObject _chunkBoundaryRoot;
     private Material _chunkBoundaryMaterial;
     private Mesh _chunkBoundaryMesh;
     private bool _chunkBoundariesVisible;
+    private bool _playerCollisionVisible;
     private bool _hasCenterChunk;
     private Vector2Int _currentCenterChunk;
 
@@ -43,6 +47,7 @@ public sealed class WorldDebug
     public void Initialize()
     {
         CreateSelectionOutline();
+        CreatePlayerCollisionOutline();
         CreateChunkBoundaryDebug();
     }
 
@@ -54,6 +59,15 @@ public sealed class WorldDebug
             if (selectionMesh != null)
             {
                 Object.Destroy(selectionMesh);
+            }
+        }
+
+        if (_playerCollisionOutline != null)
+        {
+            Mesh collisionMesh = _playerCollisionOutline.GetComponent<MeshFilter>()?.sharedMesh;
+            if (collisionMesh != null)
+            {
+                Object.Destroy(collisionMesh);
             }
         }
 
@@ -73,7 +87,7 @@ public sealed class WorldDebug
         }
     }
 
-    public void HandleDebugInput(bool hasCenterChunk, Vector2Int centerChunk)
+    public void HandleDebugInput(FlyCamera playerController, bool hasCenterChunk, Vector2Int centerChunk)
     {
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null && keyboard.f3Key.isPressed && keyboard.gKey.wasPressedThisFrame)
@@ -81,7 +95,13 @@ public sealed class WorldDebug
             _chunkBoundariesVisible = !_chunkBoundariesVisible;
         }
 
+        if (keyboard != null && keyboard.f3Key.isPressed && keyboard.bKey.wasPressedThisFrame)
+        {
+            _playerCollisionVisible = !_playerCollisionVisible;
+        }
+
         UpdateChunkBoundaries(hasCenterChunk, centerChunk);
+        UpdatePlayerCollision(playerController);
     }
 
     public void UpdateChunkBoundaries(bool hasCenterChunk, Vector2Int centerChunk)
@@ -150,6 +170,7 @@ public sealed class WorldDebug
     {
         bool selectionVisible = _selectionOutline != null && _selectionOutline.activeSelf;
         bool chunkBoundariesVisible = _chunkBoundaryRoot != null && _chunkBoundaryRoot.activeSelf;
+        bool playerCollisionVisible = _playerCollisionOutline != null && _playerCollisionOutline.activeSelf;
 
         if (selectionVisible)
         {
@@ -161,7 +182,12 @@ public sealed class WorldDebug
             _chunkBoundaryRoot.SetActive(false);
         }
 
-        return new OverlayVisibility(selectionVisible, chunkBoundariesVisible);
+        if (playerCollisionVisible)
+        {
+            _playerCollisionOutline.SetActive(false);
+        }
+
+        return new OverlayVisibility(selectionVisible, chunkBoundariesVisible, playerCollisionVisible);
     }
 
     public void RestoreAfterReflection(OverlayVisibility visibility)
@@ -174,6 +200,11 @@ public sealed class WorldDebug
         if (visibility.chunkBoundariesVisible && _chunkBoundaryRoot != null)
         {
             _chunkBoundaryRoot.SetActive(true);
+        }
+
+        if (visibility.playerCollisionVisible && _playerCollisionOutline != null && _playerCollisionVisible)
+        {
+            _playerCollisionOutline.SetActive(true);
         }
     }
 
@@ -196,6 +227,26 @@ public sealed class WorldDebug
         meshRenderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
 
         _selectionOutline.SetActive(false);
+    }
+
+    private void CreatePlayerCollisionOutline()
+    {
+        _playerCollisionOutline = new GameObject("Player Collision Outline");
+        _playerCollisionOutline.transform.SetParent(_ownerTransform, false);
+
+        MeshFilter meshFilter = _playerCollisionOutline.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = CreateSelectionOutlineMesh();
+
+        MeshRenderer meshRenderer = _playerCollisionOutline.AddComponent<MeshRenderer>();
+        meshRenderer.sharedMaterial = _selectionMaterial != null ? _selectionMaterial : CreateSelectionMaterial();
+        meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+        meshRenderer.receiveShadows = false;
+        meshRenderer.lightProbeUsage = LightProbeUsage.Off;
+        meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+        meshRenderer.allowOcclusionWhenDynamic = false;
+        meshRenderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+
+        _playerCollisionOutline.SetActive(false);
     }
 
     private void CreateChunkBoundaryDebug()
@@ -326,6 +377,25 @@ public sealed class WorldDebug
         };
 
         return material;
+    }
+
+    private void UpdatePlayerCollision(FlyCamera playerController)
+    {
+        if (_playerCollisionOutline == null)
+        {
+            return;
+        }
+
+        if (!_playerCollisionVisible || playerController == null || !playerController.TryGetCollisionBounds(out Bounds bounds))
+        {
+            _playerCollisionOutline.SetActive(false);
+            return;
+        }
+
+        _playerCollisionOutline.transform.position = bounds.min;
+        _playerCollisionOutline.transform.rotation = Quaternion.identity;
+        _playerCollisionOutline.transform.localScale = bounds.size;
+        _playerCollisionOutline.SetActive(true);
     }
 
     private static Mesh CreateSelectionOutlineMesh()

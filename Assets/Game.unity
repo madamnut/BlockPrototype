@@ -224,7 +224,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldDebugOverlay
   worldRuntime: {fileID: 1212262539}
-  playerController: {fileID: 0}
+  playerController: {fileID: 841338669}
   upperLeftText: {fileID: 1562323632}
   upperRightText: {fileID: 475769495}
   lowerLeftText: {fileID: 443012319}
@@ -272,7 +272,7 @@ Transform:
   m_GameObject: {fileID: 171821072}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.9, z: 0}
+  m_LocalPosition: {x: 0, y: 1.4, z: 0}
   m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1129,7 +1129,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 841338667}
-  - component: {fileID: 841338668}
   - component: {fileID: 841338669}
   m_Layer: 0
   m_Name: Player
@@ -1155,29 +1154,6 @@ Transform:
   - {fileID: 1063068062}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &841338668
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 841338666}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.4
-  m_Height: 1.8
-  m_Direction: 1
-  m_Center: {x: 0, y: 0.4, z: 0}
 --- !u!114 &841338669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1194,7 +1170,8 @@ MonoBehaviour:
   playerRoot: {fileID: 841338667}
   headTransform: {fileID: 171821073}
   bodyTransform: {fileID: 1063068062}
-  playerCollider: {fileID: 841338668}
+  playerWidth: 0.6
+  playerHeight: 1.8
   groundMoveSpeed: 4
   flyMoveSpeed: 40
   fastMoveMultiplier: 1.3
@@ -1203,14 +1180,10 @@ MonoBehaviour:
   jumpHeight: 1.2
   lookSensitivity: 0.14
   spaceDoubleTapWindow: 0.3
-  collisionMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
   collisionSkinWidth: 0.02
   groundCheckDistance: 0.08
   thirdPersonBackDistance: 15
   thirdPersonFrontDistance: 15
-  cameraCollisionRadius: 0.2
 --- !u!1 &919255722
 GameObject:
   m_ObjectHideFlags: 0
@@ -1341,7 +1314,7 @@ Transform:
   m_GameObject: {fileID: 1063068061}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 0.7, y: 0.5, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1439,19 +1412,17 @@ MonoBehaviour:
   blockDatabase: {fileID: 11400000, guid: 193aec77485fe1b42bbdc1420bde93c5, type: 2}
   interactionCamera: {fileID: 330585545}
   chunkColumnPrefab: {fileID: 6545087223548192322, guid: dd6bb9761279da842a3e351fe345faf3, type: 3}
-  renderSizeInChunks: 65
+  renderSizeInChunks: 33
   generationPaddingInChunks: 1
   seed: 4801153
   worldGenSettingsAsset: {fileID: 11400000, guid: 32d8acc8826718042af5ebfd2c04f81e, type: 2}
   worldGenRemapProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
-  useGpuTerrain: 1
-  terrainHeightComputeShader: {fileID: 7200000, guid: ad7b673d29d54a75a89d5a5420fbc6f8, type: 3}
-  terrainSolidMeshComputeShader: {fileID: 7200000, guid: 1ec54045f71e49639f6dd8e34b917470, type: 3}
-  completedChunkGenerationsPerFrame: 4
-  chunkColumnsMeshedPerFrame: 4
+  completedChunkGenerationsPerFrame: 8
+  chunkColumnsMeshedPerFrame: 8
   interactionDistance: 16
   selectionColor: {r: 1, g: 1, b: 1, a: 1}
   chunkBoundaryColor: {r: 0.2, g: 0.9, b: 1, a: 0.16}
+  logChunkLoadStageTimings: 1
   enablePlanarReflection: 1
   planarReflectionRenderScale: 0.5
   planarReflectionCullingMask:

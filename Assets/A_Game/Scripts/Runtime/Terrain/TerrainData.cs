@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -9,6 +10,55 @@ using UnityEngine;
 
 public sealed class TerrainData : IDisposable
 {
+    public readonly struct ChunkColumnGenerationProfile
+    {
+        public readonly Vector2Int chunkCoords;
+        public readonly double rawSampleMilliseconds;
+        public readonly double remapFilterMilliseconds;
+        public readonly double composeHeightMilliseconds;
+        public readonly double blockFillMilliseconds;
+        public readonly double totalMilliseconds;
+
+        public ChunkColumnGenerationProfile(
+            Vector2Int chunkCoords,
+            double rawSampleMilliseconds,
+            double remapFilterMilliseconds,
+            double composeHeightMilliseconds,
+            double blockFillMilliseconds,
+            double totalMilliseconds)
+        {
+            this.chunkCoords = chunkCoords;
+            this.rawSampleMilliseconds = rawSampleMilliseconds;
+            this.remapFilterMilliseconds = remapFilterMilliseconds;
+            this.composeHeightMilliseconds = composeHeightMilliseconds;
+            this.blockFillMilliseconds = blockFillMilliseconds;
+            this.totalMilliseconds = totalMilliseconds;
+        }
+    }
+
+    public readonly struct CompletedChunkColumnInfo
+    {
+        public readonly Vector2Int chunkCoords;
+        public readonly double readyTime;
+        public readonly double heightJobMilliseconds;
+        public readonly double blockFillJobMilliseconds;
+        public readonly double finalizeMilliseconds;
+
+        public CompletedChunkColumnInfo(
+            Vector2Int chunkCoords,
+            double readyTime,
+            double heightJobMilliseconds,
+            double blockFillJobMilliseconds,
+            double finalizeMilliseconds)
+        {
+            this.chunkCoords = chunkCoords;
+            this.readyTime = readyTime;
+            this.heightJobMilliseconds = heightJobMilliseconds;
+            this.blockFillJobMilliseconds = blockFillJobMilliseconds;
+            this.finalizeMilliseconds = finalizeMilliseconds;
+        }
+    }
+
     public readonly struct WorldGenDebugSample
     {
         public readonly int height;
@@ -34,18 +84,24 @@ public sealed class TerrainData : IDisposable
 
     private sealed class ChunkColumnData
     {
+        public const byte SolidContentBit = 1 << 0;
+        public const byte FluidContentBit = 1 << 1;
+        public const byte FoliageContentBit = 1 << 2;
+
         public readonly BlockType[] blocks;
         public readonly VoxelFluid[] fluids;
         public readonly ushort[] foliageIds;
         public readonly int[] columnHeights;
+        public readonly byte[] subChunkContents;
         public int maxHeight;
 
-        public ChunkColumnData(BlockType[] blocks, VoxelFluid[] fluids, ushort[] foliageIds, int[] columnHeights, int maxHeight)
+        public ChunkColumnData(BlockType[] blocks, VoxelFluid[] fluids, ushort[] foliageIds, int[] columnHeights, byte[] subChunkContents, int maxHeight)
         {
             this.blocks = blocks;
             this.fluids = fluids;
             this.foliageIds = foliageIds;
             this.columnHeights = columnHeights;
+            this.subChunkContents = subChunkContents;
             this.maxHeight = maxHeight;
         }
     }
@@ -53,35 +109,16 @@ public sealed class TerrainData : IDisposable
     private struct PendingChunkColumnData
     {
         public JobHandle handle;
+        public JobHandle heightHandle;
+        public JobHandle blockFillHandle;
         public NativeArray<BlockType> blocks;
         public NativeArray<int> columnHeights;
+        public double requestTime;
+        public double heightReadyTime;
     }
 
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
-    private struct FillChunkColumnBlocksJob : IJobParallelFor
-    {
-        [ReadOnly] public NativeArray<int> columnHeights;
-
-        [NativeDisableContainerSafetyRestriction]
-        public NativeArray<BlockType> blocks;
-
-        public void Execute(int index)
-        {
-            int localX = index % ChunkSize;
-            int localZ = index / ChunkSize;
-            int terrainHeight = columnHeights[index];
-
-            for (int worldY = 0; worldY <= terrainHeight; worldY++)
-            {
-                blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
-                    ? BlockType.Grass
-                    : BlockType.Rock;
-            }
-        }
-    }
-
-    [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
-    private struct GenerateChunkColumnJob : IJobParallelFor
+    private struct SampleChunkColumnHeightsJob : IJobParallelFor
     {
         public int chunkX;
         public int chunkZ;
@@ -96,8 +133,6 @@ public sealed class TerrainData : IDisposable
         public ErosionSettings erosion;
         public RidgesSettings ridges;
 
-        [NativeDisableContainerSafetyRestriction]
-        public NativeArray<BlockType> blocks;
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
         [ReadOnly] public NativeArray<float> erosionCdfLut;
         [ReadOnly] public NativeArray<float> ridgesCdfLut;
@@ -110,16 +145,7 @@ public sealed class TerrainData : IDisposable
             int localZ = index / ChunkSize;
             int worldX = (chunkX * ChunkSize) + localX;
             int worldZ = (chunkZ * ChunkSize) + localZ;
-            int terrainHeight = SampleSurfaceHeight(worldX, worldZ);
-
-            for (int worldY = 0; worldY <= terrainHeight; worldY++)
-            {
-                blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
-                    ? BlockType.Grass
-                    : BlockType.Rock;
-            }
-
-            columnHeights[index] = terrainHeight;
+            columnHeights[index] = SampleSurfaceHeight(worldX, worldZ);
         }
 
         private int SampleSurfaceHeight(int worldX, int worldZ)
@@ -201,6 +227,29 @@ public sealed class TerrainData : IDisposable
         }
     }
 
+    [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+    private struct FillChunkColumnBlocksJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<int> columnHeights;
+
+        [NativeDisableContainerSafetyRestriction]
+        public NativeArray<BlockType> blocks;
+
+        public void Execute(int index)
+        {
+            int localX = index % ChunkSize;
+            int localZ = index / ChunkSize;
+            int terrainHeight = columnHeights[index];
+
+            for (int worldY = 0; worldY <= terrainHeight; worldY++)
+            {
+                blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
+                    ? BlockType.Grass
+                    : BlockType.Rock;
+            }
+        }
+    }
+
     public const int ChunkSize = 16;
     public const int SubChunkSize = 16;
     public const int WorldHeight = 256;
@@ -218,17 +267,13 @@ public sealed class TerrainData : IDisposable
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
     private NativeArray<float> _continentalnessFilterLut;
-    private readonly TerrainGpuHeightGenerator _gpuHeightGenerator;
-
     public TerrainData(
         int seed,
         TerrainGenerationSettings settings,
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
-        float[] continentalnessFilterLut = null,
-        bool useGpuHeightGeneration = false,
-        ComputeShader terrainHeightComputeShader = null)
+        float[] continentalnessFilterLut = null)
     {
         _seed = seed;
         _settings = settings;
@@ -240,13 +285,6 @@ public sealed class TerrainData : IDisposable
         _erosionCdfLut = CreateNativeLut(settings.useErosionRemap, erosionCdfLut);
         _ridgesCdfLut = CreateNativeLut(settings.useRidgesRemap, ridgesCdfLut);
         _continentalnessFilterLut = CreateNativeLut(continentalnessFilterLut != null && continentalnessFilterLut.Length > 1, continentalnessFilterLut);
-        if (useGpuHeightGeneration)
-        {
-            _gpuHeightGenerator = new TerrainGpuHeightGenerator(
-                terrainHeightComputeShader,
-                continentalnessCdfLut,
-                continentalnessFilterLut);
-        }
     }
 
     public int SeaLevel => _settings.seaLevel;
@@ -273,6 +311,81 @@ public sealed class TerrainData : IDisposable
             erosion,
             weirdness,
             pv);
+    }
+
+    public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        long rawSampleTicks = 0;
+        long remapFilterTicks = 0;
+        long composeHeightTicks = 0;
+        long blockFillTicks = 0;
+
+        int[] columnHeights = new int[ChunkSize * ChunkSize];
+        BlockType[] blocks = new BlockType[ChunkSize * WorldHeight * ChunkSize];
+
+        for (int localZ = 0; localZ < ChunkSize; localZ++)
+        {
+            for (int localX = 0; localX < ChunkSize; localX++)
+            {
+                int columnIndex = (localZ * ChunkSize) + localX;
+                int worldX = (chunkX * ChunkSize) + localX;
+                int worldZ = (chunkZ * ChunkSize) + localZ;
+                float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
+                float worldRegionZ = worldZ / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
+
+                long stageStart = stopwatch.ElapsedTicks;
+                float rawContinentalness = WorldGenPrototypeJobs.SampleRawContinentalness(
+                    _seed,
+                    worldRegionX,
+                    worldRegionZ,
+                    _settings.continentalness);
+                rawSampleTicks += stopwatch.ElapsedTicks - stageStart;
+
+                stageStart = stopwatch.ElapsedTicks;
+                float continentalness = WorldGenSampler.RemapRawContinentalness(
+                    rawContinentalness,
+                    _settings.useContinentalnessRemap,
+                    _managedContinentalnessCdfLut);
+                continentalness = WorldGenSampler.ApplyBakedFilter(continentalness, _managedContinentalnessFilterLut);
+                remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
+
+                stageStart = stopwatch.ElapsedTicks;
+                int terrainHeight = WorldGenSampler.ComposeSurfaceHeight(
+                    continentalness,
+                    _settings.minTerrainHeight,
+                    _settings.seaLevel,
+                    _settings.maxTerrainHeight);
+                composeHeightTicks += stopwatch.ElapsedTicks - stageStart;
+                columnHeights[columnIndex] = terrainHeight;
+            }
+        }
+
+        long fillStart = stopwatch.ElapsedTicks;
+        for (int localZ = 0; localZ < ChunkSize; localZ++)
+        {
+            for (int localX = 0; localX < ChunkSize; localX++)
+            {
+                int columnIndex = (localZ * ChunkSize) + localX;
+                int terrainHeight = columnHeights[columnIndex];
+                for (int worldY = 0; worldY <= terrainHeight; worldY++)
+                {
+                    blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
+                        ? BlockType.Grass
+                        : BlockType.Rock;
+                }
+            }
+        }
+
+        blockFillTicks = stopwatch.ElapsedTicks - fillStart;
+        double ticksToMilliseconds = 1000d / Stopwatch.Frequency;
+        return new ChunkColumnGenerationProfile(
+            new Vector2Int(chunkX, chunkZ),
+            rawSampleTicks * ticksToMilliseconds,
+            remapFilterTicks * ticksToMilliseconds,
+            composeHeightTicks * ticksToMilliseconds,
+            blockFillTicks * ticksToMilliseconds,
+            stopwatch.Elapsed.TotalMilliseconds);
     }
 
     public void Dispose()
@@ -320,40 +433,25 @@ public sealed class TerrainData : IDisposable
         {
             _continentalnessFilterLut.Dispose();
         }
-
-        _gpuHeightGenerator?.Dispose();
     }
 
-    public void RequestChunkColumn(int chunkX, int chunkZ)
+    public bool RequestChunkColumn(int chunkX, int chunkZ)
     {
         Vector2Int key = new(chunkX, chunkZ);
         if (_chunkColumns.ContainsKey(key) || _pendingChunkColumns.ContainsKey(key))
         {
-            return;
+            return false;
         }
 
         PendingChunkColumnData pending = new()
         {
             blocks = new NativeArray<BlockType>(ChunkSize * WorldHeight * ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory),
             columnHeights = new NativeArray<int>(ChunkSize * ChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+            requestTime = Time.realtimeSinceStartupAsDouble,
+            heightReadyTime = -1d,
         };
 
-        if (_gpuHeightGenerator != null &&
-            _gpuHeightGenerator.TryGenerateChunkHeights(chunkX, chunkZ, _seed, _settings, pending.columnHeights))
-        {
-            FillChunkColumnBlocksJob fillJob = new()
-            {
-                columnHeights = pending.columnHeights,
-                blocks = pending.blocks,
-            };
-
-            pending.handle = fillJob.Schedule(ChunkSize * ChunkSize, ChunkSize);
-            _pendingChunkColumns.Add(key, pending);
-            _pendingChunkKeys.Add(key);
-            return;
-        }
-
-        GenerateChunkColumnJob job = new()
+        SampleChunkColumnHeightsJob heightJob = new()
         {
             chunkX = chunkX,
             chunkZ = chunkZ,
@@ -367,7 +465,6 @@ public sealed class TerrainData : IDisposable
             continentalness = _settings.continentalness,
             erosion = _settings.erosion,
             ridges = _settings.ridges,
-            blocks = pending.blocks,
             continentalnessCdfLut = _continentalnessCdfLut,
             erosionCdfLut = _erosionCdfLut,
             ridgesCdfLut = _ridgesCdfLut,
@@ -375,12 +472,21 @@ public sealed class TerrainData : IDisposable
             columnHeights = pending.columnHeights,
         };
 
-        pending.handle = job.Schedule(ChunkSize * ChunkSize, ChunkSize);
+        FillChunkColumnBlocksJob blockFillJob = new()
+        {
+            columnHeights = pending.columnHeights,
+            blocks = pending.blocks,
+        };
+
+        pending.heightHandle = heightJob.Schedule(ChunkSize * ChunkSize, ChunkSize);
+        pending.blockFillHandle = blockFillJob.Schedule(ChunkSize * ChunkSize, ChunkSize, pending.heightHandle);
+        pending.handle = pending.blockFillHandle;
         _pendingChunkColumns.Add(key, pending);
         _pendingChunkKeys.Add(key);
+        return true;
     }
 
-    public int CompletePendingChunkColumns(List<Vector2Int> completedChunkCoords, int maxCompletions)
+    public int CompletePendingChunkColumns(List<CompletedChunkColumnInfo> completedChunkInfos, int maxCompletions)
     {
         int completedCount = 0;
         for (int i = 0; i < _pendingChunkKeys.Count && completedCount < maxCompletions; i++)
@@ -391,17 +497,34 @@ public sealed class TerrainData : IDisposable
                 continue;
             }
 
+            double now = Time.realtimeSinceStartupAsDouble;
+            if (pending.heightReadyTime < 0d && pending.heightHandle.IsCompleted)
+            {
+                pending.heightReadyTime = now;
+                _pendingChunkColumns[key] = pending;
+            }
+
             if (!pending.handle.IsCompleted)
             {
                 continue;
             }
 
+            double readyTime = Time.realtimeSinceStartupAsDouble;
+            double heightReadyTime = pending.heightReadyTime >= 0d ? pending.heightReadyTime : readyTime;
             FinalizePendingChunkColumn(key, pending);
+            double finalizeMilliseconds = (Time.realtimeSinceStartupAsDouble - readyTime) * 1000d;
             _pendingChunkColumns.Remove(key);
             _pendingChunkKeys.RemoveAt(i);
             i--;
 
-            completedChunkCoords?.Add(key);
+            double heightJobMilliseconds = Math.Max(0d, (heightReadyTime - pending.requestTime) * 1000d);
+            double blockFillJobMilliseconds = Math.Max(0d, (readyTime - heightReadyTime) * 1000d);
+            completedChunkInfos?.Add(new CompletedChunkColumnInfo(
+                key,
+                readyTime,
+                heightJobMilliseconds,
+                blockFillJobMilliseconds,
+                finalizeMilliseconds));
             completedCount++;
         }
 
@@ -421,19 +544,72 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        if (chunk.maxHeight < 0)
-        {
-            usedSubChunkCount = 0;
-            return true;
-        }
-
-        usedSubChunkCount = Mathf.Clamp((chunk.maxHeight / SubChunkSize) + 1, 1, SubChunkCountY);
+        usedSubChunkCount = GetUsedSubChunkCount(chunk);
         return true;
     }
 
     public int GetUsedSubChunkCount(int chunkX, int chunkZ)
     {
         return TryGetUsedSubChunkCount(chunkX, chunkZ, out int usedSubChunkCount) ? usedSubChunkCount : 0;
+    }
+
+    public bool HasSolidBlocksInSubChunk(int chunkX, int subChunkY, int chunkZ)
+    {
+        return TryGetSubChunkContents(chunkX, subChunkY, chunkZ, out byte contents) &&
+               (contents & ChunkColumnData.SolidContentBit) != 0;
+    }
+
+    public bool HasFluidInSubChunk(int chunkX, int subChunkY, int chunkZ)
+    {
+        return TryGetSubChunkContents(chunkX, subChunkY, chunkZ, out byte contents) &&
+               (contents & ChunkColumnData.FluidContentBit) != 0;
+    }
+
+    public bool HasFoliageInSubChunk(int chunkX, int subChunkY, int chunkZ)
+    {
+        return TryGetSubChunkContents(chunkX, subChunkY, chunkZ, out byte contents) &&
+               (contents & ChunkColumnData.FoliageContentBit) != 0;
+    }
+
+    private static int GetUsedSubChunkCount(ChunkColumnData chunk)
+    {
+        if (chunk.subChunkContents == null)
+        {
+            return chunk.maxHeight < 0 ? 0 : Mathf.Clamp((chunk.maxHeight / SubChunkSize) + 1, 1, SubChunkCountY);
+        }
+
+        for (int subChunkY = SubChunkCountY - 1; subChunkY >= 0; subChunkY--)
+        {
+            if (chunk.subChunkContents[subChunkY] != 0)
+            {
+                return subChunkY + 1;
+            }
+        }
+
+        return 0;
+    }
+
+    private bool TryGetSubChunkContents(int chunkX, int subChunkY, int chunkZ, out byte contents)
+    {
+        contents = 0;
+        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
+        {
+            return false;
+        }
+
+        Vector2Int key = new(chunkX, chunkZ);
+        if (!_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
+        if (chunk.subChunkContents == null || chunk.subChunkContents.Length != SubChunkCountY)
+        {
+            return false;
+        }
+
+        contents = chunk.subChunkContents[subChunkY];
+        return true;
     }
 
     public BlockType GetBlock(int worldX, int worldY, int worldZ)
@@ -540,6 +716,12 @@ public sealed class TerrainData : IDisposable
             chunk.fluids[index] = VoxelFluid.None;
             chunk.foliageIds[index] = 0;
             bool removedFoliageAbove = ClearUnsupportedFoliageAbove(chunk, localX, worldY, localZ);
+            RecalculateSubChunkContents(chunk, worldY / SubChunkSize);
+            if (removedFoliageAbove)
+            {
+                RecalculateSubChunkContents(chunk, (worldY + 1) / SubChunkSize);
+            }
+
             if (worldY > chunk.maxHeight)
             {
                 chunk.maxHeight = worldY;
@@ -557,6 +739,12 @@ public sealed class TerrainData : IDisposable
         }
 
         bool removedUnsupportedFoliage = ClearUnsupportedFoliageAbove(chunk, localX, worldY, localZ);
+        RecalculateSubChunkContents(chunk, worldY / SubChunkSize);
+        if (removedUnsupportedFoliage)
+        {
+            RecalculateSubChunkContents(chunk, (worldY + 1) / SubChunkSize);
+        }
+
         if (chunk.columnHeights != null && columnIndex < chunk.columnHeights.Length && worldY >= currentColumnHeight)
         {
             chunk.columnHeights[columnIndex] = CalculateColumnSurfaceHeight(chunk, localX, localZ);
@@ -600,6 +788,7 @@ public sealed class TerrainData : IDisposable
         {
             chunk.foliageIds[index] = 0;
         }
+        RecalculateSubChunkContents(chunk, worldY / SubChunkSize);
 
         if (fluid.Exists)
         {
@@ -647,6 +836,7 @@ public sealed class TerrainData : IDisposable
         }
 
         chunk.foliageIds[index] = foliageId;
+        RecalculateSubChunkContents(chunk, worldY / SubChunkSize);
         if (foliageId != 0)
         {
             if (worldY > chunk.maxHeight)
@@ -663,129 +853,6 @@ public sealed class TerrainData : IDisposable
         }
 
         return true;
-    }
-
-    public bool HasSolidBlocksInSubChunk(int chunkX, int subChunkY, int chunkZ)
-    {
-        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
-        {
-            return false;
-        }
-
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
-        {
-            return false;
-        }
-
-        if (chunk.maxHeight < 0)
-        {
-            return false;
-        }
-
-        int startY = subChunkY * SubChunkSize;
-        if (chunk.maxHeight < startY)
-        {
-            return false;
-        }
-
-        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
-        for (int worldY = startY; worldY < endY; worldY++)
-        {
-            for (int localZ = 0; localZ < ChunkSize; localZ++)
-            {
-                for (int localX = 0; localX < ChunkSize; localX++)
-                {
-                    if (chunk.blocks[GetIndex(localX, worldY, localZ)] != BlockType.Air)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public bool HasFluidInSubChunk(int chunkX, int subChunkY, int chunkZ)
-    {
-        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
-        {
-            return false;
-        }
-
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
-        {
-            return false;
-        }
-
-        if (chunk.maxHeight < 0)
-        {
-            return false;
-        }
-
-        int startY = subChunkY * SubChunkSize;
-        if (chunk.maxHeight < startY)
-        {
-            return false;
-        }
-
-        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
-        for (int worldY = startY; worldY < endY; worldY++)
-        {
-            for (int localZ = 0; localZ < ChunkSize; localZ++)
-            {
-                for (int localX = 0; localX < ChunkSize; localX++)
-                {
-                    if (chunk.fluids[GetIndex(localX, worldY, localZ)].Exists)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public bool HasFoliageInSubChunk(int chunkX, int subChunkY, int chunkZ)
-    {
-        if (subChunkY < 0 || subChunkY >= SubChunkCountY)
-        {
-            return false;
-        }
-
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
-        {
-            return false;
-        }
-
-        if (chunk.maxHeight < 0)
-        {
-            return false;
-        }
-
-        int startY = subChunkY * SubChunkSize;
-        if (chunk.maxHeight < startY)
-        {
-            return false;
-        }
-
-        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
-        for (int worldY = startY; worldY < endY; worldY++)
-        {
-            for (int localZ = 0; localZ < ChunkSize; localZ++)
-            {
-                for (int localX = 0; localX < ChunkSize; localX++)
-                {
-                    if (chunk.foliageIds[GetIndex(localX, worldY, localZ)] != 0)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
     }
 
     public bool IsInBounds(int worldX, int worldY, int worldZ)
@@ -817,28 +884,51 @@ public sealed class TerrainData : IDisposable
     {
         pending.handle.Complete();
 
-        BlockType[] managedBlocks = pending.blocks.ToArray();
+        BlockType[] managedBlocks = new BlockType[pending.blocks.Length];
+        pending.blocks.CopyTo(managedBlocks);
+
+        int[] managedColumnHeights = new int[pending.columnHeights.Length];
+        pending.columnHeights.CopyTo(managedColumnHeights);
+
         VoxelFluid[] managedFluids = new VoxelFluid[managedBlocks.Length];
         ushort[] managedFoliageIds = new ushort[managedBlocks.Length];
+        byte[] subChunkContents = new byte[SubChunkCountY];
         int maxHeight = -1;
+        int waterEndY = Mathf.Min(_settings.seaLevel, WorldHeight);
+        bool needsWater = false;
+
         for (int i = 0; i < pending.columnHeights.Length; i++)
         {
-            if (pending.columnHeights[i] > maxHeight)
+            int columnHeight = managedColumnHeights[i];
+            if (columnHeight > maxHeight)
             {
-                maxHeight = pending.columnHeights[i];
+                maxHeight = columnHeight;
+            }
+
+            if (columnHeight >= 0)
+            {
+                int highestSolidSubChunk = math.min(columnHeight / SubChunkSize, SubChunkCountY - 1);
+                for (int subChunkY = 0; subChunkY <= highestSolidSubChunk; subChunkY++)
+                {
+                    subChunkContents[subChunkY] |= ChunkColumnData.SolidContentBit;
+                }
+            }
+
+            if (!needsWater && waterEndY > 0 && columnHeight + 1 < waterEndY)
+            {
+                needsWater = true;
             }
         }
 
-        if (_settings.seaLevel > 0)
+        if (needsWater)
         {
             for (int localZ = 0; localZ < ChunkSize; localZ++)
             {
                 for (int localX = 0; localX < ChunkSize; localX++)
                 {
                     int columnIndex = (localZ * ChunkSize) + localX;
-                    int surfaceHeight = pending.columnHeights[columnIndex];
+                    int surfaceHeight = managedColumnHeights[columnIndex];
                     int waterStartY = surfaceHeight + 1;
-                    int waterEndY = Mathf.Min(_settings.seaLevel, WorldHeight);
 
                     for (int worldY = waterStartY; worldY < waterEndY; worldY++)
                     {
@@ -849,6 +939,7 @@ public sealed class TerrainData : IDisposable
                         }
 
                         managedFluids[index] = VoxelFluid.Water(100);
+                        subChunkContents[worldY / SubChunkSize] |= ChunkColumnData.FluidContentBit;
                         if (worldY > maxHeight)
                         {
                             maxHeight = worldY;
@@ -857,8 +948,6 @@ public sealed class TerrainData : IDisposable
                 }
             }
         }
-
-        int[] managedColumnHeights = pending.columnHeights.ToArray();
         pending.blocks.Dispose();
         pending.columnHeights.Dispose();
 
@@ -867,6 +956,7 @@ public sealed class TerrainData : IDisposable
             managedFluids,
             managedFoliageIds,
             managedColumnHeights,
+            subChunkContents,
             maxHeight);
     }
 
@@ -889,6 +979,50 @@ public sealed class TerrainData : IDisposable
         }
 
         chunk.maxHeight = -1;
+    }
+
+    private static void RecalculateSubChunkContents(ChunkColumnData chunk, int subChunkY)
+    {
+        if (chunk.subChunkContents == null || subChunkY < 0 || subChunkY >= chunk.subChunkContents.Length)
+        {
+            return;
+        }
+
+        byte contents = 0;
+        int startY = subChunkY * SubChunkSize;
+        int endY = Mathf.Min(startY + SubChunkSize, WorldHeight);
+        for (int worldY = startY; worldY < endY; worldY++)
+        {
+            for (int localZ = 0; localZ < ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < ChunkSize; localX++)
+                {
+                    int index = GetIndex(localX, worldY, localZ);
+                    if ((contents & ChunkColumnData.SolidContentBit) == 0 && chunk.blocks[index] != BlockType.Air)
+                    {
+                        contents |= ChunkColumnData.SolidContentBit;
+                    }
+
+                    if ((contents & ChunkColumnData.FluidContentBit) == 0 && chunk.fluids[index].Exists)
+                    {
+                        contents |= ChunkColumnData.FluidContentBit;
+                    }
+
+                    if ((contents & ChunkColumnData.FoliageContentBit) == 0 && chunk.foliageIds[index] != 0)
+                    {
+                        contents |= ChunkColumnData.FoliageContentBit;
+                    }
+
+                    if (contents == (ChunkColumnData.SolidContentBit | ChunkColumnData.FluidContentBit | ChunkColumnData.FoliageContentBit))
+                    {
+                        chunk.subChunkContents[subChunkY] = contents;
+                        return;
+                    }
+                }
+            }
+        }
+
+        chunk.subChunkContents[subChunkY] = contents;
     }
 
     private static int CalculateColumnSurfaceHeight(ChunkColumnData chunk, int localX, int localZ)

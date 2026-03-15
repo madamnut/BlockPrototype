@@ -5,11 +5,9 @@ public sealed class SubChunk : MonoBehaviour
 {
     [SerializeField] private MeshFilter meshFilter;
     [SerializeField] private MeshRenderer meshRenderer;
-    [SerializeField] private MeshCollider meshCollider;
 
     public MeshFilter MeshFilter => meshFilter;
     public MeshRenderer MeshRenderer => meshRenderer;
-    public MeshCollider MeshCollider => meshCollider;
 
     private void Reset()
     {
@@ -31,11 +29,6 @@ public sealed class SubChunk : MonoBehaviour
         if (meshRenderer == null)
         {
             meshRenderer = GetComponent<MeshRenderer>();
-        }
-
-        if (meshCollider == null)
-        {
-            meshCollider = GetComponent<MeshCollider>();
         }
     }
 }

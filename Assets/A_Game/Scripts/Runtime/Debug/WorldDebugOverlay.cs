@@ -252,6 +252,7 @@ public sealed class WorldDebugOverlay : MonoBehaviour
         lowerLeftText.text =
             "F3: Toggle top debug\n" +
             "F3 + G: Chunk bounds\n" +
+            "F3 + B: Player bounds\n" +
             "F5: Cycle camera mode\n" +
             "Space x2: Toggle fly/ground\n" +
             "LMB: Break block\n" +

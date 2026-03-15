@@ -3,17 +3,14 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class Chunk : MonoBehaviour
 {
-    private const string SolidRootName = "Solid";
-    private const string FluidRootName = "Fluid";
-    private const string FoliageRootName = "Foliage";
+    private const string SubChunksRootName = "SubChunks";
+    private const string LegacySolidRootName = "Solid";
+    private const string LegacyFluidRootName = "Fluid";
+    private const string LegacyFoliageRootName = "Foliage";
 
-    [SerializeField] private SubChunk[] solidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
-    [SerializeField] private SubChunk[] fluidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
-    [SerializeField] private SubChunk[] foliageSubChunks = new SubChunk[TerrainData.SubChunkCountY];
+    [SerializeField] private SubChunk[] subChunks = new SubChunk[TerrainData.SubChunkCountY];
 
-    public SubChunk[] SolidSubChunks => solidSubChunks;
-    public SubChunk[] FluidSubChunks => fluidSubChunks;
-    public SubChunk[] FoliageSubChunks => foliageSubChunks;
+    public SubChunk[] SubChunks => subChunks;
 
     private void Reset()
     {
@@ -30,19 +27,15 @@ public sealed class Chunk : MonoBehaviour
     {
         EnsureArraySizes();
 
-        Transform solidRoot = GetOrCreateContainerRoot(SolidRootName);
-        Transform fluidRoot = GetOrCreateContainerRoot(FluidRootName);
-        Transform foliageRoot = GetOrCreateContainerRoot(FoliageRootName);
-
-        ClearContainerChildren(solidRoot);
-        ClearContainerChildren(fluidRoot);
-        ClearContainerChildren(foliageRoot);
+        Transform subChunksRoot = GetOrCreateContainerRoot(SubChunksRootName);
+        DestroyLegacyContainerRoot(LegacySolidRootName);
+        DestroyLegacyContainerRoot(LegacyFluidRootName);
+        DestroyLegacyContainerRoot(LegacyFoliageRootName);
+        ClearContainerChildren(subChunksRoot);
 
         for (int subChunkY = 0; subChunkY < TerrainData.SubChunkCountY; subChunkY++)
         {
-            solidSubChunks[subChunkY] = CreateSubChunkBinding(solidRoot, "Solid", subChunkY, createCollider: true);
-            fluidSubChunks[subChunkY] = CreateSubChunkBinding(fluidRoot, "Fluid", subChunkY, createCollider: false);
-            foliageSubChunks[subChunkY] = CreateSubChunkBinding(foliageRoot, "Foliage", subChunkY, createCollider: false);
+            subChunks[subChunkY] = CreateSubChunkBinding(subChunksRoot, subChunkY);
         }
     }
 
@@ -50,26 +43,14 @@ public sealed class Chunk : MonoBehaviour
     public void RebindExistingSubChunks()
     {
         EnsureArraySizes();
-        BindExistingSubChunks(SolidRootName, solidSubChunks);
-        BindExistingSubChunks(FluidRootName, fluidSubChunks);
-        BindExistingSubChunks(FoliageRootName, foliageSubChunks);
+        BindExistingSubChunks(SubChunksRootName, subChunks);
     }
 
     private void EnsureArraySizes()
     {
-        if (solidSubChunks == null || solidSubChunks.Length != TerrainData.SubChunkCountY)
+        if (subChunks == null || subChunks.Length != TerrainData.SubChunkCountY)
         {
-            solidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
-        }
-
-        if (fluidSubChunks == null || fluidSubChunks.Length != TerrainData.SubChunkCountY)
-        {
-            fluidSubChunks = new SubChunk[TerrainData.SubChunkCountY];
-        }
-
-        if (foliageSubChunks == null || foliageSubChunks.Length != TerrainData.SubChunkCountY)
-        {
-            foliageSubChunks = new SubChunk[TerrainData.SubChunkCountY];
+            subChunks = new SubChunk[TerrainData.SubChunkCountY];
         }
     }
 
@@ -90,6 +71,24 @@ public sealed class Chunk : MonoBehaviour
         return root;
     }
 
+    private void DestroyLegacyContainerRoot(string rootName)
+    {
+        Transform root = transform.Find(rootName);
+        if (root == null)
+        {
+            return;
+        }
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            Object.DestroyImmediate(root.gameObject);
+            return;
+        }
+#endif
+        Object.Destroy(root.gameObject);
+    }
+
     private static void ClearContainerChildren(Transform container)
     {
         for (int i = container.childCount - 1; i >= 0; i--)
@@ -108,9 +107,9 @@ public sealed class Chunk : MonoBehaviour
         }
     }
 
-    private static SubChunk CreateSubChunkBinding(Transform parent, string prefix, int subChunkY, bool createCollider)
+    private static SubChunk CreateSubChunkBinding(Transform parent, int subChunkY)
     {
-        GameObject child = new($"{prefix}_SubChunk_{subChunkY}");
+        GameObject child = new($"SubChunk_{subChunkY}");
         Transform childTransform = child.transform;
         childTransform.SetParent(parent, false);
         childTransform.localPosition = new Vector3(0f, subChunkY * TerrainData.SubChunkSize, 0f);
@@ -119,10 +118,6 @@ public sealed class Chunk : MonoBehaviour
 
         child.AddComponent<MeshFilter>();
         child.AddComponent<MeshRenderer>();
-        if (createCollider)
-        {
-            child.AddComponent<MeshCollider>();
-        }
 
         SubChunk binding = child.AddComponent<SubChunk>();
         return binding;
