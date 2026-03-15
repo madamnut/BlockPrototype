@@ -7,21 +7,33 @@ public sealed class WorldStreaming
     private readonly List<TerrainData.CompletedChunkColumnInfo> _completedChunkBuffer = new(16);
     private readonly List<Vector2Int> _visibleChunkKeyBuffer = new(256);
     private readonly List<Vector2Int> _chunkPriorityBuffer = new(256);
+    private readonly List<Vector2Int> _requestQueue = new(256);
     private readonly HashSet<Vector2Int> _queuedChunkColumns = new();
+    private readonly HashSet<Vector2Int> _queuedChunkRequests = new();
+    private readonly HashSet<Vector2Int> _targetGenerationChunks = new();
     private readonly HashSet<Vector2Int> _targetVisibleChunks = new();
     private readonly HashSet<Vector2Int> _visibleChunkColumns = new();
     private readonly List<Vector2Int> _chunkRefreshQueue = new(256);
     private int _chunkRefreshQueueHead;
+    private int _requestQueueHead;
 
     public bool HasCenterChunk { get; private set; }
     public Vector2Int CurrentCenterChunk { get; private set; }
+    public int VisibleChunkCount => _visibleChunkColumns.Count;
+    public int PendingRefreshCount => _chunkRefreshQueue.Count - _chunkRefreshQueueHead;
+    public int QueuedChunkCount => _queuedChunkColumns.Count;
+    public int PendingRequestCount => _requestQueue.Count - _requestQueueHead;
 
     public void Reset()
     {
         _visibleChunkColumns.Clear();
         _queuedChunkColumns.Clear();
+        _queuedChunkRequests.Clear();
         _chunkRefreshQueue.Clear();
         _chunkRefreshQueueHead = 0;
+        _requestQueue.Clear();
+        _requestQueueHead = 0;
+        _targetGenerationChunks.Clear();
         _targetVisibleChunks.Clear();
         _visibleChunkKeyBuffer.Clear();
         _chunkPriorityBuffer.Clear();
@@ -41,7 +53,6 @@ public sealed class WorldStreaming
         int renderSizeInChunks,
         int generationPaddingInChunks,
         Func<int, int, bool> isChunkColumnReady,
-        Action<int, int> requestChunkColumn,
         Action<Vector2Int> releaseChunkColumn)
     {
         if (!force && HasCenterChunk && centerChunk == CurrentCenterChunk)
@@ -53,6 +64,7 @@ public sealed class WorldStreaming
         HasCenterChunk = true;
 
         _targetVisibleChunks.Clear();
+        _targetGenerationChunks.Clear();
         int radius = renderSizeInChunks / 2;
         for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
         {
@@ -62,7 +74,16 @@ public sealed class WorldStreaming
             }
         }
 
-        RequestChunksAroundCenter(centerChunk, radius + generationPaddingInChunks, requestChunkColumn);
+        int generationRadius = radius + generationPaddingInChunks;
+        for (int offsetZ = -generationRadius; offsetZ <= generationRadius; offsetZ++)
+        {
+            for (int offsetX = -generationRadius; offsetX <= generationRadius; offsetX++)
+            {
+                _targetGenerationChunks.Add(new Vector2Int(centerChunk.x + offsetX, centerChunk.y + offsetZ));
+            }
+        }
+
+        RebuildRequestQueue(centerChunk, isChunkColumnReady);
 
         _visibleChunkKeyBuffer.Clear();
         foreach (Vector2Int chunkCoords in _visibleChunkColumns)
@@ -96,6 +117,50 @@ public sealed class WorldStreaming
                 QueueChunkColumnRefresh(chunkCoords);
             }
         }
+    }
+
+    public void ProcessChunkRequests(
+        int maxRequestsPerFrame,
+        int maxPendingChunkGenerations,
+        int currentPendingChunkGenerations,
+        Func<int, int, bool> isChunkColumnReady,
+        Func<int, int, bool> requestChunkColumn)
+    {
+        if (maxRequestsPerFrame <= 0 || maxPendingChunkGenerations <= 0)
+        {
+            return;
+        }
+
+        int requestsStarted = 0;
+        while (_requestQueueHead < _requestQueue.Count && requestsStarted < maxRequestsPerFrame)
+        {
+            if (currentPendingChunkGenerations >= maxPendingChunkGenerations)
+            {
+                break;
+            }
+
+            Vector2Int chunkCoords = _requestQueue[_requestQueueHead];
+            _requestQueueHead++;
+            _queuedChunkRequests.Remove(chunkCoords);
+
+            if (!_targetGenerationChunks.Contains(chunkCoords))
+            {
+                continue;
+            }
+
+            if (isChunkColumnReady != null && isChunkColumnReady(chunkCoords.x, chunkCoords.y))
+            {
+                continue;
+            }
+
+            if (requestChunkColumn != null && requestChunkColumn(chunkCoords.x, chunkCoords.y))
+            {
+                requestsStarted++;
+                currentPendingChunkGenerations++;
+            }
+        }
+
+        TrimProcessedRequestQueue();
     }
 
     public void CompleteChunkGenerationJobs(TerrainData terrain, int completedChunkGenerationsPerFrame, Action<TerrainData.CompletedChunkColumnInfo> onChunkCompleted = null)
@@ -145,25 +210,6 @@ public sealed class WorldStreaming
         TrimProcessedRefreshQueue();
     }
 
-    private void RequestChunksAroundCenter(Vector2Int centerChunk, int radius, Action<int, int> requestChunkColumn)
-    {
-        _chunkPriorityBuffer.Clear();
-        for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
-        {
-            for (int offsetX = -radius; offsetX <= radius; offsetX++)
-            {
-                _chunkPriorityBuffer.Add(new Vector2Int(centerChunk.x + offsetX, centerChunk.y + offsetZ));
-            }
-        }
-
-        SortChunkCoordinatesByDistance(_chunkPriorityBuffer, centerChunk);
-        for (int i = 0; i < _chunkPriorityBuffer.Count; i++)
-        {
-            Vector2Int chunkCoords = _chunkPriorityBuffer[i];
-            requestChunkColumn?.Invoke(chunkCoords.x, chunkCoords.y);
-        }
-    }
-
     private void QueueChunkAndNeighborsForRefresh(Vector2Int chunkCoords)
     {
         QueueChunkColumnRefresh(chunkCoords);
@@ -203,6 +249,32 @@ public sealed class WorldStreaming
         _chunkRefreshQueue.Insert(insertIndex, chunkCoords);
     }
 
+    private void RebuildRequestQueue(Vector2Int centerChunk, Func<int, int, bool> isChunkColumnReady)
+    {
+        _chunkPriorityBuffer.Clear();
+        foreach (Vector2Int chunkCoords in _targetGenerationChunks)
+        {
+            if (isChunkColumnReady != null && isChunkColumnReady(chunkCoords.x, chunkCoords.y))
+            {
+                continue;
+            }
+
+            _chunkPriorityBuffer.Add(chunkCoords);
+        }
+
+        SortChunkCoordinatesByDistance(_chunkPriorityBuffer, centerChunk);
+        _requestQueue.Clear();
+        _queuedChunkRequests.Clear();
+        _requestQueueHead = 0;
+
+        for (int i = 0; i < _chunkPriorityBuffer.Count; i++)
+        {
+            Vector2Int chunkCoords = _chunkPriorityBuffer[i];
+            _requestQueue.Add(chunkCoords);
+            _queuedChunkRequests.Add(chunkCoords);
+        }
+    }
+
     private void TrimProcessedRefreshQueue()
     {
         if (_chunkRefreshQueueHead <= 0)
@@ -224,6 +296,29 @@ public sealed class WorldStreaming
 
         _chunkRefreshQueue.RemoveRange(0, _chunkRefreshQueueHead);
         _chunkRefreshQueueHead = 0;
+    }
+
+    private void TrimProcessedRequestQueue()
+    {
+        if (_requestQueueHead <= 0)
+        {
+            return;
+        }
+
+        if (_requestQueueHead >= _requestQueue.Count)
+        {
+            _requestQueue.Clear();
+            _requestQueueHead = 0;
+            return;
+        }
+
+        if (_requestQueueHead < 64 && _requestQueueHead * 2 < _requestQueue.Count)
+        {
+            return;
+        }
+
+        _requestQueue.RemoveRange(0, _requestQueueHead);
+        _requestQueueHead = 0;
     }
 
     private static void GetSortedChunkCoordinates(HashSet<Vector2Int> source, Vector2Int centerChunk, List<Vector2Int> destination)

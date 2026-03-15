@@ -14,6 +14,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         None,
         Continentalness,
+        ContPvHeight,
         Erosion,
         Weirdness,
         Pv,
@@ -27,6 +28,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     [SerializeField] private RawImage gridImage;
     [SerializeField] private Button generateButton;
     [SerializeField] private Button continentalnessButton;
+    [SerializeField] private Button contPvButton;
     [SerializeField] private Button erosionButton;
     [FormerlySerializedAs("peaksRidgesButton")]
     [SerializeField] private Button weirdnessButton;
@@ -62,6 +64,8 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private NativeArray<float> cachedRidgesCdfLut;
     private NativeArray<float> cachedTemperatureCdfLut;
     private NativeArray<float> cachedPrecipitationCdfLut;
+    private NativeArray<float> cachedContinentalnessFilterLut;
+    private NativeArray<float> cachedPvFilterLut;
     private WorldGenRemapProfileAsset cachedRemapProfileAsset;
     private int cachedRemapBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
@@ -84,6 +88,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         BindButton(generateButton, GeneratePreview);
         BindButton(continentalnessButton, ToggleContinentalnessMode);
+        BindButton(contPvButton, ToggleContPvMode);
         BindButton(erosionButton, ToggleErosionMode);
         BindButton(weirdnessButton, ToggleWeirdnessMode);
         BindButton(pvButton, TogglePvMode);
@@ -97,6 +102,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         UnbindButton(generateButton, GeneratePreview);
         UnbindButton(continentalnessButton, ToggleContinentalnessMode);
+        UnbindButton(contPvButton, ToggleContPvMode);
         UnbindButton(erosionButton, ToggleErosionMode);
         UnbindButton(weirdnessButton, ToggleWeirdnessMode);
         UnbindButton(pvButton, TogglePvMode);
@@ -104,6 +110,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
         UnbindButton(precipitationButton, TogglePrecipitationMode);
         UnbindButton(gridButton, ToggleGrid);
         DisposeCachedRemapLut();
+        DisposeCachedFilterLut();
         DestroyTexture(ref previewTexture);
         DestroyTexture(ref gridTexture);
     }
@@ -125,6 +132,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
             case GenerationMode.Continentalness:
                 stats = GenerateContinentalnessPreview(seed);
                 label = $"Remap: {UseContinentalnessRemap()}";
+                break;
+            case GenerationMode.ContPvHeight:
+                stats = GenerateContPvHeightPreview(seed);
+                label = $"Height Map, Cont Remap: {UseContinentalnessRemap()}, Pv Remap: {UseRidgesRemap()}, Cont Filter: {UseContinentalnessFilter()}, Pv Filter: {UsePvFilter()}";
                 break;
             case GenerationMode.Erosion:
                 stats = GenerateErosionPreview(seed);
@@ -165,6 +176,12 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private void ToggleErosionMode()
     {
         mode = mode == GenerationMode.Erosion ? GenerationMode.None : GenerationMode.Erosion;
+        UpdateButtonVisuals();
+    }
+
+    private void ToggleContPvMode()
+    {
+        mode = mode == GenerationMode.ContPvHeight ? GenerationMode.None : GenerationMode.ContPvHeight;
         UpdateButtonVisuals();
     }
 
@@ -323,6 +340,72 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 useCdfRemap = useCdfRemap,
                 settings = settings,
                 cdfLut = cdfLut,
+                pixels = pixels,
+                values = values,
+            }.Schedule(pixels.Length, 64);
+
+            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
+            {
+                values = values,
+                stats = statsValues,
+            }.Schedule(previewHandle);
+
+            statsHandle.Complete();
+            previewTexture.SetPixelData(pixels, 0);
+            previewTexture.Apply(false, false);
+            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
+        }
+        finally
+        {
+            if (pixels.IsCreated)
+            {
+                pixels.Dispose();
+            }
+
+            if (values.IsCreated)
+            {
+                values.Dispose();
+            }
+
+            if (statsValues.IsCreated)
+            {
+                statsValues.Dispose();
+            }
+        }
+    }
+
+    private ContinentalnessStats GenerateContPvHeightPreview(int seed)
+    {
+        int previewSize = previewTexture.width;
+        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        ContinentalnessSettings continentalnessSettings = BuildContinentalnessSettings();
+        RidgesSettings ridgesSettings = BuildRidgesSettings();
+        bool useContinentalnessCdfRemap = UseContinentalnessRemap();
+        bool useRidgesCdfRemap = UseRidgesRemap();
+        EnsureRemapLutCache();
+        EnsureFilterLutCache();
+        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+
+        try
+        {
+            JobHandle previewHandle = new WorldGenPrototypeJobs.ContPvHeightPreviewJob
+            {
+                size = previewSize,
+                seed = seed,
+                sectorIndexX = sectorIndexX,
+                sectorIndexZ = sectorIndexZ,
+                useContinentalnessRemap = useContinentalnessCdfRemap,
+                useRidgesRemap = useRidgesCdfRemap,
+                minTerrainHeight = worldGenSettingsAsset != null ? worldGenSettingsAsset.MinTerrainHeight : 0,
+                seaLevel = worldGenSettingsAsset != null ? worldGenSettingsAsset.SeaLevel : 63,
+                maxTerrainHeight = worldGenSettingsAsset != null ? worldGenSettingsAsset.MaxTerrainHeight : 180,
+                continentalnessSettings = continentalnessSettings,
+                ridgesSettings = ridgesSettings,
+                continentalnessCdfLut = cachedContinentalnessCdfLut,
+                ridgesCdfLut = cachedRidgesCdfLut,
+                continentalnessFilterLut = cachedContinentalnessFilterLut,
+                pvFilterLut = cachedPvFilterLut,
                 pixels = pixels,
                 values = values,
             }.Schedule(pixels.Length, 64);
@@ -634,6 +717,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private void UpdateButtonVisuals()
     {
         SetButtonVisual(continentalnessButton, mode == GenerationMode.Continentalness);
+        SetButtonVisual(contPvButton, mode == GenerationMode.ContPvHeight);
         SetButtonVisual(erosionButton, mode == GenerationMode.Erosion);
         SetButtonVisual(weirdnessButton, mode == GenerationMode.Weirdness);
         SetButtonVisual(pvButton, mode == GenerationMode.Pv);
@@ -759,6 +843,31 @@ public sealed class WorldGenPrototype : MonoBehaviour
         cachedRemapBakeVersion = worldGenRemapProfileAsset.BakeVersion;
     }
 
+    private void EnsureFilterLutCache()
+    {
+        DisposeCachedFilterLut();
+
+        if (UseContinentalnessFilter())
+        {
+            float[] sourceLut = worldGenSettingsAsset.ContinentalnessFilter.BakedLut;
+            cachedContinentalnessFilterLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            for (int i = 0; i < sourceLut.Length; i++)
+            {
+                cachedContinentalnessFilterLut[i] = sourceLut[i];
+            }
+        }
+
+        if (UsePvFilter())
+        {
+            float[] sourceLut = worldGenSettingsAsset.PvFilter.BakedLut;
+            cachedPvFilterLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            for (int i = 0; i < sourceLut.Length; i++)
+            {
+                cachedPvFilterLut[i] = sourceLut[i];
+            }
+        }
+    }
+
     private bool UseRemap()
     {
         return UseContinentalnessRemap() || UseErosionRemap() || UseRidgesRemap() || UseTemperatureRemap() || UsePrecipitationRemap();
@@ -770,6 +879,14 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenSettingsAsset.UseContinentalnessRemap &&
                worldGenRemapProfileAsset != null &&
                worldGenRemapProfileAsset.HasContinentalnessRemap;
+    }
+
+    private bool UseContinentalnessFilter()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UseContinentalnessFilter &&
+               worldGenSettingsAsset.ContinentalnessFilter != null &&
+               worldGenSettingsAsset.ContinentalnessFilter.HasBakedLut;
     }
 
     private bool UseErosionRemap()
@@ -786,6 +903,14 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenSettingsAsset.UseRidgesRemap &&
                worldGenRemapProfileAsset != null &&
                worldGenRemapProfileAsset.HasRidgesRemap;
+    }
+
+    private bool UsePvFilter()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UsePvFilter &&
+               worldGenSettingsAsset.PvFilter != null &&
+               worldGenSettingsAsset.PvFilter.HasBakedLut;
     }
 
     private bool UseTemperatureRemap()
@@ -827,6 +952,19 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
         cachedRemapProfileAsset = null;
         cachedRemapBakeVersion = -1;
+    }
+
+    private void DisposeCachedFilterLut()
+    {
+        if (cachedContinentalnessFilterLut.IsCreated)
+        {
+            cachedContinentalnessFilterLut.Dispose();
+        }
+
+        if (cachedPvFilterLut.IsCreated)
+        {
+            cachedPvFilterLut.Dispose();
+        }
     }
 
     private void SetButtonVisual(Button button, bool isActive)

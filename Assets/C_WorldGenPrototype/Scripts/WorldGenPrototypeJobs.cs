@@ -307,7 +307,54 @@ public static class WorldGenPrototypeJobs
             float weirdness = RemapRawNoise(rawRidges, useCdfRemap, cdfLut);
             float pv = CalculatePvFromWeirdness(weirdness);
             values[index] = pv;
-            pixels[index] = EvaluateScalarColor(pv);
+            pixels[index] = EvaluatePvBandColor(pv);
+        }
+    }
+
+    [BurstCompile]
+    public struct ContPvHeightPreviewJob : IJobParallelFor
+    {
+        public int size;
+        public int seed;
+        public int sectorIndexX;
+        public int sectorIndexZ;
+        public bool useContinentalnessRemap;
+        public bool useRidgesRemap;
+        public int minTerrainHeight;
+        public int seaLevel;
+        public int maxTerrainHeight;
+        public ContinentalnessSettings continentalnessSettings;
+        public RidgesSettings ridgesSettings;
+
+        [ReadOnly] public NativeArray<float> continentalnessCdfLut;
+        [ReadOnly] public NativeArray<float> ridgesCdfLut;
+        [ReadOnly] public NativeArray<float> continentalnessFilterLut;
+        [ReadOnly] public NativeArray<float> pvFilterLut;
+        [WriteOnly] public NativeArray<Color32> pixels;
+        [WriteOnly] public NativeArray<float> values;
+
+        public void Execute(int index)
+        {
+            int localX = index % size;
+            int localZ = index / size;
+            int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
+            int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
+            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
+            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
+
+            float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, continentalnessSettings);
+            float continentalness = RemapRawNoise(rawContinentalness, useContinentalnessRemap, continentalnessCdfLut);
+            continentalness = ApplyBakedFilter(continentalness, continentalnessFilterLut);
+
+            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, ridgesSettings);
+            float weirdness = RemapRawNoise(rawRidges, useRidgesRemap, ridgesCdfLut);
+            float pv = CalculatePvFromWeirdness(weirdness);
+
+            float terrainValue = ApplyPvFilterToContinentalness(continentalness, pv, pvFilterLut);
+            int height = ComposeSurfaceHeight(terrainValue, minTerrainHeight, seaLevel, maxTerrainHeight);
+
+            values[index] = height;
+            pixels[index] = EvaluateContPvHeightColor(terrainValue, height, minTerrainHeight, maxTerrainHeight);
         }
     }
 
@@ -838,6 +885,111 @@ public static class WorldGenPrototypeJobs
     {
         byte intensity = (byte)math.round(math.clamp((1f - ((value + 1f) * 0.5f)) * 255f, 0f, 255f));
         return new Color32(intensity, intensity, intensity, 255);
+    }
+
+    private static Color32 EvaluatePvBandColor(float value)
+    {
+        if (value < -0.85f)
+        {
+            return new Color32(34, 78, 135, 255);
+        }
+
+        if (value < -0.2f)
+        {
+            return new Color32(91, 155, 213, 255);
+        }
+
+        if (value < 0.2f)
+        {
+            return new Color32(214, 214, 214, 255);
+        }
+
+        if (value < 0.7f)
+        {
+            return new Color32(245, 190, 92, 255);
+        }
+
+        return new Color32(176, 77, 77, 255);
+    }
+
+    private static Color32 EvaluateHeightColor(int height, int minTerrainHeight, int maxTerrainHeight)
+    {
+        int safeMin = math.min(minTerrainHeight, maxTerrainHeight);
+        int safeMax = math.max(minTerrainHeight, maxTerrainHeight);
+        if (safeMax <= safeMin)
+        {
+            return new Color32(255, 255, 255, 255);
+        }
+
+        float normalized = math.saturate((height - safeMin) / (float)(safeMax - safeMin));
+        byte intensity = (byte)math.round(math.clamp((1f - normalized) * 255f, 0f, 255f));
+        return new Color32(intensity, intensity, intensity, 255);
+    }
+
+    private static Color32 EvaluateContPvHeightColor(float terrainValue, int height, int minTerrainHeight, int maxTerrainHeight)
+    {
+        if (terrainValue < 0f)
+        {
+            float oceanT = math.saturate(terrainValue + 1f);
+            byte red = (byte)math.round(math.lerp(8f, 36f, oceanT));
+            byte green = (byte)math.round(math.lerp(32f, 120f, oceanT));
+            byte blue = (byte)math.round(math.lerp(96f, 220f, oceanT));
+            return new Color32(red, green, blue, 255);
+        }
+
+        return EvaluateHeightColor(height, minTerrainHeight, maxTerrainHeight);
+    }
+
+    private static int ComposeSurfaceHeight(float continentalnessValue, int minHeight, int seaLevel, int maxHeight)
+    {
+        int clampedMin = math.max(0, minHeight);
+        int clampedSeaLevel = math.max(0, seaLevel);
+        int clampedMax = math.max(clampedSeaLevel, maxHeight);
+
+        if (continentalnessValue < 0f)
+        {
+            float oceanT = math.saturate(continentalnessValue + 1f);
+            return (int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT));
+        }
+
+        float landT = math.saturate(continentalnessValue);
+        return (int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT));
+    }
+
+    private static float ApplyPvToContinentalness(float continentalnessValue, float pvValue)
+    {
+        if (continentalnessValue <= 0f)
+        {
+            return continentalnessValue;
+        }
+
+        return continentalnessValue + (continentalnessValue * pvValue);
+    }
+
+    private static float ApplyPvFilterToContinentalness(float continentalnessValue, float pvValue, NativeArray<float> pvFilterLut)
+    {
+        if (continentalnessValue <= 0f)
+        {
+            return continentalnessValue;
+        }
+
+        float filteredValue = ApplyPvToContinentalness(continentalnessValue, pvValue);
+        return ApplyBakedFilter(filteredValue, pvFilterLut);
+    }
+
+    private static float ApplyBakedFilter(float value, NativeArray<float> bakedLut)
+    {
+        if (!bakedLut.IsCreated || bakedLut.Length <= 1)
+        {
+            return value;
+        }
+
+        float normalized = (math.clamp(value, -1f, 1f) + 1f) * 0.5f;
+        float scaledIndex = normalized * (bakedLut.Length - 1);
+        int lowerIndex = (int)math.floor(scaledIndex);
+        int upperIndex = math.min(lowerIndex + 1, bakedLut.Length - 1);
+        float t = scaledIndex - lowerIndex;
+        return math.clamp(math.lerp(bakedLut[lowerIndex], bakedLut[upperIndex], t), -1f, 1f);
     }
 
     private static float SampleRawLayeredNoise(

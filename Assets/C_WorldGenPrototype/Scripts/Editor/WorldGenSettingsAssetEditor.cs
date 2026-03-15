@@ -36,7 +36,9 @@ public sealed class WorldGenSettingsAssetEditor : Editor
             ref showFilterValues,
             "Filters",
             "useContinentalnessFilter",
-            "continentalnessFilter");
+            "continentalnessFilter",
+            "usePvFilter",
+            "pvFilter");
 
         DrawFoldoutSection(
             ref showContinentalnessValues,

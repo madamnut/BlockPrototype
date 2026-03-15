@@ -38,6 +38,8 @@ public sealed class WorldRuntime : MonoBehaviour
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
     [SerializeField, Min(1)] private int chunkColumnsMeshedPerFrame = 2;
+    [SerializeField, Min(1)] private int chunkGenerationRequestsPerFrame = 32;
+    [SerializeField, Min(1)] private int maxPendingChunkGenerations = 128;
 
     [Header("Interaction")]
     [SerializeField, Min(0.5f)] private float interactionDistance = 8f;
@@ -204,6 +206,7 @@ public sealed class WorldRuntime : MonoBehaviour
         ResolveInteractionCamera();
         ResolvePlayerController();
         UpdateVisibleChunks();
+        ProcessChunkGenerationRequests();
         CompleteChunkGenerationJobs();
         ProcessChunkRefreshQueue();
         CompletePendingChunkMeshJobs();
@@ -280,7 +283,8 @@ public sealed class WorldRuntime : MonoBehaviour
             GetContinentalnessRemapLut(),
             GetErosionRemapLut(),
             GetRidgesRemapLut(),
-            GetContinentalnessFilterLut());
+            GetContinentalnessFilterLut(),
+            GetPvFilterLut());
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -311,13 +315,27 @@ public sealed class WorldRuntime : MonoBehaviour
             renderSizeInChunks,
             generationPaddingInChunks,
             (chunkX, chunkZ) => _terrain.IsChunkColumnReady(chunkX, chunkZ),
-            RequestChunkColumnWithTiming,
             ReleaseChunkColumn);
 
         if (_worldStreaming != null && _worldStreaming.HasCenterChunk)
         {
             _worldDebug?.UpdateChunkBoundaries(true, _worldStreaming.CurrentCenterChunk);
         }
+    }
+
+    private void ProcessChunkGenerationRequests()
+    {
+        if (_terrain == null || _worldStreaming == null)
+        {
+            return;
+        }
+
+        _worldStreaming.ProcessChunkRequests(
+            chunkGenerationRequestsPerFrame,
+            maxPendingChunkGenerations,
+            _terrain.PendingChunkColumnCount,
+            (chunkX, chunkZ) => _terrain.IsChunkColumnReady(chunkX, chunkZ),
+            RequestChunkColumnWithTiming);
     }
 
     private void CompleteChunkGenerationJobs()
@@ -535,11 +553,11 @@ public sealed class WorldRuntime : MonoBehaviour
         _visibleFluidRendererCacheDirty = false;
     }
 
-    private void RequestChunkColumnWithTiming(int chunkX, int chunkZ)
+    private bool RequestChunkColumnWithTiming(int chunkX, int chunkZ)
     {
         if (_terrain == null || !_terrain.RequestChunkColumn(chunkX, chunkZ))
         {
-            return;
+            return false;
         }
 
         Vector2Int chunkCoords = new(chunkX, chunkZ);
@@ -547,6 +565,7 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             requestTime = Time.realtimeSinceStartupAsDouble,
         };
+        return true;
     }
 
     private void RecordChunkGenerationCompletion(TerrainData.CompletedChunkColumnInfo completedInfo)
@@ -589,6 +608,14 @@ public sealed class WorldRuntime : MonoBehaviour
         _totalChunkLoadTotalMilliseconds += totalMilliseconds;
         _totalChunkLoadSampleCount++;
 
+        int pendingGenerationCount = _terrain != null ? _terrain.PendingChunkColumnCount : 0;
+        int trackedChunkCount = _chunkLoadTimings.Count;
+        int pendingRefreshCount = _worldStreaming != null ? _worldStreaming.PendingRefreshCount : 0;
+        int queuedRefreshCount = _worldStreaming != null ? _worldStreaming.QueuedChunkCount : 0;
+        int pendingRequestCount = _worldStreaming != null ? _worldStreaming.PendingRequestCount : 0;
+        int visibleChunkCount = _worldStreaming != null ? _worldStreaming.VisibleChunkCount : 0;
+        int pendingMeshCount = _pendingChunkColumnMeshes.Count;
+
         if (logChunkLoadStageTimings)
         {
             Debug.Log(
@@ -597,7 +624,8 @@ public sealed class WorldRuntime : MonoBehaviour
                 $"finalize {timing.finalizeMilliseconds:F2} ms (avg {GetAverageMilliseconds(_finalizeTotalMilliseconds, _finalizeSampleCount):F2}) | " +
                 $"meshJob {meshJobMilliseconds:F2} ms (avg {GetAverageMilliseconds(_meshJobTotalMilliseconds, _meshJobSampleCount):F2}) | " +
                 $"meshApply {applyMilliseconds:F2} ms (avg {GetAverageMilliseconds(_meshApplyTotalMilliseconds, _meshApplySampleCount):F2}) | " +
-                $"total {totalMilliseconds:F2} ms (avg {GetAverageMilliseconds(_totalChunkLoadTotalMilliseconds, _totalChunkLoadSampleCount):F2})");
+                $"total {totalMilliseconds:F2} ms (avg {GetAverageMilliseconds(_totalChunkLoadTotalMilliseconds, _totalChunkLoadSampleCount):F2}) | " +
+                $"backlog genPending={pendingGenerationCount} requestPending={pendingRequestCount} tracked={trackedChunkCount} refreshPending={pendingRefreshCount} queuedRefresh={queuedRefreshCount} meshPending={pendingMeshCount} visible={visibleChunkCount}");
         }
 
         _chunkLoadTimings.Remove(chunkCoords);
@@ -858,6 +886,21 @@ public sealed class WorldRuntime : MonoBehaviour
     {
         return UseContinentalnessFilter()
             ? worldGenSettingsAsset.ContinentalnessFilter.BakedLut
+            : null;
+    }
+
+    private bool UsePvFilter()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.UsePvFilter &&
+               worldGenSettingsAsset.PvFilter != null &&
+               worldGenSettingsAsset.PvFilter.HasBakedLut;
+    }
+
+    private float[] GetPvFilterLut()
+    {
+        return UsePvFilter()
+            ? worldGenSettingsAsset.PvFilter.BakedLut
             : null;
     }
 

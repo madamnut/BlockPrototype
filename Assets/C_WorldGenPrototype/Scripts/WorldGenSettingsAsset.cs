@@ -22,6 +22,8 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [Header("Filters")]
     [SerializeField] private bool useContinentalnessFilter;
     [SerializeField] private ContFilterAsset continentalnessFilter;
+    [SerializeField] private bool usePvFilter;
+    [SerializeField] private PvFilterAsset pvFilter;
 
     [Header("Warp")]
     [SerializeField] private bool useWarp = true;
@@ -209,6 +211,8 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     public bool UseRidgesRemap => useRidgesRemap;
     public bool UseContinentalnessFilter => useContinentalnessFilter && continentalnessFilter != null;
     public ContFilterAsset ContinentalnessFilter => continentalnessFilter;
+    public bool UsePvFilter => usePvFilter && pvFilter != null;
+    public PvFilterAsset PvFilter => pvFilter;
 
     public ContinentalnessSettings ToSettings()
     {

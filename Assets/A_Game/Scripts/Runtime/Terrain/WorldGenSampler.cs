@@ -105,7 +105,7 @@ public static class WorldGenSampler
         int seaLevel,
         int maxHeight)
     {
-        return ComposeSurfaceHeight(continentalness, minHeight, seaLevel, maxHeight);
+        return ComposeSurfaceHeight(ApplyPvToContinentalness(continentalness, pv), minHeight, seaLevel, maxHeight);
     }
 
     public static int SampleSurfaceHeight(
@@ -116,11 +116,38 @@ public static class WorldGenSampler
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
-        float[] continentalnessFilterLut = null)
+        float[] continentalnessFilterLut = null,
+        float[] pvFilterLut = null)
     {
         float continentalness = SampleContinentalness(worldX, worldZ, seed, settings, continentalnessCdfLut);
         continentalness = ApplyBakedFilter(continentalness, continentalnessFilterLut);
-        return ComposeSurfaceHeight(continentalness, settings.minTerrainHeight, settings.seaLevel, settings.maxTerrainHeight);
+        float pv = SamplePv(worldX, worldZ, seed, settings, ridgesCdfLut);
+        return ComposeSurfaceHeight(
+            ApplyPvFilterToContinentalness(continentalness, pv, pvFilterLut),
+            settings.minTerrainHeight,
+            settings.seaLevel,
+            settings.maxTerrainHeight);
+    }
+
+    public static float ApplyPvToContinentalness(float continentalness, float pv)
+    {
+        if (continentalness <= 0f)
+        {
+            return continentalness;
+        }
+
+        return continentalness + (continentalness * pv);
+    }
+
+    public static float ApplyPvFilterToContinentalness(float continentalness, float pv, float[] pvFilterLut)
+    {
+        if (continentalness <= 0f)
+        {
+            return continentalness;
+        }
+
+        float pvValue = ApplyPvToContinentalness(continentalness, pv);
+        return ApplyBakedFilter(pvValue, pvFilterLut);
     }
 
     public static float RemapRawContinentalness(
