@@ -66,7 +66,7 @@ public static class WorldGenSampler
             ridgesCdfLut);
     }
 
-    public static float SamplePv(
+    public static float SampleFoldedWeirdness(
         int worldX,
         int worldZ,
         int seed,
@@ -79,9 +79,56 @@ public static class WorldGenSampler
 
     public static int ComposeSurfaceHeight(
         float continentalness,
-        int seaLevel,
+        float erosion,
+        float weirdness,
+        float foldedWeirdness,
+        SplineTreeBakedNode[] offsetSplineNodes = null,
+        SplineTreeBakedPoint[] offsetSplinePoints = null,
+        SplineTreeBakedNode[] factorSplineNodes = null,
+        SplineTreeBakedPoint[] factorSplinePoints = null,
+        SplineTreeBakedNode[] jaggednessSplineNodes = null,
+        SplineTreeBakedPoint[] jaggednessSplinePoints = null,
+        SplineTreeBakedNode[] legacyTerrainHeightSplineNodes = null,
+        SplineTreeBakedPoint[] legacyTerrainHeightSplinePoints = null,
         float[] continentalnessHeightLut = null)
     {
+        if (HasDensitySplineTrees(
+                offsetSplineNodes,
+                offsetSplinePoints,
+                factorSplineNodes,
+                factorSplinePoints,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints))
+        {
+            TerrainShapeSample shape = EvaluateTerrainShape(
+                continentalness,
+                erosion,
+                weirdness,
+                foldedWeirdness,
+                offsetSplineNodes,
+                offsetSplinePoints,
+                factorSplineNodes,
+                factorSplinePoints,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints);
+            return WorldGenDensity.FindSurfaceHeight(TerrainData.WorldHeight, shape, foldedWeirdness);
+        }
+
+        if (legacyTerrainHeightSplineNodes != null &&
+            legacyTerrainHeightSplinePoints != null &&
+            legacyTerrainHeightSplineNodes.Length > 0 &&
+            legacyTerrainHeightSplinePoints.Length > 0)
+        {
+            return SplineTreeEvaluator.EvaluateHeight(
+                continentalness,
+                erosion,
+                weirdness,
+                foldedWeirdness,
+                legacyTerrainHeightSplineNodes,
+                legacyTerrainHeightSplinePoints,
+                TerrainData.WorldHeight);
+        }
+
         if (continentalnessHeightLut != null && continentalnessHeightLut.Length > 1)
         {
             float normalized = (Mathf.Clamp(continentalness, -1f, 1f) + 1f) * 0.5f;
@@ -92,16 +139,44 @@ public static class WorldGenSampler
             return Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(continentalnessHeightLut[lowerIndex], continentalnessHeightLut[upperIndex], t)), 0, TerrainData.WorldHeight - 1);
         }
 
-        int clampedSeaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
+        float normalizedContinentalness = Mathf.Clamp01((continentalness + 1f) * 0.5f);
+        return Mathf.RoundToInt(Mathf.Lerp(0f, 180f, normalizedContinentalness));
+    }
 
-        if (continentalness < 0f)
-        {
-            float oceanT = Mathf.Clamp01(continentalness + 1f);
-            return Mathf.RoundToInt(Mathf.Lerp(0f, clampedSeaLevel, oceanT));
-        }
-
-        float landT = Mathf.Clamp01(continentalness);
-        return Mathf.RoundToInt(Mathf.Lerp(clampedSeaLevel, 180f, landT));
+    public static TerrainShapeSample EvaluateTerrainShape(
+        float continentalness,
+        float erosion,
+        float weirdness,
+        float foldedWeirdness,
+        SplineTreeBakedNode[] offsetSplineNodes,
+        SplineTreeBakedPoint[] offsetSplinePoints,
+        SplineTreeBakedNode[] factorSplineNodes,
+        SplineTreeBakedPoint[] factorSplinePoints,
+        SplineTreeBakedNode[] jaggednessSplineNodes,
+        SplineTreeBakedPoint[] jaggednessSplinePoints)
+    {
+        float offset = SplineTreeEvaluator.EvaluateValue(
+            continentalness,
+            erosion,
+            weirdness,
+            foldedWeirdness,
+            offsetSplineNodes,
+            offsetSplinePoints);
+        float factor = SplineTreeEvaluator.EvaluateValue(
+            continentalness,
+            erosion,
+            weirdness,
+            foldedWeirdness,
+            factorSplineNodes,
+            factorSplinePoints);
+        float jaggedness = SplineTreeEvaluator.EvaluateValue(
+            continentalness,
+            erosion,
+            weirdness,
+            foldedWeirdness,
+            jaggednessSplineNodes,
+            jaggednessSplinePoints);
+        return new TerrainShapeSample(offset, Mathf.Max(0.0001f, factor), jaggedness);
     }
 
     public static int SampleSurfaceHeight(
@@ -112,10 +187,56 @@ public static class WorldGenSampler
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
+        SplineTreeBakedNode[] offsetSplineNodes = null,
+        SplineTreeBakedPoint[] offsetSplinePoints = null,
+        SplineTreeBakedNode[] factorSplineNodes = null,
+        SplineTreeBakedPoint[] factorSplinePoints = null,
+        SplineTreeBakedNode[] jaggednessSplineNodes = null,
+        SplineTreeBakedPoint[] jaggednessSplinePoints = null,
+        SplineTreeBakedNode[] legacyTerrainHeightSplineNodes = null,
+        SplineTreeBakedPoint[] legacyTerrainHeightSplinePoints = null,
         float[] continentalnessHeightLut = null)
     {
         float continentalness = SampleContinentalness(worldX, worldZ, seed, settings, continentalnessCdfLut);
-        return ComposeSurfaceHeight(continentalness, settings.seaLevel, continentalnessHeightLut);
+        float erosion = SampleErosion(worldX, worldZ, seed, settings, erosionCdfLut);
+        float weirdness = SampleWeirdness(worldX, worldZ, seed, settings, ridgesCdfLut);
+        float foldedWeirdness = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdness);
+        return ComposeSurfaceHeight(
+            continentalness,
+            erosion,
+            weirdness,
+            foldedWeirdness,
+            offsetSplineNodes,
+            offsetSplinePoints,
+            factorSplineNodes,
+            factorSplinePoints,
+            jaggednessSplineNodes,
+            jaggednessSplinePoints,
+            legacyTerrainHeightSplineNodes,
+            legacyTerrainHeightSplinePoints,
+            continentalnessHeightLut);
+    }
+
+    private static bool HasDensitySplineTrees(
+        SplineTreeBakedNode[] offsetSplineNodes,
+        SplineTreeBakedPoint[] offsetSplinePoints,
+        SplineTreeBakedNode[] factorSplineNodes,
+        SplineTreeBakedPoint[] factorSplinePoints,
+        SplineTreeBakedNode[] jaggednessSplineNodes,
+        SplineTreeBakedPoint[] jaggednessSplinePoints)
+    {
+        return offsetSplineNodes != null &&
+               offsetSplinePoints != null &&
+               factorSplineNodes != null &&
+               factorSplinePoints != null &&
+               jaggednessSplineNodes != null &&
+               jaggednessSplinePoints != null &&
+               offsetSplineNodes.Length > 0 &&
+               offsetSplinePoints.Length > 0 &&
+               factorSplineNodes.Length > 0 &&
+               factorSplinePoints.Length > 0 &&
+               jaggednessSplineNodes.Length > 0 &&
+               jaggednessSplinePoints.Length > 0;
     }
 
     public static float RemapRawContinentalness(

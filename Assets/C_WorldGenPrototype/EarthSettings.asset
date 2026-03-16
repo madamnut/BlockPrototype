@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 491bf644b7f953f49a800d330d45e763, type: 3}
   m_Name: EarthSettings
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenSettingsAsset
-  seaLevel: 80
-  continentalnessHeightSpline: {fileID: 11400000, guid: cbd1f66acca4bfd498839b3ca03e7a61, type: 2}
+  terrainHeightSplineTree: {fileID: 11400000, guid: 755bfce79fd680b4bb0eef57ade17287, type: 2}
+  legacyContinentalnessHeightSpline: {fileID: 11400000, guid: cbd1f66acca4bfd498839b3ca03e7a61, type: 2}
   useContinentalnessRemap: 1
   useErosionRemap: 1
   useRidgesRemap: 1
@@ -89,62 +89,14 @@ MonoBehaviour:
   ridgesDetailLacunarity: 2
   ridgesDetailGain: 0.45
   ridgesDetailWeight: 0.2
-  temperatureUseWarp: 0
-  temperatureWarpOctaves: 2
-  temperatureWarpFrequency: 0.055555556
-  temperatureWarpAmplitude: 0.18
-  temperatureWarpLacunarity: 2
-  temperatureWarpGain: 0.5
-  temperatureUseMacro: 1
-  temperatureMacroOctaves: 4
-  temperatureMacroFrequency: 1
-  temperatureMacroLacunarity: 2
-  temperatureMacroGain: 0.5
-  temperatureMacroWeight: 0.55
-  temperatureUseBroad: 1
-  temperatureBroadOctaves: 3
-  temperatureBroadFrequency: 0.5
-  temperatureBroadLacunarity: 2
-  temperatureBroadGain: 0.48
-  temperatureBroadWeight: 0.3
-  temperatureUseDetail: 1
-  temperatureDetailOctaves: 3
-  temperatureDetailFrequency: 0.2
-  temperatureDetailLacunarity: 2
-  temperatureDetailGain: 0.42
-  temperatureDetailWeight: 0.15
-  precipitationUseWarp: 0
-  precipitationWarpOctaves: 2
-  precipitationWarpFrequency: 0.05263158
-  precipitationWarpAmplitude: 0.2
-  precipitationWarpLacunarity: 2
-  precipitationWarpGain: 0.5
-  precipitationUseMacro: 1
-  precipitationMacroOctaves: 4
-  precipitationMacroFrequency: 0.6
-  precipitationMacroLacunarity: 2
-  precipitationMacroGain: 0.5
-  precipitationMacroWeight: 0.55
-  precipitationUseBroad: 1
-  precipitationBroadOctaves: 3
-  precipitationBroadFrequency: 0.3
-  precipitationBroadLacunarity: 2
-  precipitationBroadGain: 0.48
-  precipitationBroadWeight: 0.28
-  precipitationUseDetail: 1
-  precipitationDetailOctaves: 3
-  precipitationDetailFrequency: 0.15
-  precipitationDetailLacunarity: 2
-  precipitationDetailGain: 0.42
-  precipitationDetailWeight: 0.17
-  abyssUpperBound: -0.95
+  abyssUpperBound: -0.7
   abyssColor: {r: 0.03, g: 0.07, b: 0.18, a: 1}
-  deepOceanUpperBound: -0.5
+  deepOceanUpperBound: -0.4
   deepOceanColor: {r: 0.05, g: 0.12, b: 0.32, a: 1}
-  oceanUpperBound: -0.2
+  oceanUpperBound: -0.15
   oceanColor: {r: 0.08, g: 0.25, b: 0.52, a: 1}
-  shallowOceanColor: {r: 0.2, g: 0.5, b: 0.74, a: 1}
-  coastUpperBound: 0.03
+  shallowOceanTransitionColor: {r: 0.11747954, g: 0.36560735, b: 0.754717, a: 1}
+  coastUpperBound: 0.15
   coastColor: {r: 0.9, g: 0.84, b: 0.64, a: 1}
   inlandUpperBound: 0.4
   inlandColor: {r: 0.36, g: 0.63, b: 0.29, a: 1}

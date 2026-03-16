@@ -65,20 +65,20 @@ public sealed class TerrainData : IDisposable
         public readonly float continentalness;
         public readonly float erosion;
         public readonly float weirdness;
-        public readonly float pv;
+        public readonly float foldedWeirdness;
 
         public WorldGenDebugSample(
             int height,
             float continentalness,
             float erosion,
             float weirdness,
-            float pv)
+            float foldedWeirdness)
         {
             this.height = height;
             this.continentalness = continentalness;
             this.erosion = erosion;
             this.weirdness = weirdness;
-            this.pv = pv;
+            this.foldedWeirdness = foldedWeirdness;
         }
     }
 
@@ -123,11 +123,24 @@ public sealed class TerrainData : IDisposable
         public int chunkX;
         public int chunkZ;
         public int seed;
-        public int seaLevel;
         public bool useContinentalnessRemap;
+        public bool useErosionRemap;
+        public bool useRidgesRemap;
         public ContinentalnessSettings continentalness;
+        public ErosionSettings erosion;
+        public RidgesSettings ridges;
 
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
+        [ReadOnly] public NativeArray<float> erosionCdfLut;
+        [ReadOnly] public NativeArray<float> ridgesCdfLut;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> offsetSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> offsetSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> factorSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> factorSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> jaggednessSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints;
         [ReadOnly] public NativeArray<float> continentalnessHeightLut;
         public NativeArray<int> columnHeights;
 
@@ -153,20 +166,100 @@ public sealed class TerrainData : IDisposable
                 rawContinentalness,
                 useContinentalnessRemap,
                 continentalnessCdfLut);
+            float rawErosion = WorldGenPrototypeJobs.SampleRawErosion(
+                seed,
+                worldRegionX,
+                worldRegionZ,
+                erosion);
+            float erosionValue = RemapRawNoise(
+                rawErosion,
+                useErosionRemap,
+                erosionCdfLut);
+            float rawRidges = WorldGenPrototypeJobs.SampleRawRidges(
+                seed,
+                worldRegionX,
+                worldRegionZ,
+                ridges);
+            float weirdnessValue = RemapRawNoise(
+                rawRidges,
+                useRidgesRemap,
+                ridgesCdfLut);
+            float foldedWeirdnessValue = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdnessValue);
             return ComposeSurfaceHeight(
                 continentalnessValue,
-                seaLevel,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                offsetSplineNodes,
+                offsetSplinePoints,
+                factorSplineNodes,
+                factorSplinePoints,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints,
+                legacyTerrainHeightSplineNodes,
+                legacyTerrainHeightSplinePoints,
                 continentalnessHeightLut,
                 WorldHeight);
         }
 
         private static int ComposeSurfaceHeight(
             float continentalnessValue,
-            int seaLevel,
+            float erosionValue,
+            float weirdnessValue,
+            float foldedWeirdnessValue,
+            NativeArray<SplineTreeBakedNode> offsetSplineNodes,
+            NativeArray<SplineTreeBakedPoint> offsetSplinePoints,
+            NativeArray<SplineTreeBakedNode> factorSplineNodes,
+            NativeArray<SplineTreeBakedPoint> factorSplinePoints,
+            NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
+            NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints,
+            NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes,
+            NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints,
             NativeArray<float> heightLut,
             int worldHeight)
         {
-            int clampedSeaLevel = math.clamp(seaLevel, 0, worldHeight - 1);
+            if (offsetSplineNodes.IsCreated &&
+                offsetSplinePoints.IsCreated &&
+                factorSplineNodes.IsCreated &&
+                factorSplinePoints.IsCreated &&
+                jaggednessSplineNodes.IsCreated &&
+                jaggednessSplinePoints.IsCreated &&
+                offsetSplineNodes.Length > 0 &&
+                offsetSplinePoints.Length > 0 &&
+                factorSplineNodes.Length > 0 &&
+                factorSplinePoints.Length > 0 &&
+                jaggednessSplineNodes.Length > 0 &&
+                jaggednessSplinePoints.Length > 0)
+            {
+                TerrainShapeSample shape = EvaluateTerrainShape(
+                    continentalnessValue,
+                    erosionValue,
+                    weirdnessValue,
+                    foldedWeirdnessValue,
+                    offsetSplineNodes,
+                    offsetSplinePoints,
+                    factorSplineNodes,
+                    factorSplinePoints,
+                    jaggednessSplineNodes,
+                    jaggednessSplinePoints);
+                return WorldGenDensity.FindSurfaceHeight(worldHeight, shape, foldedWeirdnessValue);
+            }
+
+            if (legacyTerrainHeightSplineNodes.IsCreated &&
+                legacyTerrainHeightSplinePoints.IsCreated &&
+                legacyTerrainHeightSplineNodes.Length > 0 &&
+                legacyTerrainHeightSplinePoints.Length > 0)
+            {
+                return SplineTreeEvaluator.EvaluateHeight(
+                    continentalnessValue,
+                    erosionValue,
+                    weirdnessValue,
+                    foldedWeirdnessValue,
+                    legacyTerrainHeightSplineNodes,
+                    legacyTerrainHeightSplinePoints,
+                    worldHeight);
+            }
+
             if (heightLut.IsCreated && heightLut.Length > 1)
             {
                 float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
@@ -177,19 +270,44 @@ public sealed class TerrainData : IDisposable
                 return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, worldHeight - 1);
             }
 
-            int baseHeight;
-            if (continentalnessValue < 0f)
-            {
-                float oceanT = math.saturate(continentalnessValue + 1f);
-                baseHeight = math.clamp((int)math.round(math.lerp(0f, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
-            }
-            else
-            {
-                float landT = math.saturate(continentalnessValue);
-                baseHeight = math.clamp((int)math.round(math.lerp(clampedSeaLevel, 180f, landT)), 0, worldHeight - 1);
-            }
+            float normalizedContinentalness = math.saturate((continentalnessValue + 1f) * 0.5f);
+            return math.clamp((int)math.round(math.lerp(0f, 180f, normalizedContinentalness)), 0, worldHeight - 1);
+        }
 
-            return baseHeight;
+        private static TerrainShapeSample EvaluateTerrainShape(
+            float continentalnessValue,
+            float erosionValue,
+            float weirdnessValue,
+            float foldedWeirdnessValue,
+            NativeArray<SplineTreeBakedNode> offsetSplineNodes,
+            NativeArray<SplineTreeBakedPoint> offsetSplinePoints,
+            NativeArray<SplineTreeBakedNode> factorSplineNodes,
+            NativeArray<SplineTreeBakedPoint> factorSplinePoints,
+            NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
+            NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints)
+        {
+            float offset = SplineTreeEvaluator.EvaluateValue(
+                continentalnessValue,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                offsetSplineNodes,
+                offsetSplinePoints);
+            float factor = SplineTreeEvaluator.EvaluateValue(
+                continentalnessValue,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                factorSplineNodes,
+                factorSplinePoints);
+            float jaggedness = SplineTreeEvaluator.EvaluateValue(
+                continentalnessValue,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints);
+            return new TerrainShapeSample(offset, math.max(0.0001f, factor), jaggedness);
         }
 
         private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
@@ -225,9 +343,7 @@ public sealed class TerrainData : IDisposable
 
             for (int worldY = 0; worldY <= terrainHeight; worldY++)
             {
-                blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
-                    ? BlockType.Grass
-                    : BlockType.Rock;
+                blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
             }
         }
     }
@@ -244,10 +360,26 @@ public sealed class TerrainData : IDisposable
     private readonly float[] _managedContinentalnessCdfLut;
     private readonly float[] _managedErosionCdfLut;
     private readonly float[] _managedRidgesCdfLut;
+    private readonly SplineTreeBakedNode[] _managedOffsetSplineNodes;
+    private readonly SplineTreeBakedPoint[] _managedOffsetSplinePoints;
+    private readonly SplineTreeBakedNode[] _managedFactorSplineNodes;
+    private readonly SplineTreeBakedPoint[] _managedFactorSplinePoints;
+    private readonly SplineTreeBakedNode[] _managedJaggednessSplineNodes;
+    private readonly SplineTreeBakedPoint[] _managedJaggednessSplinePoints;
+    private readonly SplineTreeBakedNode[] _managedLegacyTerrainHeightSplineNodes;
+    private readonly SplineTreeBakedPoint[] _managedLegacyTerrainHeightSplinePoints;
     private readonly float[] _managedContinentalnessHeightLut;
     private NativeArray<float> _continentalnessCdfLut;
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
+    private NativeArray<SplineTreeBakedNode> _offsetSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> _offsetSplinePoints;
+    private NativeArray<SplineTreeBakedNode> _factorSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> _factorSplinePoints;
+    private NativeArray<SplineTreeBakedNode> _jaggednessSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> _jaggednessSplinePoints;
+    private NativeArray<SplineTreeBakedNode> _legacyTerrainHeightSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> _legacyTerrainHeightSplinePoints;
     private NativeArray<float> _continentalnessHeightLut;
     public TerrainData(
         int seed,
@@ -255,6 +387,14 @@ public sealed class TerrainData : IDisposable
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
+        SplineTreeBakedNode[] offsetSplineNodes = null,
+        SplineTreeBakedPoint[] offsetSplinePoints = null,
+        SplineTreeBakedNode[] factorSplineNodes = null,
+        SplineTreeBakedPoint[] factorSplinePoints = null,
+        SplineTreeBakedNode[] jaggednessSplineNodes = null,
+        SplineTreeBakedPoint[] jaggednessSplinePoints = null,
+        SplineTreeBakedNode[] legacyTerrainHeightSplineNodes = null,
+        SplineTreeBakedPoint[] legacyTerrainHeightSplinePoints = null,
         float[] continentalnessHeightLut = null)
     {
         _seed = seed;
@@ -262,14 +402,29 @@ public sealed class TerrainData : IDisposable
         _managedContinentalnessCdfLut = continentalnessCdfLut;
         _managedErosionCdfLut = erosionCdfLut;
         _managedRidgesCdfLut = ridgesCdfLut;
+        _managedOffsetSplineNodes = offsetSplineNodes;
+        _managedOffsetSplinePoints = offsetSplinePoints;
+        _managedFactorSplineNodes = factorSplineNodes;
+        _managedFactorSplinePoints = factorSplinePoints;
+        _managedJaggednessSplineNodes = jaggednessSplineNodes;
+        _managedJaggednessSplinePoints = jaggednessSplinePoints;
+        _managedLegacyTerrainHeightSplineNodes = legacyTerrainHeightSplineNodes;
+        _managedLegacyTerrainHeightSplinePoints = legacyTerrainHeightSplinePoints;
         _managedContinentalnessHeightLut = continentalnessHeightLut;
         _continentalnessCdfLut = CreateNativeLut(settings.useContinentalnessRemap, continentalnessCdfLut);
         _erosionCdfLut = CreateNativeLut(settings.useErosionRemap, erosionCdfLut);
         _ridgesCdfLut = CreateNativeLut(settings.useRidgesRemap, ridgesCdfLut);
+        _offsetSplineNodes = CreateNativeSplineNodes(offsetSplineNodes);
+        _offsetSplinePoints = CreateNativeSplinePoints(offsetSplinePoints);
+        _factorSplineNodes = CreateNativeSplineNodes(factorSplineNodes);
+        _factorSplinePoints = CreateNativeSplinePoints(factorSplinePoints);
+        _jaggednessSplineNodes = CreateNativeSplineNodes(jaggednessSplineNodes);
+        _jaggednessSplinePoints = CreateNativeSplinePoints(jaggednessSplinePoints);
+        _legacyTerrainHeightSplineNodes = CreateNativeSplineNodes(legacyTerrainHeightSplineNodes);
+        _legacyTerrainHeightSplinePoints = CreateNativeSplinePoints(legacyTerrainHeightSplinePoints);
         _continentalnessHeightLut = CreateNativeLut(continentalnessHeightLut != null && continentalnessHeightLut.Length > 1, continentalnessHeightLut);
     }
 
-    public int SeaLevel => _settings.seaLevel;
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
 
     public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
@@ -282,18 +437,26 @@ public sealed class TerrainData : IDisposable
             _managedContinentalnessCdfLut,
             _managedErosionCdfLut,
             _managedRidgesCdfLut,
+            _managedOffsetSplineNodes,
+            _managedOffsetSplinePoints,
+            _managedFactorSplineNodes,
+            _managedFactorSplinePoints,
+            _managedJaggednessSplineNodes,
+            _managedJaggednessSplinePoints,
+            _managedLegacyTerrainHeightSplineNodes,
+            _managedLegacyTerrainHeightSplinePoints,
             _managedContinentalnessHeightLut);
         float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
         float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
         float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
-        float pv = WorldGenSampler.SamplePv(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+        float foldedWeirdness = WorldGenSampler.SampleFoldedWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
 
         return new WorldGenDebugSample(
             height,
             continentalness,
             erosion,
             weirdness,
-            pv);
+            foldedWeirdness);
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
@@ -333,10 +496,26 @@ public sealed class TerrainData : IDisposable
                 remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
 
                 stageStart = stopwatch.ElapsedTicks;
+                float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
+                float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+                float foldedWeirdness = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdness);
+                remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
+
+                stageStart = stopwatch.ElapsedTicks;
                 int terrainHeight = WorldGenSampler.ComposeSurfaceHeight(
                     continentalness,
-                    _settings.seaLevel,
-                    _managedContinentalnessHeightLut);
+                    erosion,
+                weirdness,
+                foldedWeirdness,
+                _managedOffsetSplineNodes,
+                _managedOffsetSplinePoints,
+                _managedFactorSplineNodes,
+                _managedFactorSplinePoints,
+                _managedJaggednessSplineNodes,
+                _managedJaggednessSplinePoints,
+                _managedLegacyTerrainHeightSplineNodes,
+                _managedLegacyTerrainHeightSplinePoints,
+                _managedContinentalnessHeightLut);
                 composeHeightTicks += stopwatch.ElapsedTicks - stageStart;
                 columnHeights[columnIndex] = terrainHeight;
             }
@@ -351,9 +530,7 @@ public sealed class TerrainData : IDisposable
                 int terrainHeight = columnHeights[columnIndex];
                 for (int worldY = 0; worldY <= terrainHeight; worldY++)
                 {
-                    blocks[GetIndex(localX, worldY, localZ)] = worldY == terrainHeight
-                        ? BlockType.Grass
-                        : BlockType.Rock;
+                    blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
                 }
             }
         }
@@ -410,6 +587,46 @@ public sealed class TerrainData : IDisposable
             _ridgesCdfLut.Dispose();
         }
 
+        if (_offsetSplineNodes.IsCreated)
+        {
+            _offsetSplineNodes.Dispose();
+        }
+
+        if (_offsetSplinePoints.IsCreated)
+        {
+            _offsetSplinePoints.Dispose();
+        }
+
+        if (_factorSplineNodes.IsCreated)
+        {
+            _factorSplineNodes.Dispose();
+        }
+
+        if (_factorSplinePoints.IsCreated)
+        {
+            _factorSplinePoints.Dispose();
+        }
+
+        if (_jaggednessSplineNodes.IsCreated)
+        {
+            _jaggednessSplineNodes.Dispose();
+        }
+
+        if (_jaggednessSplinePoints.IsCreated)
+        {
+            _jaggednessSplinePoints.Dispose();
+        }
+
+        if (_legacyTerrainHeightSplineNodes.IsCreated)
+        {
+            _legacyTerrainHeightSplineNodes.Dispose();
+        }
+
+        if (_legacyTerrainHeightSplinePoints.IsCreated)
+        {
+            _legacyTerrainHeightSplinePoints.Dispose();
+        }
+
         if (_continentalnessHeightLut.IsCreated)
         {
             _continentalnessHeightLut.Dispose();
@@ -437,10 +654,23 @@ public sealed class TerrainData : IDisposable
             chunkX = chunkX,
             chunkZ = chunkZ,
             seed = _seed,
-            seaLevel = _settings.seaLevel,
             useContinentalnessRemap = _settings.useContinentalnessRemap,
+            useErosionRemap = _settings.useErosionRemap,
+            useRidgesRemap = _settings.useRidgesRemap,
             continentalness = _settings.continentalness,
+            erosion = _settings.erosion,
+            ridges = _settings.ridges,
             continentalnessCdfLut = _continentalnessCdfLut,
+            erosionCdfLut = _erosionCdfLut,
+            ridgesCdfLut = _ridgesCdfLut,
+            offsetSplineNodes = _offsetSplineNodes,
+            offsetSplinePoints = _offsetSplinePoints,
+            factorSplineNodes = _factorSplineNodes,
+            factorSplinePoints = _factorSplinePoints,
+            jaggednessSplineNodes = _jaggednessSplineNodes,
+            jaggednessSplinePoints = _jaggednessSplinePoints,
+            legacyTerrainHeightSplineNodes = _legacyTerrainHeightSplineNodes,
+            legacyTerrainHeightSplinePoints = _legacyTerrainHeightSplinePoints,
             continentalnessHeightLut = _continentalnessHeightLut,
             columnHeights = pending.columnHeights,
         };
@@ -872,8 +1102,6 @@ public sealed class TerrainData : IDisposable
         ushort[] managedFoliageIds = new ushort[managedBlocks.Length];
         byte[] subChunkContents = new byte[SubChunkCountY];
         int maxHeight = -1;
-        int waterEndY = Mathf.Min(_settings.seaLevel, WorldHeight);
-        bool needsWater = false;
 
         for (int i = 0; i < pending.columnHeights.Length; i++)
         {
@@ -889,40 +1117,6 @@ public sealed class TerrainData : IDisposable
                 for (int subChunkY = 0; subChunkY <= highestSolidSubChunk; subChunkY++)
                 {
                     subChunkContents[subChunkY] |= ChunkColumnData.SolidContentBit;
-                }
-            }
-
-            if (!needsWater && waterEndY > 0 && columnHeight + 1 < waterEndY)
-            {
-                needsWater = true;
-            }
-        }
-
-        if (needsWater)
-        {
-            for (int localZ = 0; localZ < ChunkSize; localZ++)
-            {
-                for (int localX = 0; localX < ChunkSize; localX++)
-                {
-                    int columnIndex = (localZ * ChunkSize) + localX;
-                    int surfaceHeight = managedColumnHeights[columnIndex];
-                    int waterStartY = surfaceHeight + 1;
-
-                    for (int worldY = waterStartY; worldY < waterEndY; worldY++)
-                    {
-                        int index = GetIndex(localX, worldY, localZ);
-                        if (managedBlocks[index] != BlockType.Air)
-                        {
-                            continue;
-                        }
-
-                        managedFluids[index] = VoxelFluid.Water(100);
-                        subChunkContents[worldY / SubChunkSize] |= ChunkColumnData.FluidContentBit;
-                        if (worldY > maxHeight)
-                        {
-                            maxHeight = worldY;
-                        }
-                    }
                 }
             }
         }
@@ -1050,6 +1244,14 @@ public sealed class TerrainData : IDisposable
             _managedContinentalnessCdfLut,
             _managedErosionCdfLut,
             _managedRidgesCdfLut,
+            _managedOffsetSplineNodes,
+            _managedOffsetSplinePoints,
+            _managedFactorSplineNodes,
+            _managedFactorSplinePoints,
+            _managedJaggednessSplineNodes,
+            _managedJaggednessSplinePoints,
+            _managedLegacyTerrainHeightSplineNodes,
+            _managedLegacyTerrainHeightSplinePoints,
             _managedContinentalnessHeightLut);
     }
 
@@ -1088,5 +1290,37 @@ public sealed class TerrainData : IDisposable
         }
 
         return nativeLut;
+    }
+
+    private static NativeArray<SplineTreeBakedNode> CreateNativeSplineNodes(SplineTreeBakedNode[] managedNodes)
+    {
+        if (managedNodes == null || managedNodes.Length == 0)
+        {
+            return new NativeArray<SplineTreeBakedNode>(0, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        }
+
+        NativeArray<SplineTreeBakedNode> nativeNodes = new NativeArray<SplineTreeBakedNode>(managedNodes.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < managedNodes.Length; i++)
+        {
+            nativeNodes[i] = managedNodes[i];
+        }
+
+        return nativeNodes;
+    }
+
+    private static NativeArray<SplineTreeBakedPoint> CreateNativeSplinePoints(SplineTreeBakedPoint[] managedPoints)
+    {
+        if (managedPoints == null || managedPoints.Length == 0)
+        {
+            return new NativeArray<SplineTreeBakedPoint>(0, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        }
+
+        NativeArray<SplineTreeBakedPoint> nativePoints = new NativeArray<SplineTreeBakedPoint>(managedPoints.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < managedPoints.Length; i++)
+        {
+            nativePoints[i] = managedPoints[i];
+        }
+
+        return nativePoints;
     }
 }

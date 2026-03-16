@@ -41,21 +41,15 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
         ContinentalnessSettings settings = settingsAsset.ToSettings();
         ErosionSettings erosionSettings = settingsAsset.ToErosionSettings();
         RidgesSettings ridgesSettings = settingsAsset.ToRidgesSettings();
-        TemperatureSettings temperatureSettings = settingsAsset.ToTemperatureSettings();
-        PrecipitationSettings precipitationSettings = settingsAsset.ToPrecipitationSettings();
         int sampleCount = asset.SampleCount;
         int lutResolution = asset.LutResolution;
         int sectorRange = asset.SectorRange;
         NativeArray<float> continentalnessSamples = new NativeArray<float>(sampleCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> erosionSamples = new NativeArray<float>(sampleCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> ridgesSamples = new NativeArray<float>(sampleCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> temperatureSamples = new NativeArray<float>(sampleCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> precipitationSamples = new NativeArray<float>(sampleCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> continentalnessStats = new NativeArray<float>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> erosionStats = new NativeArray<float>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> ridgesStats = new NativeArray<float>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> temperatureStats = new NativeArray<float>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> precipitationStats = new NativeArray<float>(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
         try
         {
@@ -110,7 +104,7 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
             }
 
             bool completedRidges = BakeSamples(
-                "Peaks/Ridges",
+                "Weirdness",
                 sampleBatchSize,
                 sampleCount,
                 lutResolution,
@@ -134,56 +128,6 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
                 return;
             }
 
-            bool completedTemperature = BakeSamples(
-                "Temperature",
-                sampleBatchSize,
-                sampleCount,
-                lutResolution,
-                temperatureSamples,
-                temperatureStats,
-                (slice, startIndex, batchCount) => new WorldGenPrototypeJobs.RawTemperatureSampleJob
-                {
-                    sampleSeed = asset.BakeRandomSeed + startIndex,
-                    sectorRange = sectorRange,
-                    settings = temperatureSettings,
-                    samples = slice,
-                    startIndex = startIndex,
-                }.Schedule(batchCount, 128),
-                out float[] temperatureLut,
-                out float temperatureRawMin,
-                out float temperatureRawAverage,
-                out float temperatureRawMax);
-            if (!completedTemperature)
-            {
-                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
-                return;
-            }
-
-            bool completedPrecipitation = BakeSamples(
-                "Precipitation",
-                sampleBatchSize,
-                sampleCount,
-                lutResolution,
-                precipitationSamples,
-                precipitationStats,
-                (slice, startIndex, batchCount) => new WorldGenPrototypeJobs.RawPrecipitationSampleJob
-                {
-                    sampleSeed = asset.BakeRandomSeed + startIndex,
-                    sectorRange = sectorRange,
-                    settings = precipitationSettings,
-                    samples = slice,
-                    startIndex = startIndex,
-                }.Schedule(batchCount, 128),
-                out float[] precipitationLut,
-                out float precipitationRawMin,
-                out float precipitationRawAverage,
-                out float precipitationRawMax);
-            if (!completedPrecipitation)
-            {
-                Debug.LogWarning("[WorldGenRemapProfile] Bake canceled.");
-                return;
-            }
-
             asset.StoreBakedLuts(
                 continentalnessLut,
                 sampleCount,
@@ -199,17 +143,7 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
                 sampleCount,
                 ridgesRawMin,
                 ridgesRawAverage,
-                ridgesRawMax,
-                temperatureLut,
-                sampleCount,
-                temperatureRawMin,
-                temperatureRawAverage,
-                temperatureRawMax,
-                precipitationLut,
-                sampleCount,
-                precipitationRawMin,
-                precipitationRawAverage,
-                precipitationRawMax);
+                ridgesRawMax);
             EditorUtility.SetDirty(asset);
             AssetDatabase.SaveAssets();
             Debug.Log($"[WorldGenRemapProfile] Baked remap LUTs.\n{asset.BakedSummary}");
@@ -231,16 +165,6 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
                 ridgesSamples.Dispose();
             }
 
-            if (temperatureSamples.IsCreated)
-            {
-                temperatureSamples.Dispose();
-            }
-
-            if (precipitationSamples.IsCreated)
-            {
-                precipitationSamples.Dispose();
-            }
-
             if (continentalnessStats.IsCreated)
             {
                 continentalnessStats.Dispose();
@@ -254,16 +178,6 @@ public sealed class WorldGenRemapProfileAssetEditor : Editor
             if (ridgesStats.IsCreated)
             {
                 ridgesStats.Dispose();
-            }
-
-            if (temperatureStats.IsCreated)
-            {
-                temperatureStats.Dispose();
-            }
-
-            if (precipitationStats.IsCreated)
-            {
-                precipitationStats.Dispose();
             }
 
             EditorUtility.ClearProgressBar();

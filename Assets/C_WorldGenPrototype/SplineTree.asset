@@ -1,0 +1,1804 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9178229920f3c6a488e87a8b46eea3eb, type: 3}
+  m_Name: SplineTree
+  m_EditorClassIdentifier: Assembly-CSharp::SplineTreeAsset
+  rootNode:
+    coordinate: 0
+    points:
+    - location: -1.1
+      derivative: 0
+      valueType: 0
+      constantValue: 0.044
+      childNode:
+        rid: -2
+    - location: -1.02
+      derivative: 0
+      valueType: 0
+      constantValue: -0.2222
+      childNode:
+        rid: -2
+    - location: -0.51
+      derivative: 0
+      valueType: 0
+      constantValue: -0.2222
+      childNode:
+        rid: -2
+    - location: -0.44
+      derivative: 0
+      valueType: 0
+      constantValue: -0.12
+      childNode:
+        rid: -2
+    - location: -0.18
+      derivative: 0
+      valueType: 0
+      constantValue: -0.12
+      childNode:
+        rid: -2
+    - location: -0.16
+      derivative: 0
+      valueType: 1
+      constantValue: 0
+      childNode:
+        rid: 6465792843346346430
+    - location: -0.15
+      derivative: 0
+      valueType: 1
+      constantValue: 0
+      childNode:
+        rid: 6465792843346346431
+    - location: -0.1
+      derivative: 0
+      valueType: 1
+      constantValue: 0
+      childNode:
+        rid: 6465792843346346432
+    - location: 0.25
+      derivative: 0
+      valueType: 1
+      constantValue: 0
+      childNode:
+        rid: 6465792843346346433
+    - location: 1
+      derivative: 0
+      valueType: 1
+      constantValue: 0
+      childNode:
+        rid: 6465792843346346434
+  bakedNodes: []
+  bakedPoints: []
+  bakeVersion: 0
+  bakedSummary: Not baked
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6465792843346346430
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 1
+        points:
+        - location: -0.85
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346435
+        - location: -0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346436
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346437
+        - location: -0.35
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346438
+        - location: -0.1
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346439
+        - location: 0.2
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346440
+        - location: 0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346441
+    - rid: 6465792843346346431
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 1
+        points:
+        - location: -0.85
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346442
+        - location: -0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346443
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346444
+        - location: -0.35
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346445
+        - location: -0.1
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346446
+        - location: 0.2
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346447
+        - location: 0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346448
+    - rid: 6465792843346346432
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 1
+        points:
+        - location: -0.85
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346449
+        - location: -0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346450
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346451
+        - location: -0.35
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346452
+        - location: -0.1
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346453
+        - location: 0.2
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346454
+        - location: 0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346455
+    - rid: 6465792843346346433
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 1
+        points:
+        - location: -0.85
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346456
+        - location: -0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346457
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346458
+        - location: -0.35
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346459
+        - location: -0.1
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346460
+        - location: 0.2
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346461
+        - location: 0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346462
+        - location: 0.45
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346463
+        - location: 0.55
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346464
+        - location: 0.58
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346465
+        - location: 0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346466
+    - rid: 6465792843346346434
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 1
+        points:
+        - location: -0.85
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346467
+        - location: -0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346468
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346469
+        - location: -0.35
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346470
+        - location: -0.1
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346471
+        - location: 0.2
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346472
+        - location: 0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346473
+        - location: 0.45
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346474
+        - location: 0.55
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346475
+        - location: 0.58
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346476
+        - location: 0.7
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346477
+    - rid: 6465792843346346435
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: -0.08880186
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: 0.69000006
+          childNode:
+            rid: -2
+    - rid: 6465792843346346436
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: -0.115760356
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: 0.6400001
+          childNode:
+            rid: -2
+    - rid: 6465792843346346437
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.75
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.65
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.5954547
+          derivative: 0
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 0.6054547
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.100000024
+          childNode:
+            rid: -2
+    - rid: 6465792843346346438
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.3
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346439
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.15
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.1
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346440
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.15
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+    - rid: 6465792843346346441
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.02
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.06
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+    - rid: 6465792843346346442
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: -0.08880186
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: 0.69000006
+          childNode:
+            rid: -2
+    - rid: 6465792843346346443
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: -0.115760356
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: 0.6400001
+          childNode:
+            rid: -2
+    - rid: 6465792843346346444
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.75
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.65
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.5954547
+          derivative: 0
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 0.6054547
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.100000024
+          childNode:
+            rid: -2
+    - rid: 6465792843346346445
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.3
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346446
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.15
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.1
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346447
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.15
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+    - rid: 6465792843346346448
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.02
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.06
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+    - rid: 6465792843346346449
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: -0.08880186
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.38940096
+          valueType: 0
+          constantValue: 0.69000006
+          childNode:
+            rid: -2
+    - rid: 6465792843346346450
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: -0.115760356
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.37788022
+          valueType: 0
+          constantValue: 0.6400001
+          childNode:
+            rid: -2
+    - rid: 6465792843346346451
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.75
+          derivative: 0
+          valueType: 0
+          constantValue: -0.2222
+          childNode:
+            rid: -2
+        - location: -0.65
+          derivative: 0
+          valueType: 0
+          constantValue: 0
+          childNode:
+            rid: -2
+        - location: 0.5954547
+          derivative: 0
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 0.6054547
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.000000029802322
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.2534563
+          valueType: 0
+          constantValue: 0.100000024
+          childNode:
+            rid: -2
+    - rid: 6465792843346346452
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.25
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346453
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0.01
+          valueType: 0
+          constantValue: 0.001
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.01
+          valueType: 0
+          constantValue: 0.003
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.094000004
+          valueType: 0
+          constantValue: 0.05
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.007000001
+          valueType: 0
+          constantValue: 0.060000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346454
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346455
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.02
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.12
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346456
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.20235021
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.5138249
+          valueType: 0
+          constantValue: 0.7161751
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.5138249
+          valueType: 0
+          constantValue: 1.23
+          childNode:
+            rid: -2
+    - rid: 6465792843346346457
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.2
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.43317974
+          valueType: 0
+          constantValue: 0.44682026
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.43317974
+          valueType: 0
+          constantValue: 0.88
+          childNode:
+            rid: -2
+    - rid: 6465792843346346458
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.2
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.3917051
+          valueType: 0
+          constantValue: 0.30829495
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.3917051
+          valueType: 0
+          constantValue: 0.70000005
+          childNode:
+            rid: -2
+    - rid: 6465792843346346459
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.25
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.35
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.35
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.35
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049000014
+          valueType: 0
+          constantValue: 0.42000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346460
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0.07
+          valueType: 0
+          constantValue: 0.0069999998
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.07
+          valueType: 0
+          constantValue: 0.021
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.658
+          valueType: 0
+          constantValue: 0.35
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049000014
+          valueType: 0
+          constantValue: 0.42000002
+          childNode:
+            rid: -2
+    - rid: 6465792843346346461
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346462
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346463
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346478
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.17
+          childNode:
+            rid: -2
+    - rid: 6465792843346346464
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346479
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.17
+          childNode:
+            rid: -2
+    - rid: 6465792843346346465
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346466
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.02
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: -0.03
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.12
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346467
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.34792626
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.5760369
+          valueType: 0
+          constantValue: 0.9239631
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.5760369
+          valueType: 0
+          constantValue: 1.5
+          childNode:
+            rid: -2
+    - rid: 6465792843346346468
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.2
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.4608295
+          valueType: 0
+          constantValue: 0.5391705
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.4608295
+          valueType: 0
+          constantValue: 1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346469
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: 0.2
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.4608295
+          valueType: 0
+          constantValue: 0.5391705
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.4608295
+          valueType: 0
+          constantValue: 1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346470
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.2
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.5
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.5
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.5
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.070000015
+          valueType: 0
+          constantValue: 0.6
+          childNode:
+            rid: -2
+    - rid: 6465792843346346471
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0.099999994
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0.099999994
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.94
+          valueType: 0
+          constantValue: 0.5
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.070000015
+          valueType: 0
+          constantValue: 0.6
+          childNode:
+            rid: -2
+    - rid: 6465792843346346472
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346473
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346474
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346480
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.17
+          childNode:
+            rid: -2
+    - rid: 6465792843346346475
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 1
+          constantValue: 0
+          childNode:
+            rid: 6465792843346346481
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.17
+          childNode:
+            rid: -2
+    - rid: 6465792843346346476
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346477
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.015
+          valueType: 0
+          constantValue: -0.02
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346478
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346479
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.1
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346480
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2
+    - rid: 6465792843346346481
+      type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
+      data:
+        coordinate: 2
+        points:
+        - location: -1
+          derivative: 0.5
+          valueType: 0
+          constantValue: -0.05
+          childNode:
+            rid: -2
+        - location: -0.4
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0
+          derivative: 0
+          valueType: 0
+          constantValue: 0.01
+          childNode:
+            rid: -2
+        - location: 0.4
+          derivative: 0.04
+          valueType: 0
+          constantValue: 0.03
+          childNode:
+            rid: -2
+        - location: 1
+          derivative: 0.049
+          valueType: 0
+          constantValue: 0.1
+          childNode:
+            rid: -2

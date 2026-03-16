@@ -45,7 +45,7 @@ public struct ContinentalnessSettings
     public Color32 abyssColor;
     public Color32 deepOceanColor;
     public Color32 oceanColor;
-    public Color32 shallowOceanColor;
+    public Color32 shallowOceanTransitionColor;
     public Color32 coastColor;
     public Color32 inlandColor;
     public Color32 deepInlandColor;
@@ -319,10 +319,23 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexX;
         public int sectorIndexZ;
         public bool useContinentalnessRemap;
-        public int seaLevel;
+        public bool useErosionRemap;
+        public bool useRidgesRemap;
         public ContinentalnessSettings continentalnessSettings;
+        public ErosionSettings erosionSettings;
+        public RidgesSettings ridgesSettings;
 
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
+        [ReadOnly] public NativeArray<float> erosionCdfLut;
+        [ReadOnly] public NativeArray<float> ridgesCdfLut;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> offsetSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> offsetSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> factorSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> factorSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> jaggednessSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints;
+        [ReadOnly] public NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes;
+        [ReadOnly] public NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints;
         [ReadOnly] public NativeArray<float> continentalnessHeightLut;
         [WriteOnly] public NativeArray<Color32> pixels;
         [WriteOnly] public NativeArray<float> values;
@@ -338,11 +351,28 @@ public static class WorldGenPrototypeJobs
 
             float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, continentalnessSettings);
             float continentalness = RemapRawNoise(rawContinentalness, useContinentalnessRemap, continentalnessCdfLut);
-            float terrainValue = continentalness;
-            int height = ComposeSurfaceHeight(terrainValue, seaLevel, continentalnessHeightLut);
+            float rawErosion = SampleRawErosion(seed, worldRegionX, worldRegionZ, erosionSettings);
+            float erosion = RemapRawNoise(rawErosion, useErosionRemap, erosionCdfLut);
+            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, ridgesSettings);
+            float weirdness = RemapRawNoise(rawRidges, useRidgesRemap, ridgesCdfLut);
+            float foldedWeirdness = CalculatePvFromWeirdness(weirdness);
+            int height = ComposeSurfaceHeight(
+                continentalness,
+                erosion,
+                weirdness,
+                foldedWeirdness,
+                offsetSplineNodes,
+                offsetSplinePoints,
+                factorSplineNodes,
+                factorSplinePoints,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints,
+                legacyTerrainHeightSplineNodes,
+                legacyTerrainHeightSplinePoints,
+                continentalnessHeightLut);
 
             values[index] = height;
-            pixels[index] = EvaluateContPvHeightColor(terrainValue, height);
+            pixels[index] = EvaluateHeightColor(height);
         }
     }
 
@@ -836,7 +866,7 @@ public static class WorldGenPrototypeJobs
 
         if (value < 0f)
         {
-            return settings.shallowOceanColor;
+            return settings.shallowOceanTransitionColor;
         }
 
         if (value < settings.coastUpperBound)
@@ -907,23 +937,63 @@ public static class WorldGenPrototypeJobs
         return new Color32(intensity, intensity, intensity, 255);
     }
 
-    private static Color32 EvaluateContPvHeightColor(float terrainValue, int height)
+    private static int ComposeSurfaceHeight(
+        float continentalnessValue,
+        float erosionValue,
+        float weirdnessValue,
+        float foldedWeirdnessValue,
+        NativeArray<SplineTreeBakedNode> offsetSplineNodes,
+        NativeArray<SplineTreeBakedPoint> offsetSplinePoints,
+        NativeArray<SplineTreeBakedNode> factorSplineNodes,
+        NativeArray<SplineTreeBakedPoint> factorSplinePoints,
+        NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
+        NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints,
+        NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes,
+        NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints,
+        NativeArray<float> heightLut)
     {
-        if (terrainValue < 0f)
+        if (offsetSplineNodes.IsCreated &&
+            offsetSplinePoints.IsCreated &&
+            factorSplineNodes.IsCreated &&
+            factorSplinePoints.IsCreated &&
+            jaggednessSplineNodes.IsCreated &&
+            jaggednessSplinePoints.IsCreated &&
+            offsetSplineNodes.Length > 0 &&
+            offsetSplinePoints.Length > 0 &&
+            factorSplineNodes.Length > 0 &&
+            factorSplinePoints.Length > 0 &&
+            jaggednessSplineNodes.Length > 0 &&
+            jaggednessSplinePoints.Length > 0)
         {
-            float oceanT = math.saturate(terrainValue + 1f);
-            byte red = (byte)math.round(math.lerp(8f, 36f, oceanT));
-            byte green = (byte)math.round(math.lerp(32f, 120f, oceanT));
-            byte blue = (byte)math.round(math.lerp(96f, 220f, oceanT));
-            return new Color32(red, green, blue, 255);
+            TerrainShapeSample shape = EvaluateTerrainShape(
+                continentalnessValue,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                offsetSplineNodes,
+                offsetSplinePoints,
+                factorSplineNodes,
+                factorSplinePoints,
+                jaggednessSplineNodes,
+                jaggednessSplinePoints);
+            return WorldGenDensity.FindSurfaceHeight(TerrainData.WorldHeight, shape, foldedWeirdnessValue);
         }
 
-        return EvaluateHeightColor(height);
-    }
+        if (legacyTerrainHeightSplineNodes.IsCreated &&
+            legacyTerrainHeightSplinePoints.IsCreated &&
+            legacyTerrainHeightSplineNodes.Length > 0 &&
+            legacyTerrainHeightSplinePoints.Length > 0)
+        {
+            return SplineTreeEvaluator.EvaluateHeight(
+                continentalnessValue,
+                erosionValue,
+                weirdnessValue,
+                foldedWeirdnessValue,
+                legacyTerrainHeightSplineNodes,
+                legacyTerrainHeightSplinePoints,
+                TerrainData.WorldHeight);
+        }
 
-    private static int ComposeSurfaceHeight(float continentalnessValue, int seaLevel, NativeArray<float> heightLut)
-    {
-        int clampedSeaLevel = math.max(0, seaLevel);
         if (heightLut.IsCreated && heightLut.Length > 1)
         {
             float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
@@ -934,14 +1004,44 @@ public static class WorldGenPrototypeJobs
             return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, TerrainData.WorldHeight - 1);
         }
 
-        if (continentalnessValue < 0f)
-        {
-            float oceanT = math.saturate(continentalnessValue + 1f);
-            return (int)math.round(math.lerp(0f, clampedSeaLevel, oceanT));
-        }
+        float normalizedContinentalness = math.saturate((continentalnessValue + 1f) * 0.5f);
+        return (int)math.round(math.lerp(0f, 180f, normalizedContinentalness));
+    }
 
-        float landT = math.saturate(continentalnessValue);
-        return (int)math.round(math.lerp(clampedSeaLevel, 180f, landT));
+    private static TerrainShapeSample EvaluateTerrainShape(
+        float continentalnessValue,
+        float erosionValue,
+        float weirdnessValue,
+        float foldedWeirdnessValue,
+        NativeArray<SplineTreeBakedNode> offsetSplineNodes,
+        NativeArray<SplineTreeBakedPoint> offsetSplinePoints,
+        NativeArray<SplineTreeBakedNode> factorSplineNodes,
+        NativeArray<SplineTreeBakedPoint> factorSplinePoints,
+        NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
+        NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints)
+    {
+        float offset = SplineTreeEvaluator.EvaluateValue(
+            continentalnessValue,
+            erosionValue,
+            weirdnessValue,
+            foldedWeirdnessValue,
+            offsetSplineNodes,
+            offsetSplinePoints);
+        float factor = SplineTreeEvaluator.EvaluateValue(
+            continentalnessValue,
+            erosionValue,
+            weirdnessValue,
+            foldedWeirdnessValue,
+            factorSplineNodes,
+            factorSplinePoints);
+        float jaggedness = SplineTreeEvaluator.EvaluateValue(
+            continentalnessValue,
+            erosionValue,
+            weirdnessValue,
+            foldedWeirdnessValue,
+            jaggednessSplineNodes,
+            jaggednessSplinePoints);
+        return new TerrainShapeSample(offset, math.max(0.0001f, factor), jaggedness);
     }
 
     private static float SampleRawLayeredNoise(

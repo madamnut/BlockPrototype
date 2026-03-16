@@ -148,8 +148,6 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.Append("Height: ");
             _upperLeftBuilder.Append(sample.height);
-            _upperLeftBuilder.Append("  Sea: ");
-            _upperLeftBuilder.Append(worldRuntime.SeaLevel);
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.Append("Cont: ");
             _upperLeftBuilder.Append(sample.continentalness.ToString("F2"));
@@ -159,8 +157,8 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append("  Weird: ");
             _upperLeftBuilder.Append(sample.weirdness.ToString("F2"));
             _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("PV: ");
-            _upperLeftBuilder.Append(sample.pv.ToString("F2"));
+            _upperLeftBuilder.Append("Folded: ");
+            _upperLeftBuilder.Append(sample.foldedWeirdness.ToString("F2"));
         }
 
         upperLeftText.text = _upperLeftBuilder.ToString();

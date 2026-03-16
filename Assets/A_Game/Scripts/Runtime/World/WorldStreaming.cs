@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class WorldStreaming
 {
+    private readonly List<TerrainData.CompletedChunkColumnInfo> _completedChunkBuffer = new(16);
     private readonly List<Vector2Int> _visibleChunkKeyBuffer = new(256);
     private readonly List<Vector2Int> _chunkPriorityBuffer = new(256);
     private readonly List<Vector2Int> _requestQueue = new(256);
@@ -35,6 +37,7 @@ public sealed class WorldStreaming
         _targetVisibleChunks.Clear();
         _visibleChunkKeyBuffer.Clear();
         _chunkPriorityBuffer.Clear();
+        _completedChunkBuffer.Clear();
         HasCenterChunk = false;
         CurrentCenterChunk = default;
     }
@@ -162,10 +165,12 @@ public sealed class WorldStreaming
 
     public void CompleteChunkGenerationJobs(TerrainData terrain, int completedChunkGenerationsPerFrame)
     {
-        terrain.CompletePendingChunkColumns(completedChunkGenerationsPerFrame);
+        _completedChunkBuffer.Clear();
+        terrain.CompletePendingChunkColumns(_completedChunkBuffer, completedChunkGenerationsPerFrame);
 
-        foreach (Vector2Int chunkCoords in _visibleChunkColumns)
+        for (int i = 0; i < _completedChunkBuffer.Count; i++)
         {
+            Vector2Int chunkCoords = _completedChunkBuffer[i].chunkCoords;
             if (!terrain.IsChunkColumnReady(chunkCoords.x, chunkCoords.y))
             {
                 continue;

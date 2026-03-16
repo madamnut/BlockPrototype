@@ -4,14 +4,11 @@ using UnityEngine;
 [CustomEditor(typeof(WorldGenSettingsAsset))]
 public sealed class WorldGenSettingsAssetEditor : Editor
 {
-    private static bool showRuntimeTerrainValues = true;
     private static bool showHeightSplineValues = true;
     private static bool showCdfRemapValues = true;
     private static bool showContinentalnessValues = true;
     private static bool showErosionValues = true;
     private static bool showRidgesValues = true;
-    private static bool showTemperatureValues = true;
-    private static bool showPrecipitationValues = true;
     private static bool showBandValues = true;
 
     public override void OnInspectorGUI()
@@ -19,14 +16,11 @@ public sealed class WorldGenSettingsAssetEditor : Editor
         serializedObject.Update();
 
         DrawFoldoutSection(
-            ref showRuntimeTerrainValues,
-            "Runtime Terrain",
-            "seaLevel");
-
-        DrawFoldoutSection(
             ref showHeightSplineValues,
-            "Height Curve",
-            "continentalnessHeightSpline");
+            "Terrain Spline Trees",
+            "offsetSplineTree",
+            "factorSplineTree",
+            "jaggednessSplineTree");
 
         DrawFoldoutSection(
             ref showCdfRemapValues,
@@ -93,7 +87,7 @@ public sealed class WorldGenSettingsAssetEditor : Editor
 
         DrawFoldoutSection(
             ref showRidgesValues,
-            "Peaks/Ridges Values",
+            "Weirdness Values",
             "ridgesUseWarp",
             "ridgesWarpOctaves",
             "ridgesWarpFrequency",
@@ -119,79 +113,7 @@ public sealed class WorldGenSettingsAssetEditor : Editor
             "ridgesDetailGain",
             "ridgesDetailWeight");
 
-        DrawFoldoutSection(
-            ref showTemperatureValues,
-            "Temperature Values",
-            "temperatureUseWarp",
-            "temperatureWarpOctaves",
-            "temperatureWarpFrequency",
-            "temperatureWarpAmplitude",
-            "temperatureWarpLacunarity",
-            "temperatureWarpGain",
-            "temperatureUseMacro",
-            "temperatureMacroOctaves",
-            "temperatureMacroFrequency",
-            "temperatureMacroLacunarity",
-            "temperatureMacroGain",
-            "temperatureMacroWeight",
-            "temperatureUseBroad",
-            "temperatureBroadOctaves",
-            "temperatureBroadFrequency",
-            "temperatureBroadLacunarity",
-            "temperatureBroadGain",
-            "temperatureBroadWeight",
-            "temperatureUseDetail",
-            "temperatureDetailOctaves",
-            "temperatureDetailFrequency",
-            "temperatureDetailLacunarity",
-            "temperatureDetailGain",
-            "temperatureDetailWeight");
-
-        DrawFoldoutSection(
-            ref showPrecipitationValues,
-            "Precipitation Values",
-            "precipitationUseWarp",
-            "precipitationWarpOctaves",
-            "precipitationWarpFrequency",
-            "precipitationWarpAmplitude",
-            "precipitationWarpLacunarity",
-            "precipitationWarpGain",
-            "precipitationUseMacro",
-            "precipitationMacroOctaves",
-            "precipitationMacroFrequency",
-            "precipitationMacroLacunarity",
-            "precipitationMacroGain",
-            "precipitationMacroWeight",
-            "precipitationUseBroad",
-            "precipitationBroadOctaves",
-            "precipitationBroadFrequency",
-            "precipitationBroadLacunarity",
-            "precipitationBroadGain",
-            "precipitationBroadWeight",
-            "precipitationUseDetail",
-            "precipitationDetailOctaves",
-            "precipitationDetailFrequency",
-            "precipitationDetailLacunarity",
-            "precipitationDetailGain",
-            "precipitationDetailWeight");
-
-        DrawFoldoutSection(
-            ref showBandValues,
-            "Continentalness Bands",
-            "abyssUpperBound",
-            "abyssColor",
-            "deepOceanUpperBound",
-            "deepOceanColor",
-            "oceanUpperBound",
-            "oceanColor",
-            "shallowOceanColor",
-            "coastUpperBound",
-            "coastColor",
-            "inlandUpperBound",
-            "inlandColor",
-            "deepInlandUpperBound",
-            "deepInlandColor",
-            "continentalCoreColor");
+        DrawContinentalnessBandsSection();
 
         serializedObject.ApplyModifiedProperties();
     }
@@ -218,5 +140,52 @@ public sealed class WorldGenSettingsAssetEditor : Editor
         }
 
         EditorGUILayout.Space(6f);
+    }
+
+    private void DrawContinentalnessBandsSection()
+    {
+        showBandValues = EditorGUILayout.Foldout(showBandValues, "Continentalness Bands", true);
+        if (!showBandValues)
+        {
+            EditorGUILayout.Space(4f);
+            return;
+        }
+
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            DrawProperty("abyssUpperBound");
+            DrawProperty("abyssColor");
+            DrawProperty("deepOceanUpperBound");
+            DrawProperty("deepOceanColor");
+            DrawProperty("oceanUpperBound");
+            DrawProperty("oceanColor");
+            DrawProperty("shallowOceanTransitionColor", "Shallow Ocean (Transition)");
+            DrawProperty("coastUpperBound");
+            DrawProperty("coastColor", "Coast (Transition)");
+            DrawProperty("inlandUpperBound");
+            DrawProperty("inlandColor");
+            DrawProperty("deepInlandUpperBound");
+            DrawProperty("deepInlandColor");
+            DrawProperty("continentalCoreColor");
+        }
+
+        EditorGUILayout.Space(6f);
+    }
+
+    private void DrawProperty(string propertyName, string label = null)
+    {
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(label))
+        {
+            EditorGUILayout.PropertyField(property, true);
+            return;
+        }
+
+        EditorGUILayout.PropertyField(property, new GUIContent(label), true);
     }
 }

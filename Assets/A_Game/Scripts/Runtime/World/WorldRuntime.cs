@@ -63,6 +63,9 @@ public sealed class WorldRuntime : MonoBehaviour
     private NativeArray<ushort> _faceTextureLookup;
     private TerrainGenerationSettings terrainSettings;
     private bool _visibleFluidRendererCacheDirty = true;
+    private SplineTreeAsset _fallbackOffsetSplineTree;
+    private SplineTreeAsset _fallbackFactorSplineTree;
+    private SplineTreeAsset _fallbackJaggednessSplineTree;
 
     public bool HasSelectedBlock => _worldInteraction != null && _worldInteraction.HasSelection;
     public bool HasSelection => _worldInteraction != null && _worldInteraction.HasSelection;
@@ -73,7 +76,6 @@ public sealed class WorldRuntime : MonoBehaviour
     public string SelectedContentName => _worldInteraction != null ? _worldInteraction.SelectedContentName : "None";
     public BlockType SelectedBlockType => _worldInteraction != null ? _worldInteraction.GetSelectedBlockType() : BlockType.Air;
     public int RenderSizeInChunks => renderSizeInChunks;
-    public int SeaLevel => terrainSettings.seaLevel;
     public TerrainData Terrain => _terrain;
 
     public bool TryGetWorldGenDebugInfo(out Vector2Int position, out TerrainData.WorldGenDebugSample sample)
@@ -216,6 +218,7 @@ public sealed class WorldRuntime : MonoBehaviour
         _waterReflection = null;
         _chunkView = null;
         _worldStreaming = null;
+        DestroyFallbackSplineTrees();
 
         _terrain?.Dispose();
         _terrain = null;
@@ -235,6 +238,14 @@ public sealed class WorldRuntime : MonoBehaviour
             GetContinentalnessRemapLut(),
             GetErosionRemapLut(),
             GetRidgesRemapLut(),
+            GetOffsetSplineNodes(),
+            GetOffsetSplinePoints(),
+            GetFactorSplineNodes(),
+            GetFactorSplinePoints(),
+            GetJaggednessSplineNodes(),
+            GetJaggednessSplinePoints(),
+            GetLegacyTerrainHeightSplineNodes(),
+            GetLegacyTerrainHeightSplinePoints(),
             GetContinentalnessHeightLut());
 
         DisposePendingChunkMeshJobs();
@@ -471,7 +482,7 @@ public sealed class WorldRuntime : MonoBehaviour
         _waterReflection.TryRender(
             camera,
             _resolvedInteractionCamera,
-            transform.position.y + _terrain.SeaLevel,
+            transform.position.y,
             () => _worldDebug != null ? _worldDebug.HideForReflection() : default,
             visibility => _worldDebug?.RestoreAfterReflection(visibility));
     }
@@ -713,18 +724,153 @@ public sealed class WorldRuntime : MonoBehaviour
             : null;
     }
 
-    private bool UseContinentalnessHeightSpline()
+    private SplineTreeBakedNode[] GetOffsetSplineNodes()
     {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.ContinentalnessHeightSpline != null &&
-               worldGenSettingsAsset.ContinentalnessHeightSpline.HasBakedLut;
+        SplineTreeAsset asset = GetOffsetSplineTreeAsset();
+        return asset != null ? asset.BakedNodes : null;
+    }
+
+    private SplineTreeBakedPoint[] GetOffsetSplinePoints()
+    {
+        SplineTreeAsset asset = GetOffsetSplineTreeAsset();
+        return asset != null ? asset.BakedPoints : null;
+    }
+
+    private SplineTreeBakedNode[] GetFactorSplineNodes()
+    {
+        SplineTreeAsset asset = GetFactorSplineTreeAsset();
+        return asset != null ? asset.BakedNodes : null;
+    }
+
+    private SplineTreeBakedPoint[] GetFactorSplinePoints()
+    {
+        SplineTreeAsset asset = GetFactorSplineTreeAsset();
+        return asset != null ? asset.BakedPoints : null;
+    }
+
+    private SplineTreeBakedNode[] GetJaggednessSplineNodes()
+    {
+        SplineTreeAsset asset = GetJaggednessSplineTreeAsset();
+        return asset != null ? asset.BakedNodes : null;
+    }
+
+    private SplineTreeBakedPoint[] GetJaggednessSplinePoints()
+    {
+        SplineTreeAsset asset = GetJaggednessSplineTreeAsset();
+        return asset != null ? asset.BakedPoints : null;
+    }
+
+    private SplineTreeBakedNode[] GetLegacyTerrainHeightSplineNodes()
+    {
+        return UseLegacyTerrainHeightSplineTree()
+            ? worldGenSettingsAsset.LegacyTerrainHeightSplineTree.BakedNodes
+            : null;
+    }
+
+    private SplineTreeBakedPoint[] GetLegacyTerrainHeightSplinePoints()
+    {
+        return UseLegacyTerrainHeightSplineTree()
+            ? worldGenSettingsAsset.LegacyTerrainHeightSplineTree.BakedPoints
+            : null;
     }
 
     private float[] GetContinentalnessHeightLut()
     {
-        return UseContinentalnessHeightSpline()
-            ? worldGenSettingsAsset.ContinentalnessHeightSpline.BakedLut
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.LegacyContinentalnessHeightSpline != null &&
+               worldGenSettingsAsset.LegacyContinentalnessHeightSpline.HasBakedLut
+            ? worldGenSettingsAsset.LegacyContinentalnessHeightSpline.BakedLut
             : null;
+    }
+
+    private bool UseLegacyTerrainHeightSplineTree()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.LegacyTerrainHeightSplineTree != null &&
+               worldGenSettingsAsset.LegacyTerrainHeightSplineTree.HasBakedTree;
+    }
+
+    private SplineTreeAsset GetOffsetSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.OffsetSplineTree != null &&
+            worldGenSettingsAsset.OffsetSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.OffsetSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return _fallbackOffsetSplineTree;
+    }
+
+    private SplineTreeAsset GetFactorSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.FactorSplineTree != null &&
+            worldGenSettingsAsset.FactorSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.FactorSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return _fallbackFactorSplineTree;
+    }
+
+    private SplineTreeAsset GetJaggednessSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.JaggednessSplineTree != null &&
+            worldGenSettingsAsset.JaggednessSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.JaggednessSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return _fallbackJaggednessSplineTree;
+    }
+
+    private void EnsureFallbackSplineTrees()
+    {
+        if (_fallbackOffsetSplineTree == null)
+        {
+            _fallbackOffsetSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldOffsetTree());
+        }
+
+        if (_fallbackFactorSplineTree == null)
+        {
+            _fallbackFactorSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldFactorTree());
+        }
+
+        if (_fallbackJaggednessSplineTree == null)
+        {
+            _fallbackJaggednessSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldJaggednessTree());
+        }
+    }
+
+    private static SplineTreeAsset CreateFallbackSplineTree(System.Action<SplineTreeAsset> initializer)
+    {
+        SplineTreeAsset asset = ScriptableObject.CreateInstance<SplineTreeAsset>();
+        initializer(asset);
+        asset.Bake();
+        return asset;
+    }
+
+    private void DestroyFallbackSplineTrees()
+    {
+        DestroySplineTree(ref _fallbackOffsetSplineTree);
+        DestroySplineTree(ref _fallbackFactorSplineTree);
+        DestroySplineTree(ref _fallbackJaggednessSplineTree);
+    }
+
+    private static void DestroySplineTree(ref SplineTreeAsset asset)
+    {
+        if (asset == null)
+        {
+            return;
+        }
+
+        Destroy(asset);
+        asset = null;
     }
 
     private void EnsureRenderSizeIsOdd()

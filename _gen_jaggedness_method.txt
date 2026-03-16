@@ -1,0 +1,79 @@
+private static NodeAsset CreateVanillaOverworldJaggednessRootNode()
+{
+                NodeAsset node3 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.63f, 0.0f),
+                    ConstantPoint(0.01f, 0.3f, 0.0f));
+            NodeAsset node2 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                ConstantPoint(0.44999996f, 0.0f, 0.0f),
+                NestedPoint(1.0f, node3, 0.0f, 0f));
+                NodeAsset node5 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.315f, 0.0f),
+                    ConstantPoint(0.01f, 0.15f, 0.0f));
+            NodeAsset node4 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                ConstantPoint(0.44999996f, 0.0f, 0.0f),
+                NestedPoint(1.0f, node5, 0.0f, 0f));
+                NodeAsset node7 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.315f, 0.0f),
+                    ConstantPoint(0.01f, 0.15f, 0.0f));
+            NodeAsset node6 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                ConstantPoint(0.44999996f, 0.0f, 0.0f),
+                NestedPoint(1.0f, node7, 0.0f, 0f));
+        NodeAsset node1 = CreateNode(
+            SplineTreeCoordinateSource.Erosion,
+            NestedPoint(-1.0f, node2, 0.0f, 0f),
+            NestedPoint(-0.78f, node4, 0.0f, 0f),
+            NestedPoint(-0.5775f, node6, 0.0f, 0f),
+            ConstantPoint(-0.375f, 0.0f, 0.0f));
+                NodeAsset node10 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.63f, 0.0f),
+                    ConstantPoint(0.01f, 0.3f, 0.0f));
+                NodeAsset node11 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.63f, 0.0f),
+                    ConstantPoint(0.01f, 0.3f, 0.0f));
+            NodeAsset node9 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                NestedPoint(0.44999996f, node10, 0.0f, 0f),
+                NestedPoint(1.0f, node11, 0.0f, 0f));
+                NodeAsset node13 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.63f, 0.0f),
+                    ConstantPoint(0.01f, 0.3f, 0.0f));
+            NodeAsset node12 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                ConstantPoint(0.44999996f, 0.0f, 0.0f),
+                NestedPoint(1.0f, node13, 0.0f, 0f));
+                NodeAsset node15 = CreateNode(
+                    SplineTreeCoordinateSource.Weirdness,
+                    ConstantPoint(-0.01f, 0.63f, 0.0f),
+                    ConstantPoint(0.01f, 0.3f, 0.0f));
+            NodeAsset node14 = CreateNode(
+                SplineTreeCoordinateSource.PeaksValleys,
+                ConstantPoint(0.19999999f, 0.0f, 0.0f),
+                ConstantPoint(0.44999996f, 0.0f, 0.0f),
+                NestedPoint(1.0f, node15, 0.0f, 0f));
+        NodeAsset node8 = CreateNode(
+            SplineTreeCoordinateSource.Erosion,
+            NestedPoint(-1.0f, node9, 0.0f, 0f),
+            NestedPoint(-0.78f, node12, 0.0f, 0f),
+            NestedPoint(-0.5775f, node14, 0.0f, 0f),
+            ConstantPoint(-0.375f, 0.0f, 0.0f));
+    NodeAsset node0 = CreateNode(
+        SplineTreeCoordinateSource.Continentalness,
+        ConstantPoint(-0.11f, 0.0f, 0.0f),
+        NestedPoint(0.03f, node1, 0.0f, 0f),
+        NestedPoint(0.65f, node8, 0.0f, 0f));
+    return node0;
+}

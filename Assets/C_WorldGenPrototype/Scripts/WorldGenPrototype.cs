@@ -18,8 +18,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
         Erosion,
         Weirdness,
         Pv,
-        Temperature,
-        Precipitation,
     }
 
     [Header("UI")]
@@ -33,8 +31,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
     [FormerlySerializedAs("peaksRidgesButton")]
     [SerializeField] private Button weirdnessButton;
     [SerializeField] private Button pvButton;
-    [SerializeField] private Button temperatureButton;
-    [SerializeField] private Button precipitationButton;
     [SerializeField] private Button gridButton;
 
     [Header("World Gen Settings")]
@@ -62,12 +58,21 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private NativeArray<float> cachedContinentalnessCdfLut;
     private NativeArray<float> cachedErosionCdfLut;
     private NativeArray<float> cachedRidgesCdfLut;
-    private NativeArray<float> cachedTemperatureCdfLut;
-    private NativeArray<float> cachedPrecipitationCdfLut;
+    private NativeArray<SplineTreeBakedNode> cachedOffsetSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> cachedOffsetSplinePoints;
+    private NativeArray<SplineTreeBakedNode> cachedFactorSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> cachedFactorSplinePoints;
+    private NativeArray<SplineTreeBakedNode> cachedJaggednessSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> cachedJaggednessSplinePoints;
+    private NativeArray<SplineTreeBakedNode> cachedLegacyTerrainHeightSplineNodes;
+    private NativeArray<SplineTreeBakedPoint> cachedLegacyTerrainHeightSplinePoints;
     private NativeArray<float> cachedContinentalnessHeightLut;
     private WorldGenRemapProfileAsset cachedRemapProfileAsset;
     private int cachedRemapBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
+    private SplineTreeAsset fallbackOffsetSplineTree;
+    private SplineTreeAsset fallbackFactorSplineTree;
+    private SplineTreeAsset fallbackJaggednessSplineTree;
 
     private readonly struct ContinentalnessStats
     {
@@ -91,8 +96,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
         BindButton(erosionButton, ToggleErosionMode);
         BindButton(weirdnessButton, ToggleWeirdnessMode);
         BindButton(pvButton, TogglePvMode);
-        BindButton(temperatureButton, ToggleTemperatureMode);
-        BindButton(precipitationButton, TogglePrecipitationMode);
         BindButton(gridButton, ToggleGrid);
         UpdateButtonVisuals();
     }
@@ -105,11 +108,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
         UnbindButton(erosionButton, ToggleErosionMode);
         UnbindButton(weirdnessButton, ToggleWeirdnessMode);
         UnbindButton(pvButton, TogglePvMode);
-        UnbindButton(temperatureButton, ToggleTemperatureMode);
-        UnbindButton(precipitationButton, TogglePrecipitationMode);
         UnbindButton(gridButton, ToggleGrid);
         DisposeCachedRemapLut();
         DisposeCachedFilterLut();
+        DestroyFallbackSplineTrees();
         DestroyTexture(ref previewTexture);
         DestroyTexture(ref gridTexture);
     }
@@ -134,7 +136,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 break;
             case GenerationMode.ContPvHeight:
                 stats = GenerateContPvHeightPreview(seed);
-                label = $"Height Map, Cont Remap: {UseContinentalnessRemap()}, Cont Height Spline: {UseContinentalnessHeightSpline()}";
+                label = $"Height Map, Cont Remap: {UseContinentalnessRemap()}, Density Trees: {UseDensitySplineTrees()}";
                 break;
             case GenerationMode.Erosion:
                 stats = GenerateErosionPreview(seed);
@@ -147,14 +149,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
             case GenerationMode.Pv:
                 stats = GeneratePvPreview(seed);
                 label = $"Source: Weirdness, Remap: {UseRidgesRemap()}";
-                break;
-            case GenerationMode.Temperature:
-                stats = GenerateTemperaturePreview(seed);
-                label = $"Remap: {UseTemperatureRemap()}";
-                break;
-            case GenerationMode.Precipitation:
-                stats = GeneratePrecipitationPreview(seed);
-                label = $"Remap: {UsePrecipitationRemap()}";
                 break;
             default:
                 return;
@@ -193,18 +187,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private void TogglePvMode()
     {
         mode = mode == GenerationMode.Pv ? GenerationMode.None : GenerationMode.Pv;
-        UpdateButtonVisuals();
-    }
-
-    private void ToggleTemperatureMode()
-    {
-        mode = mode == GenerationMode.Temperature ? GenerationMode.None : GenerationMode.Temperature;
-        UpdateButtonVisuals();
-    }
-
-    private void TogglePrecipitationMode()
-    {
-        mode = mode == GenerationMode.Precipitation ? GenerationMode.None : GenerationMode.Precipitation;
         UpdateButtonVisuals();
     }
 
@@ -393,9 +375,22 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexX = sectorIndexX,
                 sectorIndexZ = sectorIndexZ,
                 useContinentalnessRemap = useContinentalnessCdfRemap,
-                seaLevel = worldGenSettingsAsset != null ? worldGenSettingsAsset.SeaLevel : 63,
+                useErosionRemap = UseErosionRemap(),
+                useRidgesRemap = UseRidgesRemap(),
                 continentalnessSettings = continentalnessSettings,
+                erosionSettings = BuildErosionSettings(),
+                ridgesSettings = BuildRidgesSettings(),
                 continentalnessCdfLut = cachedContinentalnessCdfLut,
+                erosionCdfLut = cachedErosionCdfLut,
+                ridgesCdfLut = cachedRidgesCdfLut,
+                offsetSplineNodes = cachedOffsetSplineNodes,
+                offsetSplinePoints = cachedOffsetSplinePoints,
+                factorSplineNodes = cachedFactorSplineNodes,
+                factorSplinePoints = cachedFactorSplinePoints,
+                jaggednessSplineNodes = cachedJaggednessSplineNodes,
+                jaggednessSplinePoints = cachedJaggednessSplinePoints,
+                legacyTerrainHeightSplineNodes = cachedLegacyTerrainHeightSplineNodes,
+                legacyTerrainHeightSplinePoints = cachedLegacyTerrainHeightSplinePoints,
                 continentalnessHeightLut = cachedContinentalnessHeightLut,
                 pixels = pixels,
                 values = values,
@@ -545,118 +540,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
         }
     }
 
-    private ContinentalnessStats GenerateTemperaturePreview(int seed)
-    {
-        int previewSize = previewTexture.width;
-        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        TemperatureSettings settings = BuildTemperatureSettings();
-        bool useCdfRemap = UseTemperatureRemap();
-        EnsureRemapLutCache();
-        NativeArray<float> cdfLut = cachedTemperatureCdfLut;
-        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-
-        try
-        {
-            JobHandle previewHandle = new WorldGenPrototypeJobs.TemperaturePreviewJob
-            {
-                size = previewSize,
-                seed = seed,
-                sectorIndexX = sectorIndexX,
-                sectorIndexZ = sectorIndexZ,
-                useCdfRemap = useCdfRemap,
-                settings = settings,
-                cdfLut = cdfLut,
-                pixels = pixels,
-                values = values,
-            }.Schedule(pixels.Length, 64);
-
-            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
-            {
-                values = values,
-                stats = statsValues,
-            }.Schedule(previewHandle);
-
-            statsHandle.Complete();
-            previewTexture.SetPixelData(pixels, 0);
-            previewTexture.Apply(false, false);
-            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
-        }
-        finally
-        {
-            if (pixels.IsCreated)
-            {
-                pixels.Dispose();
-            }
-
-            if (values.IsCreated)
-            {
-                values.Dispose();
-            }
-
-            if (statsValues.IsCreated)
-            {
-                statsValues.Dispose();
-            }
-        }
-    }
-
-    private ContinentalnessStats GeneratePrecipitationPreview(int seed)
-    {
-        int previewSize = previewTexture.width;
-        NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-        PrecipitationSettings settings = BuildPrecipitationSettings();
-        bool useCdfRemap = UsePrecipitationRemap();
-        EnsureRemapLutCache();
-        NativeArray<float> cdfLut = cachedPrecipitationCdfLut;
-        NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-
-        try
-        {
-            JobHandle previewHandle = new WorldGenPrototypeJobs.PrecipitationPreviewJob
-            {
-                size = previewSize,
-                seed = seed,
-                sectorIndexX = sectorIndexX,
-                sectorIndexZ = sectorIndexZ,
-                useCdfRemap = useCdfRemap,
-                settings = settings,
-                cdfLut = cdfLut,
-                pixels = pixels,
-                values = values,
-            }.Schedule(pixels.Length, 64);
-
-            JobHandle statsHandle = new WorldGenPrototypeJobs.FloatStatsJob
-            {
-                values = values,
-                stats = statsValues,
-            }.Schedule(previewHandle);
-
-            statsHandle.Complete();
-            previewTexture.SetPixelData(pixels, 0);
-            previewTexture.Apply(false, false);
-            return new ContinentalnessStats(statsValues[0], statsValues[1], statsValues[2]);
-        }
-        finally
-        {
-            if (pixels.IsCreated)
-            {
-                pixels.Dispose();
-            }
-
-            if (values.IsCreated)
-            {
-                values.Dispose();
-            }
-
-            if (statsValues.IsCreated)
-            {
-                statsValues.Dispose();
-            }
-        }
-    }
-
     private void UpdateGridOverlay()
     {
         if (gridTexture == null)
@@ -714,8 +597,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
         SetButtonVisual(erosionButton, mode == GenerationMode.Erosion);
         SetButtonVisual(weirdnessButton, mode == GenerationMode.Weirdness);
         SetButtonVisual(pvButton, mode == GenerationMode.Pv);
-        SetButtonVisual(temperatureButton, mode == GenerationMode.Temperature);
-        SetButtonVisual(precipitationButton, mode == GenerationMode.Precipitation);
         SetButtonVisual(gridButton, drawGrid);
     }
 
@@ -745,33 +626,11 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         if (worldGenSettingsAsset == null)
         {
-            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in peaks/ridges defaults.");
+            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in weirdness defaults.");
             return WorldGenSettingsAsset.CreateDefaultRidgesSettings();
         }
 
         return worldGenSettingsAsset.ToRidgesSettings();
-    }
-
-    private TemperatureSettings BuildTemperatureSettings()
-    {
-        if (worldGenSettingsAsset == null)
-        {
-            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in temperature defaults.");
-            return WorldGenSettingsAsset.CreateDefaultTemperatureSettings();
-        }
-
-        return worldGenSettingsAsset.ToTemperatureSettings();
-    }
-
-    private PrecipitationSettings BuildPrecipitationSettings()
-    {
-        if (worldGenSettingsAsset == null)
-        {
-            Debug.LogWarning("[WorldGenPrototype] WorldGenSettingsAsset is not assigned. Using built-in precipitation defaults.");
-            return WorldGenSettingsAsset.CreateDefaultPrecipitationSettings();
-        }
-
-        return worldGenSettingsAsset.ToPrecipitationSettings();
     }
 
     private void EnsureRemapLutCache()
@@ -786,8 +645,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
             !cachedContinentalnessCdfLut.IsCreated ||
             !cachedErosionCdfLut.IsCreated ||
             !cachedRidgesCdfLut.IsCreated ||
-            !cachedTemperatureCdfLut.IsCreated ||
-            !cachedPrecipitationCdfLut.IsCreated ||
             cachedRemapProfileAsset != worldGenRemapProfileAsset ||
             cachedRemapBakeVersion != worldGenRemapProfileAsset.BakeVersion;
 
@@ -818,20 +675,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
             cachedRidgesCdfLut[i] = ridgesSourceLut[i];
         }
 
-        float[] temperatureSourceLut = worldGenRemapProfileAsset.BakedTemperatureRemapLut;
-        cachedTemperatureCdfLut = new NativeArray<float>(temperatureSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        for (int i = 0; i < temperatureSourceLut.Length; i++)
-        {
-            cachedTemperatureCdfLut[i] = temperatureSourceLut[i];
-        }
-
-        float[] precipitationSourceLut = worldGenRemapProfileAsset.BakedPrecipitationRemapLut;
-        cachedPrecipitationCdfLut = new NativeArray<float>(precipitationSourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        for (int i = 0; i < precipitationSourceLut.Length; i++)
-        {
-            cachedPrecipitationCdfLut[i] = precipitationSourceLut[i];
-        }
-
         cachedRemapProfileAsset = worldGenRemapProfileAsset;
         cachedRemapBakeVersion = worldGenRemapProfileAsset.BakeVersion;
     }
@@ -840,9 +683,19 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         DisposeCachedFilterLut();
 
-        if (UseContinentalnessHeightSpline())
+        if (UseDensitySplineTrees())
         {
-            float[] sourceLut = worldGenSettingsAsset.ContinentalnessHeightSpline.BakedLut;
+            CacheSplineTree(GetOffsetSplineTreeAsset(), ref cachedOffsetSplineNodes, ref cachedOffsetSplinePoints);
+            CacheSplineTree(GetFactorSplineTreeAsset(), ref cachedFactorSplineNodes, ref cachedFactorSplinePoints);
+            CacheSplineTree(GetJaggednessSplineTreeAsset(), ref cachedJaggednessSplineNodes, ref cachedJaggednessSplinePoints);
+        }
+        else if (UseLegacyTerrainHeightSplineTree())
+        {
+            CacheSplineTree(worldGenSettingsAsset.LegacyTerrainHeightSplineTree, ref cachedLegacyTerrainHeightSplineNodes, ref cachedLegacyTerrainHeightSplinePoints);
+        }
+        else if (UseContinentalnessHeightSpline())
+        {
+            float[] sourceLut = worldGenSettingsAsset.LegacyContinentalnessHeightSpline.BakedLut;
             cachedContinentalnessHeightLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             for (int i = 0; i < sourceLut.Length; i++)
             {
@@ -853,7 +706,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
     private bool UseRemap()
     {
-        return UseContinentalnessRemap() || UseErosionRemap() || UseRidgesRemap() || UseTemperatureRemap() || UsePrecipitationRemap();
+        return UseContinentalnessRemap() || UseErosionRemap() || UseRidgesRemap();
     }
 
     private bool UseContinentalnessRemap()
@@ -864,11 +717,25 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenRemapProfileAsset.HasContinentalnessRemap;
     }
 
+    private bool UseDensitySplineTrees()
+    {
+        return GetOffsetSplineTreeAsset() != null &&
+               GetFactorSplineTreeAsset() != null &&
+               GetJaggednessSplineTreeAsset() != null;
+    }
+
     private bool UseContinentalnessHeightSpline()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.ContinentalnessHeightSpline != null &&
-               worldGenSettingsAsset.ContinentalnessHeightSpline.HasBakedLut;
+               worldGenSettingsAsset.LegacyContinentalnessHeightSpline != null &&
+               worldGenSettingsAsset.LegacyContinentalnessHeightSpline.HasBakedLut;
+    }
+
+    private bool UseLegacyTerrainHeightSplineTree()
+    {
+        return worldGenSettingsAsset != null &&
+               worldGenSettingsAsset.LegacyTerrainHeightSplineTree != null &&
+               worldGenSettingsAsset.LegacyTerrainHeightSplineTree.HasBakedTree;
     }
 
     private bool UseErosionRemap()
@@ -885,16 +752,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenSettingsAsset.UseRidgesRemap &&
                worldGenRemapProfileAsset != null &&
                worldGenRemapProfileAsset.HasRidgesRemap;
-    }
-
-    private bool UseTemperatureRemap()
-    {
-        return worldGenRemapProfileAsset != null && worldGenRemapProfileAsset.HasTemperatureRemap;
-    }
-
-    private bool UsePrecipitationRemap()
-    {
-        return worldGenRemapProfileAsset != null && worldGenRemapProfileAsset.HasPrecipitationRemap;
     }
 
     private void DisposeCachedRemapLut()
@@ -914,26 +771,164 @@ public sealed class WorldGenPrototype : MonoBehaviour
             cachedRidgesCdfLut.Dispose();
         }
 
-        if (cachedTemperatureCdfLut.IsCreated)
-        {
-            cachedTemperatureCdfLut.Dispose();
-        }
-
-        if (cachedPrecipitationCdfLut.IsCreated)
-        {
-            cachedPrecipitationCdfLut.Dispose();
-        }
-
         cachedRemapProfileAsset = null;
         cachedRemapBakeVersion = -1;
     }
 
     private void DisposeCachedFilterLut()
     {
+        if (cachedOffsetSplineNodes.IsCreated)
+        {
+            cachedOffsetSplineNodes.Dispose();
+        }
+
+        if (cachedOffsetSplinePoints.IsCreated)
+        {
+            cachedOffsetSplinePoints.Dispose();
+        }
+
+        if (cachedFactorSplineNodes.IsCreated)
+        {
+            cachedFactorSplineNodes.Dispose();
+        }
+
+        if (cachedFactorSplinePoints.IsCreated)
+        {
+            cachedFactorSplinePoints.Dispose();
+        }
+
+        if (cachedJaggednessSplineNodes.IsCreated)
+        {
+            cachedJaggednessSplineNodes.Dispose();
+        }
+
+        if (cachedJaggednessSplinePoints.IsCreated)
+        {
+            cachedJaggednessSplinePoints.Dispose();
+        }
+
+        if (cachedLegacyTerrainHeightSplineNodes.IsCreated)
+        {
+            cachedLegacyTerrainHeightSplineNodes.Dispose();
+        }
+
+        if (cachedLegacyTerrainHeightSplinePoints.IsCreated)
+        {
+            cachedLegacyTerrainHeightSplinePoints.Dispose();
+        }
+
         if (cachedContinentalnessHeightLut.IsCreated)
         {
             cachedContinentalnessHeightLut.Dispose();
         }
+    }
+
+    private static void CacheSplineTree(
+        SplineTreeAsset sourceAsset,
+        ref NativeArray<SplineTreeBakedNode> cachedNodes,
+        ref NativeArray<SplineTreeBakedPoint> cachedPoints)
+    {
+        if (sourceAsset == null || !sourceAsset.HasBakedTree)
+        {
+            return;
+        }
+
+        SplineTreeBakedNode[] sourceNodes = sourceAsset.BakedNodes;
+        SplineTreeBakedPoint[] sourcePoints = sourceAsset.BakedPoints;
+        cachedNodes = new NativeArray<SplineTreeBakedNode>(sourceNodes.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < sourceNodes.Length; i++)
+        {
+            cachedNodes[i] = sourceNodes[i];
+        }
+
+        cachedPoints = new NativeArray<SplineTreeBakedPoint>(sourcePoints.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        for (int i = 0; i < sourcePoints.Length; i++)
+        {
+            cachedPoints[i] = sourcePoints[i];
+        }
+    }
+
+    private SplineTreeAsset GetOffsetSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.OffsetSplineTree != null &&
+            worldGenSettingsAsset.OffsetSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.OffsetSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return fallbackOffsetSplineTree;
+    }
+
+    private SplineTreeAsset GetFactorSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.FactorSplineTree != null &&
+            worldGenSettingsAsset.FactorSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.FactorSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return fallbackFactorSplineTree;
+    }
+
+    private SplineTreeAsset GetJaggednessSplineTreeAsset()
+    {
+        if (worldGenSettingsAsset != null &&
+            worldGenSettingsAsset.JaggednessSplineTree != null &&
+            worldGenSettingsAsset.JaggednessSplineTree.HasBakedTree)
+        {
+            return worldGenSettingsAsset.JaggednessSplineTree;
+        }
+
+        EnsureFallbackSplineTrees();
+        return fallbackJaggednessSplineTree;
+    }
+
+    private void EnsureFallbackSplineTrees()
+    {
+        if (fallbackOffsetSplineTree == null)
+        {
+            fallbackOffsetSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldOffsetTree());
+        }
+
+        if (fallbackFactorSplineTree == null)
+        {
+            fallbackFactorSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldFactorTree());
+        }
+
+        if (fallbackJaggednessSplineTree == null)
+        {
+            fallbackJaggednessSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldJaggednessTree());
+        }
+    }
+
+    private static SplineTreeAsset CreateFallbackSplineTree(System.Action<SplineTreeAsset> initializer)
+    {
+        SplineTreeAsset asset = ScriptableObject.CreateInstance<SplineTreeAsset>();
+        initializer(asset);
+        asset.Bake();
+        return asset;
+    }
+
+    private void DestroyFallbackSplineTrees()
+    {
+        DestroySplineTree(ref fallbackOffsetSplineTree);
+        DestroySplineTree(ref fallbackFactorSplineTree);
+        DestroySplineTree(ref fallbackJaggednessSplineTree);
+    }
+
+    private static void DestroySplineTree(ref SplineTreeAsset asset)
+    {
+        if (asset == null)
+        {
+            return;
+        }
+
+        Destroy(asset);
+        asset = null;
     }
 
     private void SetButtonVisual(Button button, bool isActive)
