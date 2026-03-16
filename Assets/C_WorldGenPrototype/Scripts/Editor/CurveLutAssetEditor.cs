@@ -1,21 +1,23 @@
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(PvFilterAsset))]
-public sealed class PvFilterAssetEditor : Editor
+[CustomEditor(typeof(CurveLutAsset), true)]
+public sealed class CurveLutAssetEditor : Editor
 {
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
 
         EditorGUILayout.HelpBox(
-            "Fixed Points are reapplied to the curve. You can add points below, and those positions will stay locked to their configured input/output values.",
+            "Common curve LUT asset. Input is sampled across -1..1, fixed points are reapplied to the curve, and the baked LUT can be reused for filters or direct value mapping.",
             MessageType.Info);
 
         EditorGUILayout.PropertyField(serializedObject.FindProperty("curve"));
         EditorGUILayout.Space();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("fixedPoints"), true);
         EditorGUILayout.Space();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("outputMin"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("outputMax"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("bakeResolution"));
 
         bool changed = serializedObject.ApplyModifiedProperties();
@@ -31,8 +33,8 @@ public sealed class PvFilterAssetEditor : Editor
         }
 
         EditorGUILayout.Space();
-        EditorGUILayout.HelpBox(((PvFilterAsset)target).BakedSummary, MessageType.Info);
-        if (GUILayout.Button("Bake Filter LUT"))
+        EditorGUILayout.HelpBox(((CurveLutAsset)target).BakedSummary, MessageType.Info);
+        if (GUILayout.Button("Bake Curve LUT"))
         {
             Bake();
         }
@@ -40,16 +42,16 @@ public sealed class PvFilterAssetEditor : Editor
 
     private void ApplyFixedPoints()
     {
-        PvFilterAsset asset = (PvFilterAsset)target;
-        Undo.RecordObject(asset, "Apply Pv Filter Fixed Points");
+        CurveLutAsset asset = (CurveLutAsset)target;
+        Undo.RecordObject(asset, "Apply Curve LUT Fixed Points");
         asset.SyncFixedPointsToCurve();
         EditorUtility.SetDirty(asset);
     }
 
     private void Bake()
     {
-        PvFilterAsset asset = (PvFilterAsset)target;
-        Undo.RecordObject(asset, "Bake Pv Filter LUT");
+        CurveLutAsset asset = (CurveLutAsset)target;
+        Undo.RecordObject(asset, "Bake Curve LUT");
         asset.Bake();
         EditorUtility.SetDirty(asset);
         AssetDatabase.SaveAssets();

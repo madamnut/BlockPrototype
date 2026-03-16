@@ -64,8 +64,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private NativeArray<float> cachedRidgesCdfLut;
     private NativeArray<float> cachedTemperatureCdfLut;
     private NativeArray<float> cachedPrecipitationCdfLut;
-    private NativeArray<float> cachedContinentalnessFilterLut;
-    private NativeArray<float> cachedPvFilterLut;
+    private NativeArray<float> cachedContinentalnessHeightLut;
     private WorldGenRemapProfileAsset cachedRemapProfileAsset;
     private int cachedRemapBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
@@ -135,7 +134,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 break;
             case GenerationMode.ContPvHeight:
                 stats = GenerateContPvHeightPreview(seed);
-                label = $"Height Map, Cont Remap: {UseContinentalnessRemap()}, Pv Remap: {UseRidgesRemap()}, Cont Filter: {UseContinentalnessFilter()}, Pv Filter: {UsePvFilter()}";
+                label = $"Height Map, Cont Remap: {UseContinentalnessRemap()}, Cont Height Spline: {UseContinentalnessHeightSpline()}";
                 break;
             case GenerationMode.Erosion:
                 stats = GenerateErosionPreview(seed);
@@ -380,9 +379,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
         NativeArray<Color32> pixels = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         NativeArray<float> values = new(previewSize * previewSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         ContinentalnessSettings continentalnessSettings = BuildContinentalnessSettings();
-        RidgesSettings ridgesSettings = BuildRidgesSettings();
         bool useContinentalnessCdfRemap = UseContinentalnessRemap();
-        bool useRidgesCdfRemap = UseRidgesRemap();
         EnsureRemapLutCache();
         EnsureFilterLutCache();
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
@@ -396,16 +393,10 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexX = sectorIndexX,
                 sectorIndexZ = sectorIndexZ,
                 useContinentalnessRemap = useContinentalnessCdfRemap,
-                useRidgesRemap = useRidgesCdfRemap,
-                minTerrainHeight = worldGenSettingsAsset != null ? worldGenSettingsAsset.MinTerrainHeight : 0,
                 seaLevel = worldGenSettingsAsset != null ? worldGenSettingsAsset.SeaLevel : 63,
-                maxTerrainHeight = worldGenSettingsAsset != null ? worldGenSettingsAsset.MaxTerrainHeight : 180,
                 continentalnessSettings = continentalnessSettings,
-                ridgesSettings = ridgesSettings,
                 continentalnessCdfLut = cachedContinentalnessCdfLut,
-                ridgesCdfLut = cachedRidgesCdfLut,
-                continentalnessFilterLut = cachedContinentalnessFilterLut,
-                pvFilterLut = cachedPvFilterLut,
+                continentalnessHeightLut = cachedContinentalnessHeightLut,
                 pixels = pixels,
                 values = values,
             }.Schedule(pixels.Length, 64);
@@ -448,6 +439,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
         RidgesSettings settings = BuildRidgesSettings();
         bool useCdfRemap = UseRidgesRemap();
         EnsureRemapLutCache();
+        EnsureFilterLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -504,6 +496,7 @@ public sealed class WorldGenPrototype : MonoBehaviour
         RidgesSettings settings = BuildRidgesSettings();
         bool useCdfRemap = UseRidgesRemap();
         EnsureRemapLutCache();
+        EnsureFilterLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
@@ -847,23 +840,13 @@ public sealed class WorldGenPrototype : MonoBehaviour
     {
         DisposeCachedFilterLut();
 
-        if (UseContinentalnessFilter())
+        if (UseContinentalnessHeightSpline())
         {
-            float[] sourceLut = worldGenSettingsAsset.ContinentalnessFilter.BakedLut;
-            cachedContinentalnessFilterLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            float[] sourceLut = worldGenSettingsAsset.ContinentalnessHeightSpline.BakedLut;
+            cachedContinentalnessHeightLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             for (int i = 0; i < sourceLut.Length; i++)
             {
-                cachedContinentalnessFilterLut[i] = sourceLut[i];
-            }
-        }
-
-        if (UsePvFilter())
-        {
-            float[] sourceLut = worldGenSettingsAsset.PvFilter.BakedLut;
-            cachedPvFilterLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            for (int i = 0; i < sourceLut.Length; i++)
-            {
-                cachedPvFilterLut[i] = sourceLut[i];
+                cachedContinentalnessHeightLut[i] = sourceLut[i];
             }
         }
     }
@@ -881,12 +864,11 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenRemapProfileAsset.HasContinentalnessRemap;
     }
 
-    private bool UseContinentalnessFilter()
+    private bool UseContinentalnessHeightSpline()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseContinentalnessFilter &&
-               worldGenSettingsAsset.ContinentalnessFilter != null &&
-               worldGenSettingsAsset.ContinentalnessFilter.HasBakedLut;
+               worldGenSettingsAsset.ContinentalnessHeightSpline != null &&
+               worldGenSettingsAsset.ContinentalnessHeightSpline.HasBakedLut;
     }
 
     private bool UseErosionRemap()
@@ -903,14 +885,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
                worldGenSettingsAsset.UseRidgesRemap &&
                worldGenRemapProfileAsset != null &&
                worldGenRemapProfileAsset.HasRidgesRemap;
-    }
-
-    private bool UsePvFilter()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UsePvFilter &&
-               worldGenSettingsAsset.PvFilter != null &&
-               worldGenSettingsAsset.PvFilter.HasBakedLut;
     }
 
     private bool UseTemperatureRemap()
@@ -956,14 +930,9 @@ public sealed class WorldGenPrototype : MonoBehaviour
 
     private void DisposeCachedFilterLut()
     {
-        if (cachedContinentalnessFilterLut.IsCreated)
+        if (cachedContinentalnessHeightLut.IsCreated)
         {
-            cachedContinentalnessFilterLut.Dispose();
-        }
-
-        if (cachedPvFilterLut.IsCreated)
-        {
-            cachedPvFilterLut.Dispose();
+            cachedContinentalnessHeightLut.Dispose();
         }
     }
 

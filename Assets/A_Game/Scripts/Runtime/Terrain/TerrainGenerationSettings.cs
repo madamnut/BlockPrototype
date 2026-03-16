@@ -6,8 +6,6 @@ using UnityEngine.Serialization;
 public struct TerrainGenerationSettings
 {
     [Range(0, TerrainData.WorldHeight - 1)] public int seaLevel;
-    [Range(0, TerrainData.WorldHeight - 1)] public int minTerrainHeight;
-    [Range(0, TerrainData.WorldHeight - 1)] public int maxTerrainHeight;
     [FormerlySerializedAs("useContinentalnessCdfRemap")] public bool useContinentalnessRemap;
     [FormerlySerializedAs("useErosionCdfRemap")] public bool useErosionRemap;
     [FormerlySerializedAs("useRidgesCdfRemap")] public bool useRidgesRemap;
@@ -16,13 +14,11 @@ public struct TerrainGenerationSettings
     public RidgesSettings ridges;
 
     public bool IsInitialized =>
-        maxTerrainHeight > minTerrainHeight;
+        seaLevel >= 0 && seaLevel < TerrainData.WorldHeight;
 
     public static TerrainGenerationSettings Default => new()
     {
         seaLevel = 63,
-        minTerrainHeight = 0,
-        maxTerrainHeight = 180,
         useContinentalnessRemap = false,
         useErosionRemap = false,
         useRidgesRemap = false,
@@ -49,8 +45,6 @@ public struct TerrainGenerationSettings
         return new TerrainGenerationSettings
         {
             seaLevel = worldGenSettingsAsset.SeaLevel,
-            minTerrainHeight = worldGenSettingsAsset.MinTerrainHeight,
-            maxTerrainHeight = worldGenSettingsAsset.MaxTerrainHeight,
             useContinentalnessRemap = useContinentalnessRemap,
             useErosionRemap = useErosionRemap,
             useRidgesRemap = useRidgesRemap,

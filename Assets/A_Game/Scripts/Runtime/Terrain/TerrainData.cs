@@ -123,21 +123,12 @@ public sealed class TerrainData : IDisposable
         public int chunkX;
         public int chunkZ;
         public int seed;
-        public int minTerrainHeight;
         public int seaLevel;
-        public int maxTerrainHeight;
         public bool useContinentalnessRemap;
-        public bool useErosionRemap;
-        public bool useRidgesRemap;
         public ContinentalnessSettings continentalness;
-        public ErosionSettings erosion;
-        public RidgesSettings ridges;
 
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
-        [ReadOnly] public NativeArray<float> erosionCdfLut;
-        [ReadOnly] public NativeArray<float> ridgesCdfLut;
-        [ReadOnly] public NativeArray<float> continentalnessFilterLut;
-        [ReadOnly] public NativeArray<float> pvFilterLut;
+        [ReadOnly] public NativeArray<float> continentalnessHeightLut;
         public NativeArray<int> columnHeights;
 
         public void Execute(int index)
@@ -162,71 +153,43 @@ public sealed class TerrainData : IDisposable
                 rawContinentalness,
                 useContinentalnessRemap,
                 continentalnessCdfLut);
-            continentalnessValue = ApplyBakedFilter(continentalnessValue, continentalnessFilterLut);
-            float rawRidges = WorldGenPrototypeJobs.SampleRawRidges(
-                seed,
-                worldRegionX,
-                worldRegionZ,
-                ridges);
-            float weirdnessValue = RemapRawNoise(
-                rawRidges,
-                useRidgesRemap,
-                ridgesCdfLut);
-            float pvValue = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdnessValue);
-            continentalnessValue = ApplyPvFilterToContinentalness(continentalnessValue, pvValue, pvFilterLut);
             return ComposeSurfaceHeight(
                 continentalnessValue,
-                minTerrainHeight,
                 seaLevel,
-                maxTerrainHeight,
+                continentalnessHeightLut,
                 WorldHeight);
         }
 
         private static int ComposeSurfaceHeight(
             float continentalnessValue,
-            int minHeight,
             int seaLevel,
-            int maxHeight,
+            NativeArray<float> heightLut,
             int worldHeight)
         {
-            int clampedMin = math.clamp(minHeight, 0, worldHeight - 1);
             int clampedSeaLevel = math.clamp(seaLevel, 0, worldHeight - 1);
-            int clampedMax = math.clamp(math.max(seaLevel, maxHeight), 0, worldHeight - 1);
+            if (heightLut.IsCreated && heightLut.Length > 1)
+            {
+                float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
+                float scaledIndex = normalized * (heightLut.Length - 1);
+                int lowerIndex = (int)math.floor(scaledIndex);
+                int upperIndex = math.min(lowerIndex + 1, heightLut.Length - 1);
+                float t = scaledIndex - lowerIndex;
+                return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, worldHeight - 1);
+            }
 
             int baseHeight;
             if (continentalnessValue < 0f)
             {
                 float oceanT = math.saturate(continentalnessValue + 1f);
-                baseHeight = math.clamp((int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
+                baseHeight = math.clamp((int)math.round(math.lerp(0f, clampedSeaLevel, oceanT)), 0, worldHeight - 1);
             }
             else
             {
                 float landT = math.saturate(continentalnessValue);
-                baseHeight = math.clamp((int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT)), 0, worldHeight - 1);
+                baseHeight = math.clamp((int)math.round(math.lerp(clampedSeaLevel, 180f, landT)), 0, worldHeight - 1);
             }
 
             return baseHeight;
-        }
-
-        private static float ApplyPvToContinentalness(float continentalnessValue, float pvValue)
-        {
-            if (continentalnessValue <= 0f)
-            {
-                return continentalnessValue;
-            }
-
-            return continentalnessValue + (continentalnessValue * pvValue);
-        }
-
-        private static float ApplyPvFilterToContinentalness(float continentalnessValue, float pvValue, NativeArray<float> bakedLut)
-        {
-            if (continentalnessValue <= 0f)
-            {
-                return continentalnessValue;
-            }
-
-            float filteredValue = ApplyPvToContinentalness(continentalnessValue, pvValue);
-            return ApplyBakedFilter(filteredValue, bakedLut);
         }
 
         private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
@@ -244,20 +207,6 @@ public sealed class TerrainData : IDisposable
             return (normalized * 2f) - 1f;
         }
 
-        private static float ApplyBakedFilter(float value, NativeArray<float> bakedLut)
-        {
-            if (!bakedLut.IsCreated || bakedLut.Length <= 1)
-            {
-                return value;
-            }
-
-            float normalized = (math.clamp(value, -1f, 1f) + 1f) * 0.5f;
-            float scaledIndex = normalized * (bakedLut.Length - 1);
-            int lowerIndex = (int)math.floor(scaledIndex);
-            int upperIndex = math.min(lowerIndex + 1, bakedLut.Length - 1);
-            float t = scaledIndex - lowerIndex;
-            return math.clamp(math.lerp(bakedLut[lowerIndex], bakedLut[upperIndex], t), -1f, 1f);
-        }
     }
 
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
@@ -295,34 +244,29 @@ public sealed class TerrainData : IDisposable
     private readonly float[] _managedContinentalnessCdfLut;
     private readonly float[] _managedErosionCdfLut;
     private readonly float[] _managedRidgesCdfLut;
-    private readonly float[] _managedContinentalnessFilterLut;
-    private readonly float[] _managedPvFilterLut;
+    private readonly float[] _managedContinentalnessHeightLut;
     private NativeArray<float> _continentalnessCdfLut;
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
-    private NativeArray<float> _continentalnessFilterLut;
-    private NativeArray<float> _pvFilterLut;
+    private NativeArray<float> _continentalnessHeightLut;
     public TerrainData(
         int seed,
         TerrainGenerationSettings settings,
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
-        float[] continentalnessFilterLut = null,
-        float[] pvFilterLut = null)
+        float[] continentalnessHeightLut = null)
     {
         _seed = seed;
         _settings = settings;
         _managedContinentalnessCdfLut = continentalnessCdfLut;
         _managedErosionCdfLut = erosionCdfLut;
         _managedRidgesCdfLut = ridgesCdfLut;
-        _managedContinentalnessFilterLut = continentalnessFilterLut;
-        _managedPvFilterLut = pvFilterLut;
+        _managedContinentalnessHeightLut = continentalnessHeightLut;
         _continentalnessCdfLut = CreateNativeLut(settings.useContinentalnessRemap, continentalnessCdfLut);
         _erosionCdfLut = CreateNativeLut(settings.useErosionRemap, erosionCdfLut);
         _ridgesCdfLut = CreateNativeLut(settings.useRidgesRemap, ridgesCdfLut);
-        _continentalnessFilterLut = CreateNativeLut(continentalnessFilterLut != null && continentalnessFilterLut.Length > 1, continentalnessFilterLut);
-        _pvFilterLut = CreateNativeLut(pvFilterLut != null && pvFilterLut.Length > 1, pvFilterLut);
+        _continentalnessHeightLut = CreateNativeLut(continentalnessHeightLut != null && continentalnessHeightLut.Length > 1, continentalnessHeightLut);
     }
 
     public int SeaLevel => _settings.seaLevel;
@@ -338,8 +282,7 @@ public sealed class TerrainData : IDisposable
             _managedContinentalnessCdfLut,
             _managedErosionCdfLut,
             _managedRidgesCdfLut,
-            _managedContinentalnessFilterLut,
-            _managedPvFilterLut);
+            _managedContinentalnessHeightLut);
         float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
         float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
         float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
@@ -387,17 +330,13 @@ public sealed class TerrainData : IDisposable
                     rawContinentalness,
                     _settings.useContinentalnessRemap,
                     _managedContinentalnessCdfLut);
-                continentalness = WorldGenSampler.ApplyBakedFilter(continentalness, _managedContinentalnessFilterLut);
-                float pv = WorldGenSampler.SamplePv(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
-                continentalness = WorldGenSampler.ApplyPvFilterToContinentalness(continentalness, pv, _managedPvFilterLut);
                 remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
 
                 stageStart = stopwatch.ElapsedTicks;
                 int terrainHeight = WorldGenSampler.ComposeSurfaceHeight(
                     continentalness,
-                    _settings.minTerrainHeight,
                     _settings.seaLevel,
-                    _settings.maxTerrainHeight);
+                    _managedContinentalnessHeightLut);
                 composeHeightTicks += stopwatch.ElapsedTicks - stageStart;
                 columnHeights[columnIndex] = terrainHeight;
             }
@@ -471,14 +410,9 @@ public sealed class TerrainData : IDisposable
             _ridgesCdfLut.Dispose();
         }
 
-        if (_continentalnessFilterLut.IsCreated)
+        if (_continentalnessHeightLut.IsCreated)
         {
-            _continentalnessFilterLut.Dispose();
-        }
-
-        if (_pvFilterLut.IsCreated)
-        {
-            _pvFilterLut.Dispose();
+            _continentalnessHeightLut.Dispose();
         }
     }
 
@@ -503,20 +437,11 @@ public sealed class TerrainData : IDisposable
             chunkX = chunkX,
             chunkZ = chunkZ,
             seed = _seed,
-            minTerrainHeight = _settings.minTerrainHeight,
             seaLevel = _settings.seaLevel,
-            maxTerrainHeight = _settings.maxTerrainHeight,
             useContinentalnessRemap = _settings.useContinentalnessRemap,
-            useErosionRemap = _settings.useErosionRemap,
-            useRidgesRemap = _settings.useRidgesRemap,
             continentalness = _settings.continentalness,
-            erosion = _settings.erosion,
-            ridges = _settings.ridges,
             continentalnessCdfLut = _continentalnessCdfLut,
-            erosionCdfLut = _erosionCdfLut,
-            ridgesCdfLut = _ridgesCdfLut,
-            continentalnessFilterLut = _continentalnessFilterLut,
-            pvFilterLut = _pvFilterLut,
+            continentalnessHeightLut = _continentalnessHeightLut,
             columnHeights = pending.columnHeights,
         };
 
@@ -577,6 +502,11 @@ public sealed class TerrainData : IDisposable
         }
 
         return completedCount;
+    }
+
+    public int CompletePendingChunkColumns(int maxCompletions)
+    {
+        return CompletePendingChunkColumns(null, maxCompletions);
     }
 
     public bool IsChunkColumnReady(int chunkX, int chunkZ)
@@ -1120,8 +1050,7 @@ public sealed class TerrainData : IDisposable
             _managedContinentalnessCdfLut,
             _managedErosionCdfLut,
             _managedRidgesCdfLut,
-            _managedContinentalnessFilterLut,
-            _managedPvFilterLut);
+            _managedContinentalnessHeightLut);
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)

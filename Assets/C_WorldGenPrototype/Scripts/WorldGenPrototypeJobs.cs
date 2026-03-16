@@ -319,17 +319,11 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexX;
         public int sectorIndexZ;
         public bool useContinentalnessRemap;
-        public bool useRidgesRemap;
-        public int minTerrainHeight;
         public int seaLevel;
-        public int maxTerrainHeight;
         public ContinentalnessSettings continentalnessSettings;
-        public RidgesSettings ridgesSettings;
 
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
-        [ReadOnly] public NativeArray<float> ridgesCdfLut;
-        [ReadOnly] public NativeArray<float> continentalnessFilterLut;
-        [ReadOnly] public NativeArray<float> pvFilterLut;
+        [ReadOnly] public NativeArray<float> continentalnessHeightLut;
         [WriteOnly] public NativeArray<Color32> pixels;
         [WriteOnly] public NativeArray<float> values;
 
@@ -344,17 +338,11 @@ public static class WorldGenPrototypeJobs
 
             float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, continentalnessSettings);
             float continentalness = RemapRawNoise(rawContinentalness, useContinentalnessRemap, continentalnessCdfLut);
-            continentalness = ApplyBakedFilter(continentalness, continentalnessFilterLut);
-
-            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, ridgesSettings);
-            float weirdness = RemapRawNoise(rawRidges, useRidgesRemap, ridgesCdfLut);
-            float pv = CalculatePvFromWeirdness(weirdness);
-
-            float terrainValue = ApplyPvFilterToContinentalness(continentalness, pv, pvFilterLut);
-            int height = ComposeSurfaceHeight(terrainValue, minTerrainHeight, seaLevel, maxTerrainHeight);
+            float terrainValue = continentalness;
+            int height = ComposeSurfaceHeight(terrainValue, seaLevel, continentalnessHeightLut);
 
             values[index] = height;
-            pixels[index] = EvaluateContPvHeightColor(terrainValue, height, minTerrainHeight, maxTerrainHeight);
+            pixels[index] = EvaluateContPvHeightColor(terrainValue, height);
         }
     }
 
@@ -642,19 +630,19 @@ public static class WorldGenPrototypeJobs
 
         if (settings.useWarp)
         {
-            float warpX = (FractalPerlinNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xA341316Cu) - 0.5f) * settings.warpAmplitude;
-            float warpZ = (FractalPerlinNoise(seed, (p + new float2(173f, 59f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xC8013EA4u) - 0.5f) * settings.warpAmplitude;
+            float warpX = (FractalSimplexNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xA341316Cu) - 0.5f) * settings.warpAmplitude;
+            float warpZ = (FractalSimplexNoise(seed, (p + new float2(173f, 59f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xC8013EA4u) - 0.5f) * settings.warpAmplitude;
             warped = p + new float2(warpX, warpZ);
         }
 
         float macro = settings.useMacro
-            ? FractalPerlinNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x85EBCA77u)
+            ? FractalSimplexNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x85EBCA77u)
             : 0f;
         float broad = settings.useBroad
-            ? FractalPerlinNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0x9E3779B9u)
+            ? FractalSimplexNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0x9E3779B9u)
             : 0f;
         float detail = settings.useDetail
-            ? FractalPerlinNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0x27D4EB2Fu)
+            ? FractalSimplexNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0x27D4EB2Fu)
             : 0f;
 
         float macroWeight = settings.useMacro ? settings.macroWeight : 0f;
@@ -677,19 +665,19 @@ public static class WorldGenPrototypeJobs
 
         if (settings.useWarp)
         {
-            float warpX = (FractalPerlinNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x6C8E9CF5u) - 0.5f) * settings.warpAmplitude;
-            float warpZ = (FractalPerlinNoise(seed, (p + new float2(91f, 211f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xB5297A4Du) - 0.5f) * settings.warpAmplitude;
+            float warpX = (FractalSimplexNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x6C8E9CF5u) - 0.5f) * settings.warpAmplitude;
+            float warpZ = (FractalSimplexNoise(seed, (p + new float2(91f, 211f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xB5297A4Du) - 0.5f) * settings.warpAmplitude;
             warped = p + new float2(warpX, warpZ);
         }
 
         float macro = settings.useMacro
-            ? FractalPerlinNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x68E31DA4u)
+            ? FractalSimplexNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x68E31DA4u)
             : 0f;
         float broad = settings.useBroad
-            ? FractalPerlinNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0x1B56C4E9u)
+            ? FractalSimplexNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0x1B56C4E9u)
             : 0f;
         float detail = settings.useDetail
-            ? FractalPerlinNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xC2B2AE35u)
+            ? FractalSimplexNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xC2B2AE35u)
             : 0f;
 
         float macroWeight = settings.useMacro ? settings.macroWeight : 0f;
@@ -712,19 +700,19 @@ public static class WorldGenPrototypeJobs
 
         if (settings.useWarp)
         {
-            float warpX = (FractalPerlinNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x4CF5AD43u) - 0.5f) * settings.warpAmplitude;
-            float warpZ = (FractalPerlinNoise(seed, (p + new float2(137f, 73f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xA24BAEDFu) - 0.5f) * settings.warpAmplitude;
+            float warpX = (FractalSimplexNoise(seed, p * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0x4CF5AD43u) - 0.5f) * settings.warpAmplitude;
+            float warpZ = (FractalSimplexNoise(seed, (p + new float2(137f, 73f)) * settings.warpFrequency, settings.warpOctaves, settings.warpLacunarity, settings.warpGain, 0xA24BAEDFu) - 0.5f) * settings.warpAmplitude;
             warped = p + new float2(warpX, warpZ);
         }
 
         float macro = settings.useMacro
-            ? FractalPerlinNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x165667B1u)
+            ? FractalSimplexNoise(seed, warped * settings.macroFrequency, settings.macroOctaves, settings.macroLacunarity, settings.macroGain, 0x165667B1u)
             : 0f;
         float broad = settings.useBroad
-            ? FractalPerlinNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0xD3A2646Cu)
+            ? FractalSimplexNoise(seed, warped * settings.broadFrequency, settings.broadOctaves, settings.broadLacunarity, settings.broadGain, 0xD3A2646Cu)
             : 0f;
         float detail = settings.useDetail
-            ? FractalPerlinNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xFD7046C5u)
+            ? FractalSimplexNoise(seed, warped * settings.detailFrequency, settings.detailOctaves, settings.detailLacunarity, settings.detailGain, 0xFD7046C5u)
             : 0f;
 
         float macroWeight = settings.useMacro ? settings.macroWeight : 0f;
@@ -912,21 +900,14 @@ public static class WorldGenPrototypeJobs
         return new Color32(176, 77, 77, 255);
     }
 
-    private static Color32 EvaluateHeightColor(int height, int minTerrainHeight, int maxTerrainHeight)
+    private static Color32 EvaluateHeightColor(int height)
     {
-        int safeMin = math.min(minTerrainHeight, maxTerrainHeight);
-        int safeMax = math.max(minTerrainHeight, maxTerrainHeight);
-        if (safeMax <= safeMin)
-        {
-            return new Color32(255, 255, 255, 255);
-        }
-
-        float normalized = math.saturate((height - safeMin) / (float)(safeMax - safeMin));
+        float normalized = math.saturate(height / (float)(TerrainData.WorldHeight - 1));
         byte intensity = (byte)math.round(math.clamp((1f - normalized) * 255f, 0f, 255f));
         return new Color32(intensity, intensity, intensity, 255);
     }
 
-    private static Color32 EvaluateContPvHeightColor(float terrainValue, int height, int minTerrainHeight, int maxTerrainHeight)
+    private static Color32 EvaluateContPvHeightColor(float terrainValue, int height)
     {
         if (terrainValue < 0f)
         {
@@ -937,59 +918,30 @@ public static class WorldGenPrototypeJobs
             return new Color32(red, green, blue, 255);
         }
 
-        return EvaluateHeightColor(height, minTerrainHeight, maxTerrainHeight);
+        return EvaluateHeightColor(height);
     }
 
-    private static int ComposeSurfaceHeight(float continentalnessValue, int minHeight, int seaLevel, int maxHeight)
+    private static int ComposeSurfaceHeight(float continentalnessValue, int seaLevel, NativeArray<float> heightLut)
     {
-        int clampedMin = math.max(0, minHeight);
         int clampedSeaLevel = math.max(0, seaLevel);
-        int clampedMax = math.max(clampedSeaLevel, maxHeight);
+        if (heightLut.IsCreated && heightLut.Length > 1)
+        {
+            float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
+            float scaledIndex = normalized * (heightLut.Length - 1);
+            int lowerIndex = (int)math.floor(scaledIndex);
+            int upperIndex = math.min(lowerIndex + 1, heightLut.Length - 1);
+            float t = scaledIndex - lowerIndex;
+            return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, TerrainData.WorldHeight - 1);
+        }
 
         if (continentalnessValue < 0f)
         {
             float oceanT = math.saturate(continentalnessValue + 1f);
-            return (int)math.round(math.lerp(clampedMin, clampedSeaLevel, oceanT));
+            return (int)math.round(math.lerp(0f, clampedSeaLevel, oceanT));
         }
 
         float landT = math.saturate(continentalnessValue);
-        return (int)math.round(math.lerp(clampedSeaLevel, clampedMax, landT));
-    }
-
-    private static float ApplyPvToContinentalness(float continentalnessValue, float pvValue)
-    {
-        if (continentalnessValue <= 0f)
-        {
-            return continentalnessValue;
-        }
-
-        return continentalnessValue + (continentalnessValue * pvValue);
-    }
-
-    private static float ApplyPvFilterToContinentalness(float continentalnessValue, float pvValue, NativeArray<float> pvFilterLut)
-    {
-        if (continentalnessValue <= 0f)
-        {
-            return continentalnessValue;
-        }
-
-        float filteredValue = ApplyPvToContinentalness(continentalnessValue, pvValue);
-        return ApplyBakedFilter(filteredValue, pvFilterLut);
-    }
-
-    private static float ApplyBakedFilter(float value, NativeArray<float> bakedLut)
-    {
-        if (!bakedLut.IsCreated || bakedLut.Length <= 1)
-        {
-            return value;
-        }
-
-        float normalized = (math.clamp(value, -1f, 1f) + 1f) * 0.5f;
-        float scaledIndex = normalized * (bakedLut.Length - 1);
-        int lowerIndex = (int)math.floor(scaledIndex);
-        int upperIndex = math.min(lowerIndex + 1, bakedLut.Length - 1);
-        float t = scaledIndex - lowerIndex;
-        return math.clamp(math.lerp(bakedLut[lowerIndex], bakedLut[upperIndex], t), -1f, 1f);
+        return (int)math.round(math.lerp(clampedSeaLevel, 180f, landT));
     }
 
     private static float SampleRawLayeredNoise(
@@ -1031,19 +983,19 @@ public static class WorldGenPrototypeJobs
 
         if (useWarp)
         {
-            float warpX = (FractalPerlinNoise(seed, p * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltX) - 0.5f) * warpAmplitude;
-            float warpZ = (FractalPerlinNoise(seed, (p + new float2(113f, 197f)) * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltZ) - 0.5f) * warpAmplitude;
+            float warpX = (FractalSimplexNoise(seed, p * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltX) - 0.5f) * warpAmplitude;
+            float warpZ = (FractalSimplexNoise(seed, (p + new float2(113f, 197f)) * warpFrequency, warpOctaves, warpLacunarity, warpGain, warpSaltZ) - 0.5f) * warpAmplitude;
             warped = p + new float2(warpX, warpZ);
         }
 
         float macro = useMacro
-            ? FractalPerlinNoise(seed, warped * macroFrequency, macroOctaves, macroLacunarity, macroGain, macroSalt)
+            ? FractalSimplexNoise(seed, warped * macroFrequency, macroOctaves, macroLacunarity, macroGain, macroSalt)
             : 0f;
         float broad = useBroad
-            ? FractalPerlinNoise(seed, warped * broadFrequency, broadOctaves, broadLacunarity, broadGain, broadSalt)
+            ? FractalSimplexNoise(seed, warped * broadFrequency, broadOctaves, broadLacunarity, broadGain, broadSalt)
             : 0f;
         float detail = useDetail
-            ? FractalPerlinNoise(seed, warped * detailFrequency, detailOctaves, detailLacunarity, detailGain, detailSalt)
+            ? FractalSimplexNoise(seed, warped * detailFrequency, detailOctaves, detailLacunarity, detailGain, detailSalt)
             : 0f;
 
         float safeMacroWeight = useMacro ? macroWeight : 0f;
@@ -1059,7 +1011,7 @@ public static class WorldGenPrototypeJobs
         return math.saturate(value);
     }
 
-    private static float FractalPerlinNoise(int seed, float2 point, int octaves, float lacunarity, float gain, uint salt)
+    private static float FractalSimplexNoise(int seed, float2 point, int octaves, float lacunarity, float gain, uint salt)
     {
         float amplitude = 1f;
         float frequency = 1f;
@@ -1071,8 +1023,8 @@ public static class WorldGenPrototypeJobs
         {
             uint octaveSalt = salt + (uint)(octave * 0x9E3779B9u);
             float2 octaveOffset = seedOffset + CreateSeedOffset(seed ^ (int)octaveSalt, octaveSalt);
-            float perlin = noise.cnoise((point * frequency) + octaveOffset);
-            total += amplitude * ((perlin * 0.5f) + 0.5f);
+            float simplex = noise.snoise((point * frequency) + octaveOffset);
+            total += amplitude * ((simplex * 0.5f) + 0.5f);
             normalization += amplitude;
             amplitude *= gain;
             frequency *= lacunarity;

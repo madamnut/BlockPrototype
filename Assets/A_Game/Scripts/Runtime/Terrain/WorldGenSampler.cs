@@ -79,33 +79,29 @@ public static class WorldGenSampler
 
     public static int ComposeSurfaceHeight(
         float continentalness,
-        int minHeight,
         int seaLevel,
-        int maxHeight)
+        float[] continentalnessHeightLut = null)
     {
-        int clampedMin = Mathf.Clamp(minHeight, 0, TerrainData.WorldHeight - 1);
+        if (continentalnessHeightLut != null && continentalnessHeightLut.Length > 1)
+        {
+            float normalized = (Mathf.Clamp(continentalness, -1f, 1f) + 1f) * 0.5f;
+            float scaledIndex = normalized * (continentalnessHeightLut.Length - 1);
+            int lowerIndex = Mathf.Clamp(Mathf.FloorToInt(scaledIndex), 0, continentalnessHeightLut.Length - 1);
+            int upperIndex = Mathf.Min(lowerIndex + 1, continentalnessHeightLut.Length - 1);
+            float t = scaledIndex - lowerIndex;
+            return Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(continentalnessHeightLut[lowerIndex], continentalnessHeightLut[upperIndex], t)), 0, TerrainData.WorldHeight - 1);
+        }
+
         int clampedSeaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
-        int clampedMax = Mathf.Clamp(Mathf.Max(seaLevel, maxHeight), 0, TerrainData.WorldHeight - 1);
 
         if (continentalness < 0f)
         {
             float oceanT = Mathf.Clamp01(continentalness + 1f);
-            return Mathf.RoundToInt(Mathf.Lerp(clampedMin, clampedSeaLevel, oceanT));
+            return Mathf.RoundToInt(Mathf.Lerp(0f, clampedSeaLevel, oceanT));
         }
 
         float landT = Mathf.Clamp01(continentalness);
-        return Mathf.RoundToInt(Mathf.Lerp(clampedSeaLevel, clampedMax, landT));
-    }
-
-    public static int ComposeSurfaceHeight(
-        float continentalness,
-        float erosion,
-        float pv,
-        int minHeight,
-        int seaLevel,
-        int maxHeight)
-    {
-        return ComposeSurfaceHeight(ApplyPvToContinentalness(continentalness, pv), minHeight, seaLevel, maxHeight);
+        return Mathf.RoundToInt(Mathf.Lerp(clampedSeaLevel, 180f, landT));
     }
 
     public static int SampleSurfaceHeight(
@@ -116,38 +112,10 @@ public static class WorldGenSampler
         float[] continentalnessCdfLut = null,
         float[] erosionCdfLut = null,
         float[] ridgesCdfLut = null,
-        float[] continentalnessFilterLut = null,
-        float[] pvFilterLut = null)
+        float[] continentalnessHeightLut = null)
     {
         float continentalness = SampleContinentalness(worldX, worldZ, seed, settings, continentalnessCdfLut);
-        continentalness = ApplyBakedFilter(continentalness, continentalnessFilterLut);
-        float pv = SamplePv(worldX, worldZ, seed, settings, ridgesCdfLut);
-        return ComposeSurfaceHeight(
-            ApplyPvFilterToContinentalness(continentalness, pv, pvFilterLut),
-            settings.minTerrainHeight,
-            settings.seaLevel,
-            settings.maxTerrainHeight);
-    }
-
-    public static float ApplyPvToContinentalness(float continentalness, float pv)
-    {
-        if (continentalness <= 0f)
-        {
-            return continentalness;
-        }
-
-        return continentalness + (continentalness * pv);
-    }
-
-    public static float ApplyPvFilterToContinentalness(float continentalness, float pv, float[] pvFilterLut)
-    {
-        if (continentalness <= 0f)
-        {
-            return continentalness;
-        }
-
-        float pvValue = ApplyPvToContinentalness(continentalness, pv);
-        return ApplyBakedFilter(pvValue, pvFilterLut);
+        return ComposeSurfaceHeight(continentalness, settings.seaLevel, continentalnessHeightLut);
     }
 
     public static float RemapRawContinentalness(
@@ -186,18 +154,4 @@ public static class WorldGenSampler
         return (normalized * 2f) - 1f;
     }
 
-    public static float ApplyBakedFilter(float value, float[] bakedLut)
-    {
-        if (bakedLut == null || bakedLut.Length <= 1)
-        {
-            return value;
-        }
-
-        float normalized = (Mathf.Clamp(value, -1f, 1f) + 1f) * 0.5f;
-        float scaledIndex = normalized * (bakedLut.Length - 1);
-        int lowerIndex = Mathf.Clamp(Mathf.FloorToInt(scaledIndex), 0, bakedLut.Length - 1);
-        int upperIndex = Mathf.Min(lowerIndex + 1, bakedLut.Length - 1);
-        float t = scaledIndex - lowerIndex;
-        return Mathf.Clamp(Mathf.Lerp(bakedLut[lowerIndex], bakedLut[upperIndex], t), -1f, 1f);
-    }
 }

@@ -8,8 +8,9 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
 {
     [Header("Runtime Terrain")]
     [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int seaLevel = 63;
-    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int minTerrainHeight = 0;
-    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int maxTerrainHeight = 180;
+
+    [Header("Height Spline")]
+    [SerializeField] private CurveLutAsset continentalnessHeightSpline;
 
     [Header("Value Remap")]
     [FormerlySerializedAs("useContinentalnessCdfRemap")]
@@ -18,12 +19,6 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField] private bool useErosionRemap = true;
     [FormerlySerializedAs("useRidgesCdfRemap")]
     [SerializeField] private bool useRidgesRemap = true;
-
-    [Header("Filters")]
-    [SerializeField] private bool useContinentalnessFilter;
-    [SerializeField] private ContFilterAsset continentalnessFilter;
-    [SerializeField] private bool usePvFilter;
-    [SerializeField] private PvFilterAsset pvFilter;
 
     [Header("Warp")]
     [SerializeField] private bool useWarp = true;
@@ -204,15 +199,10 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField] private Color continentalCoreColor = new Color(0.47f, 0.38f, 0.24f, 1f);
 
     public int SeaLevel => Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
-    public int MinTerrainHeight => Mathf.Clamp(minTerrainHeight, 0, TerrainData.WorldHeight - 1);
-    public int MaxTerrainHeight => Mathf.Clamp(Mathf.Max(minTerrainHeight, maxTerrainHeight), 0, TerrainData.WorldHeight - 1);
+    public CurveLutAsset ContinentalnessHeightSpline => continentalnessHeightSpline;
     public bool UseContinentalnessRemap => useContinentalnessRemap;
     public bool UseErosionRemap => useErosionRemap;
     public bool UseRidgesRemap => useRidgesRemap;
-    public bool UseContinentalnessFilter => useContinentalnessFilter && continentalnessFilter != null;
-    public ContFilterAsset ContinentalnessFilter => continentalnessFilter;
-    public bool UsePvFilter => usePvFilter && pvFilter != null;
-    public PvFilterAsset PvFilter => pvFilter;
 
     public ContinentalnessSettings ToSettings()
     {

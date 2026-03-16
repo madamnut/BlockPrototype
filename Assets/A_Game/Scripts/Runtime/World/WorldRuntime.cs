@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
@@ -8,16 +7,6 @@ using UnityEngine.Serialization;
 [DisallowMultipleComponent]
 public sealed class WorldRuntime : MonoBehaviour
 {
-    private struct ChunkLoadTiming
-    {
-        public double requestTime;
-        public double generationReadyTime;
-        public double heightJobMilliseconds;
-        public double blockFillJobMilliseconds;
-        public double finalizeMilliseconds;
-        public double meshScheduledTime;
-    }
-
     [Header("Scene References")]
     [SerializeField] private Material worldMaterial;
     [SerializeField] private Material fluidMaterial;
@@ -47,7 +36,6 @@ public sealed class WorldRuntime : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private Color chunkBoundaryColor = new(0.2f, 0.9f, 1f, 0.16f);
-    [SerializeField] private bool logChunkLoadStageTimings = true;
 
     [Header("Fluid Reflection")]
     [SerializeField] private bool enablePlanarReflection = true;
@@ -61,7 +49,6 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private readonly List<Vector2Int> _pendingMeshKeyBuffer = new(64);
     private readonly Dictionary<Vector2Int, VoxelMesher.PendingChunkColumnMesh> _pendingChunkColumnMeshes = new();
-    private readonly Dictionary<Vector2Int, ChunkLoadTiming> _chunkLoadTimings = new();
 
     private TerrainData _terrain;
     private Transform _worldRoot;
@@ -76,18 +63,6 @@ public sealed class WorldRuntime : MonoBehaviour
     private NativeArray<ushort> _faceTextureLookup;
     private TerrainGenerationSettings terrainSettings;
     private bool _visibleFluidRendererCacheDirty = true;
-    private double _heightJobTotalMilliseconds;
-    private int _heightJobSampleCount;
-    private double _blockFillJobTotalMilliseconds;
-    private int _blockFillJobSampleCount;
-    private double _finalizeTotalMilliseconds;
-    private int _finalizeSampleCount;
-    private double _meshJobTotalMilliseconds;
-    private int _meshJobSampleCount;
-    private double _meshApplyTotalMilliseconds;
-    private int _meshApplySampleCount;
-    private double _totalChunkLoadTotalMilliseconds;
-    private int _totalChunkLoadSampleCount;
 
     public bool HasSelectedBlock => _worldInteraction != null && _worldInteraction.HasSelection;
     public bool HasSelection => _worldInteraction != null && _worldInteraction.HasSelection;
@@ -251,29 +226,6 @@ public sealed class WorldRuntime : MonoBehaviour
         }
     }
 
-    [ContextMenu("Profile Current Chunk Generation")]
-    private void ProfileCurrentChunkGeneration()
-    {
-        if (_terrain == null)
-        {
-            Debug.LogWarning("WorldRuntime: terrain is not initialized, so chunk generation profiling is unavailable.");
-            return;
-        }
-
-        ResolveInteractionCamera();
-        ResolvePlayerController();
-
-        Vector2Int chunkCoords = _worldStreaming != null && _worldStreaming.HasCenterChunk
-            ? _worldStreaming.CurrentCenterChunk
-            : GetCenterChunkCoordinates();
-        TerrainData.ChunkColumnGenerationProfile profile = _terrain.ProfileChunkColumnGeneration(chunkCoords.x, chunkCoords.y);
-
-        Debug.Log(
-            $"Chunk {profile.chunkCoords} generation profile | rawSample {profile.rawSampleMilliseconds:F2} ms | " +
-            $"remapFilter {profile.remapFilterMilliseconds:F2} ms | composeHeight {profile.composeHeightMilliseconds:F2} ms | " +
-            $"blockFill {profile.blockFillMilliseconds:F2} ms | total {profile.totalMilliseconds:F2} ms");
-    }
-
     private void BuildWorld()
     {
         _terrain?.Dispose();
@@ -283,8 +235,7 @@ public sealed class WorldRuntime : MonoBehaviour
             GetContinentalnessRemapLut(),
             GetErosionRemapLut(),
             GetRidgesRemapLut(),
-            GetContinentalnessFilterLut(),
-            GetPvFilterLut());
+            GetContinentalnessHeightLut());
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -302,7 +253,6 @@ public sealed class WorldRuntime : MonoBehaviour
         _worldStreaming?.Reset();
         _waterReflection?.ResetVisibleFluidRenderers();
         _visibleFluidRendererCacheDirty = true;
-        ResetChunkLoadTimingStats();
         UpdateVisibleChunks(force: true);
     }
 
@@ -335,12 +285,12 @@ public sealed class WorldRuntime : MonoBehaviour
             maxPendingChunkGenerations,
             _terrain.PendingChunkColumnCount,
             (chunkX, chunkZ) => _terrain.IsChunkColumnReady(chunkX, chunkZ),
-            RequestChunkColumnWithTiming);
+            (chunkX, chunkZ) => _terrain.RequestChunkColumn(chunkX, chunkZ));
     }
 
     private void CompleteChunkGenerationJobs()
     {
-        _worldStreaming?.CompleteChunkGenerationJobs(_terrain, completedChunkGenerationsPerFrame, RecordChunkGenerationCompletion);
+        _worldStreaming?.CompleteChunkGenerationJobs(_terrain, completedChunkGenerationsPerFrame);
     }
 
     private void ProcessChunkRefreshQueue()
@@ -354,12 +304,6 @@ public sealed class WorldRuntime : MonoBehaviour
         if (_pendingChunkColumnMeshes.ContainsKey(chunkCoords))
         {
             return;
-        }
-
-        if (_chunkLoadTimings.TryGetValue(chunkCoords, out ChunkLoadTiming timing))
-        {
-            timing.meshScheduledTime = Time.realtimeSinceStartupAsDouble;
-            _chunkLoadTimings[chunkCoords] = timing;
         }
 
         VoxelMesher.PendingChunkColumnMesh pendingColumn = VoxelMesher.ScheduleChunkColumnMesh(
@@ -410,14 +354,11 @@ public sealed class WorldRuntime : MonoBehaviour
             return;
         }
 
-        double applyStartTime = Time.realtimeSinceStartupAsDouble;
         _chunkView.ApplyPendingChunkColumnMesh(
             chunkCoords,
             pendingColumn,
             _terrain,
             blockDatabase);
-        double applyMilliseconds = (Time.realtimeSinceStartupAsDouble - applyStartTime) * 1000d;
-        RecordChunkMeshApplied(chunkCoords, applyMilliseconds, applyStartTime);
         MarkVisibleFluidRendererCacheDirty();
     }
 
@@ -428,8 +369,6 @@ public sealed class WorldRuntime : MonoBehaviour
             pendingColumn.Dispose();
             _pendingChunkColumnMeshes.Remove(chunkCoords);
         }
-
-        _chunkLoadTimings.Remove(chunkCoords);
 
         _chunkView?.ReleaseChunkColumn(chunkCoords);
         MarkVisibleFluidRendererCacheDirty();
@@ -551,106 +490,6 @@ public sealed class WorldRuntime : MonoBehaviour
 
         _chunkView?.PopulateVisibleFluidRenderers(_waterReflection);
         _visibleFluidRendererCacheDirty = false;
-    }
-
-    private bool RequestChunkColumnWithTiming(int chunkX, int chunkZ)
-    {
-        if (_terrain == null || !_terrain.RequestChunkColumn(chunkX, chunkZ))
-        {
-            return false;
-        }
-
-        Vector2Int chunkCoords = new(chunkX, chunkZ);
-        _chunkLoadTimings[chunkCoords] = new ChunkLoadTiming
-        {
-            requestTime = Time.realtimeSinceStartupAsDouble,
-        };
-        return true;
-    }
-
-    private void RecordChunkGenerationCompletion(TerrainData.CompletedChunkColumnInfo completedInfo)
-    {
-        if (!_chunkLoadTimings.TryGetValue(completedInfo.chunkCoords, out ChunkLoadTiming timing))
-        {
-            return;
-        }
-
-        timing.generationReadyTime = completedInfo.readyTime;
-        timing.heightJobMilliseconds = Math.Max(0d, completedInfo.heightJobMilliseconds);
-        timing.blockFillJobMilliseconds = Math.Max(0d, completedInfo.blockFillJobMilliseconds);
-        timing.finalizeMilliseconds = Math.Max(0d, completedInfo.finalizeMilliseconds);
-        _chunkLoadTimings[completedInfo.chunkCoords] = timing;
-
-        _heightJobTotalMilliseconds += timing.heightJobMilliseconds;
-        _heightJobSampleCount++;
-        _blockFillJobTotalMilliseconds += timing.blockFillJobMilliseconds;
-        _blockFillJobSampleCount++;
-        _finalizeTotalMilliseconds += timing.finalizeMilliseconds;
-        _finalizeSampleCount++;
-    }
-
-    private void RecordChunkMeshApplied(Vector2Int chunkCoords, double applyMilliseconds, double applyStartTime)
-    {
-        if (!_chunkLoadTimings.TryGetValue(chunkCoords, out ChunkLoadTiming timing))
-        {
-            return;
-        }
-
-        double meshJobMilliseconds = timing.meshScheduledTime > 0d
-            ? Math.Max(0d, (applyStartTime - timing.meshScheduledTime) * 1000d)
-            : 0d;
-        double totalMilliseconds = Math.Max(0d, ((applyStartTime + (applyMilliseconds / 1000d)) - timing.requestTime) * 1000d);
-
-        _meshJobTotalMilliseconds += meshJobMilliseconds;
-        _meshJobSampleCount++;
-        _meshApplyTotalMilliseconds += applyMilliseconds;
-        _meshApplySampleCount++;
-        _totalChunkLoadTotalMilliseconds += totalMilliseconds;
-        _totalChunkLoadSampleCount++;
-
-        int pendingGenerationCount = _terrain != null ? _terrain.PendingChunkColumnCount : 0;
-        int trackedChunkCount = _chunkLoadTimings.Count;
-        int pendingRefreshCount = _worldStreaming != null ? _worldStreaming.PendingRefreshCount : 0;
-        int queuedRefreshCount = _worldStreaming != null ? _worldStreaming.QueuedChunkCount : 0;
-        int pendingRequestCount = _worldStreaming != null ? _worldStreaming.PendingRequestCount : 0;
-        int visibleChunkCount = _worldStreaming != null ? _worldStreaming.VisibleChunkCount : 0;
-        int pendingMeshCount = _pendingChunkColumnMeshes.Count;
-
-        if (logChunkLoadStageTimings)
-        {
-            Debug.Log(
-                $"Chunk {chunkCoords} loaded | heightJob {timing.heightJobMilliseconds:F2} ms (avg {GetAverageMilliseconds(_heightJobTotalMilliseconds, _heightJobSampleCount):F2}) | " +
-                $"blockFillJob {timing.blockFillJobMilliseconds:F2} ms (avg {GetAverageMilliseconds(_blockFillJobTotalMilliseconds, _blockFillJobSampleCount):F2}) | " +
-                $"finalize {timing.finalizeMilliseconds:F2} ms (avg {GetAverageMilliseconds(_finalizeTotalMilliseconds, _finalizeSampleCount):F2}) | " +
-                $"meshJob {meshJobMilliseconds:F2} ms (avg {GetAverageMilliseconds(_meshJobTotalMilliseconds, _meshJobSampleCount):F2}) | " +
-                $"meshApply {applyMilliseconds:F2} ms (avg {GetAverageMilliseconds(_meshApplyTotalMilliseconds, _meshApplySampleCount):F2}) | " +
-                $"total {totalMilliseconds:F2} ms (avg {GetAverageMilliseconds(_totalChunkLoadTotalMilliseconds, _totalChunkLoadSampleCount):F2}) | " +
-                $"backlog genPending={pendingGenerationCount} requestPending={pendingRequestCount} tracked={trackedChunkCount} refreshPending={pendingRefreshCount} queuedRefresh={queuedRefreshCount} meshPending={pendingMeshCount} visible={visibleChunkCount}");
-        }
-
-        _chunkLoadTimings.Remove(chunkCoords);
-    }
-
-    private void ResetChunkLoadTimingStats()
-    {
-        _chunkLoadTimings.Clear();
-        _heightJobTotalMilliseconds = 0d;
-        _heightJobSampleCount = 0;
-        _blockFillJobTotalMilliseconds = 0d;
-        _blockFillJobSampleCount = 0;
-        _finalizeTotalMilliseconds = 0d;
-        _finalizeSampleCount = 0;
-        _meshJobTotalMilliseconds = 0d;
-        _meshJobSampleCount = 0;
-        _meshApplyTotalMilliseconds = 0d;
-        _meshApplySampleCount = 0;
-        _totalChunkLoadTotalMilliseconds = 0d;
-        _totalChunkLoadSampleCount = 0;
-    }
-
-    private static double GetAverageMilliseconds(double totalMilliseconds, int sampleCount)
-    {
-        return sampleCount > 0 ? totalMilliseconds / sampleCount : 0d;
     }
 
     private void BuildFaceTextureLookup()
@@ -874,33 +713,17 @@ public sealed class WorldRuntime : MonoBehaviour
             : null;
     }
 
-    private bool UseContinentalnessFilter()
+    private bool UseContinentalnessHeightSpline()
     {
         return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseContinentalnessFilter &&
-               worldGenSettingsAsset.ContinentalnessFilter != null &&
-               worldGenSettingsAsset.ContinentalnessFilter.HasBakedLut;
+               worldGenSettingsAsset.ContinentalnessHeightSpline != null &&
+               worldGenSettingsAsset.ContinentalnessHeightSpline.HasBakedLut;
     }
 
-    private float[] GetContinentalnessFilterLut()
+    private float[] GetContinentalnessHeightLut()
     {
-        return UseContinentalnessFilter()
-            ? worldGenSettingsAsset.ContinentalnessFilter.BakedLut
-            : null;
-    }
-
-    private bool UsePvFilter()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UsePvFilter &&
-               worldGenSettingsAsset.PvFilter != null &&
-               worldGenSettingsAsset.PvFilter.HasBakedLut;
-    }
-
-    private float[] GetPvFilterLut()
-    {
-        return UsePvFilter()
-            ? worldGenSettingsAsset.PvFilter.BakedLut
+        return UseContinentalnessHeightSpline()
+            ? worldGenSettingsAsset.ContinentalnessHeightSpline.BakedLut
             : null;
     }
 

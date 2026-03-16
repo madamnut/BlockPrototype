@@ -5,8 +5,8 @@ using UnityEngine;
 public sealed class WorldGenSettingsAssetEditor : Editor
 {
     private static bool showRuntimeTerrainValues = true;
+    private static bool showHeightSplineValues = true;
     private static bool showCdfRemapValues = true;
-    private static bool showFilterValues = true;
     private static bool showContinentalnessValues = true;
     private static bool showErosionValues = true;
     private static bool showRidgesValues = true;
@@ -21,9 +21,12 @@ public sealed class WorldGenSettingsAssetEditor : Editor
         DrawFoldoutSection(
             ref showRuntimeTerrainValues,
             "Runtime Terrain",
-            "seaLevel",
-            "minTerrainHeight",
-            "maxTerrainHeight");
+            "seaLevel");
+
+        DrawFoldoutSection(
+            ref showHeightSplineValues,
+            "Height Curve",
+            "continentalnessHeightSpline");
 
         DrawFoldoutSection(
             ref showCdfRemapValues,
@@ -31,14 +34,6 @@ public sealed class WorldGenSettingsAssetEditor : Editor
             "useContinentalnessRemap",
             "useErosionRemap",
             "useRidgesRemap");
-
-        DrawFoldoutSection(
-            ref showFilterValues,
-            "Filters",
-            "useContinentalnessFilter",
-            "continentalnessFilter",
-            "usePvFilter",
-            "pvFilter");
 
         DrawFoldoutSection(
             ref showContinentalnessValues,
