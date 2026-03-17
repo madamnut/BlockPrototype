@@ -20,9 +20,7 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int renderSizeInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
-    [SerializeField] private WorldGenSettingsAsset worldGenSettingsAsset;
-    [FormerlySerializedAs("continentalnessCdfProfileAsset")]
-    [SerializeField] private WorldGenRemapProfileAsset worldGenRemapProfileAsset;
+    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int seaLevel = TerrainData.DefaultSeaLevel;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -63,9 +61,6 @@ public sealed class WorldRuntime : MonoBehaviour
     private NativeArray<ushort> _faceTextureLookup;
     private TerrainGenerationSettings terrainSettings;
     private bool _visibleFluidRendererCacheDirty = true;
-    private SplineTreeAsset _fallbackOffsetSplineTree;
-    private SplineTreeAsset _fallbackFactorSplineTree;
-    private SplineTreeAsset _fallbackJaggednessSplineTree;
 
     public bool HasSelectedBlock => _worldInteraction != null && _worldInteraction.HasSelection;
     public bool HasSelection => _worldInteraction != null && _worldInteraction.HasSelection;
@@ -218,7 +213,6 @@ public sealed class WorldRuntime : MonoBehaviour
         _waterReflection = null;
         _chunkView = null;
         _worldStreaming = null;
-        DestroyFallbackSplineTrees();
 
         _terrain?.Dispose();
         _terrain = null;
@@ -232,18 +226,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private void BuildWorld()
     {
         _terrain?.Dispose();
-        _terrain = new TerrainData(
-            seed,
-            terrainSettings,
-            GetContinentalnessRemapLut(),
-            GetErosionRemapLut(),
-            GetRidgesRemapLut(),
-            GetOffsetSplineNodes(),
-            GetOffsetSplinePoints(),
-            GetFactorSplineNodes(),
-            GetFactorSplinePoints(),
-            GetJaggednessSplineNodes(),
-            GetJaggednessSplinePoints());
+        _terrain = new TerrainData(seed, terrainSettings);
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -597,14 +580,9 @@ public sealed class WorldRuntime : MonoBehaviour
             isValid = false;
         }
 
-        if (worldGenSettingsAsset == null)
+        if (!terrainSettings.IsInitialized)
         {
-            Debug.LogError("WorldRuntime requires a World Gen Settings Asset reference.", this);
-            isValid = false;
-        }
-        else if (!terrainSettings.IsInitialized)
-        {
-            Debug.LogError("WorldRuntime requires a valid initialized World Gen Settings Asset.", this);
+            Debug.LogError("WorldRuntime requires valid terrain generation settings.", this);
             isValid = false;
         }
 
@@ -663,181 +641,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void EnsureTerrainSettingsInitialized()
     {
-        if (worldGenSettingsAsset != null)
-        {
-            terrainSettings = TerrainGenerationSettings.FromWorldGenSettings(
-                worldGenSettingsAsset,
-                UseContinentalnessRemap(),
-                UseErosionRemap(),
-                UseRidgesRemap());
-            return;
-        }
-
-        terrainSettings = default;
-    }
-
-    private bool UseContinentalnessRemap()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseContinentalnessRemap &&
-               worldGenRemapProfileAsset != null &&
-               worldGenRemapProfileAsset.HasContinentalnessRemap;
-    }
-
-    private float[] GetContinentalnessRemapLut()
-    {
-        return UseContinentalnessRemap()
-            ? worldGenRemapProfileAsset.BakedContinentalnessRemapLut
-            : null;
-    }
-
-    private bool UseErosionRemap()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseErosionRemap &&
-               worldGenRemapProfileAsset != null &&
-               worldGenRemapProfileAsset.HasErosionRemap;
-    }
-
-    private float[] GetErosionRemapLut()
-    {
-        return UseErosionRemap()
-            ? worldGenRemapProfileAsset.BakedErosionRemapLut
-            : null;
-    }
-
-    private bool UseRidgesRemap()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.UseRidgesRemap &&
-               worldGenRemapProfileAsset != null &&
-               worldGenRemapProfileAsset.HasRidgesRemap;
-    }
-
-    private float[] GetRidgesRemapLut()
-    {
-        return UseRidgesRemap()
-            ? worldGenRemapProfileAsset.BakedRidgesRemapLut
-            : null;
-    }
-
-    private SplineTreeBakedNode[] GetOffsetSplineNodes()
-    {
-        SplineTreeAsset asset = GetOffsetSplineTreeAsset();
-        return asset != null ? asset.BakedNodes : null;
-    }
-
-    private SplineTreeBakedPoint[] GetOffsetSplinePoints()
-    {
-        SplineTreeAsset asset = GetOffsetSplineTreeAsset();
-        return asset != null ? asset.BakedPoints : null;
-    }
-
-    private SplineTreeBakedNode[] GetFactorSplineNodes()
-    {
-        SplineTreeAsset asset = GetFactorSplineTreeAsset();
-        return asset != null ? asset.BakedNodes : null;
-    }
-
-    private SplineTreeBakedPoint[] GetFactorSplinePoints()
-    {
-        SplineTreeAsset asset = GetFactorSplineTreeAsset();
-        return asset != null ? asset.BakedPoints : null;
-    }
-
-    private SplineTreeBakedNode[] GetJaggednessSplineNodes()
-    {
-        SplineTreeAsset asset = GetJaggednessSplineTreeAsset();
-        return asset != null ? asset.BakedNodes : null;
-    }
-
-    private SplineTreeBakedPoint[] GetJaggednessSplinePoints()
-    {
-        SplineTreeAsset asset = GetJaggednessSplineTreeAsset();
-        return asset != null ? asset.BakedPoints : null;
-    }
-
-    private SplineTreeAsset GetOffsetSplineTreeAsset()
-    {
-        if (worldGenSettingsAsset != null &&
-            worldGenSettingsAsset.OffsetSplineTree != null &&
-            worldGenSettingsAsset.OffsetSplineTree.HasBakedTree)
-        {
-            return worldGenSettingsAsset.OffsetSplineTree;
-        }
-
-        EnsureFallbackSplineTrees();
-        return _fallbackOffsetSplineTree;
-    }
-
-    private SplineTreeAsset GetFactorSplineTreeAsset()
-    {
-        if (worldGenSettingsAsset != null &&
-            worldGenSettingsAsset.FactorSplineTree != null &&
-            worldGenSettingsAsset.FactorSplineTree.HasBakedTree)
-        {
-            return worldGenSettingsAsset.FactorSplineTree;
-        }
-
-        EnsureFallbackSplineTrees();
-        return _fallbackFactorSplineTree;
-    }
-
-    private SplineTreeAsset GetJaggednessSplineTreeAsset()
-    {
-        if (worldGenSettingsAsset != null &&
-            worldGenSettingsAsset.JaggednessSplineTree != null &&
-            worldGenSettingsAsset.JaggednessSplineTree.HasBakedTree)
-        {
-            return worldGenSettingsAsset.JaggednessSplineTree;
-        }
-
-        EnsureFallbackSplineTrees();
-        return _fallbackJaggednessSplineTree;
-    }
-
-    private void EnsureFallbackSplineTrees()
-    {
-        if (_fallbackOffsetSplineTree == null)
-        {
-            _fallbackOffsetSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldOffsetTree());
-        }
-
-        if (_fallbackFactorSplineTree == null)
-        {
-            _fallbackFactorSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldFactorTree());
-        }
-
-        if (_fallbackJaggednessSplineTree == null)
-        {
-            _fallbackJaggednessSplineTree = CreateFallbackSplineTree(asset => asset.ResetToVanillaOverworldJaggednessTree());
-        }
-    }
-
-    private static SplineTreeAsset CreateFallbackSplineTree(System.Action<SplineTreeAsset> initializer)
-    {
-        SplineTreeAsset asset = ScriptableObject.CreateInstance<SplineTreeAsset>();
-        initializer(asset);
-        asset.Bake();
-        return asset;
-    }
-
-    private void DestroyFallbackSplineTrees()
-    {
-        DestroySplineTree(ref _fallbackOffsetSplineTree);
-        DestroySplineTree(ref _fallbackFactorSplineTree);
-        DestroySplineTree(ref _fallbackJaggednessSplineTree);
-    }
-
-    private static void DestroySplineTree(ref SplineTreeAsset asset)
-    {
-        if (asset == null)
-        {
-            return;
-        }
-
-        Destroy(asset);
-        asset = null;
+        terrainSettings = TerrainGenerationSettings.Create(seaLevel);
     }
 
     private void EnsureRenderSizeIsOdd()

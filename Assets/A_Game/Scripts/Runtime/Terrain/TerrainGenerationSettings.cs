@@ -1,56 +1,23 @@
-﻿using System;
+using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [Serializable]
 public struct TerrainGenerationSettings
 {
-    [FormerlySerializedAs("useContinentalnessCdfRemap")] public bool useContinentalnessRemap;
-    [FormerlySerializedAs("useErosionCdfRemap")] public bool useErosionRemap;
-    [FormerlySerializedAs("useRidgesCdfRemap")] public bool useRidgesRemap;
+    [Min(0)]
     public int seaLevel;
-    public ContinentalnessSettings continentalness;
-    public ErosionSettings erosion;
-    public RidgesSettings ridges;
 
-    public bool IsInitialized =>
-        true;
+    public bool IsInitialized => true;
 
     public static TerrainGenerationSettings Default => new()
     {
-        useContinentalnessRemap = false,
-        useErosionRemap = false,
-        useRidgesRemap = false,
-        seaLevel = WorldGenDensity.InternalSeaLevel,
-        continentalness = WorldGenSettingsAsset.CreateDefaultSettings(),
-        erosion = WorldGenSettingsAsset.CreateDefaultErosionSettings(),
-        ridges = WorldGenSettingsAsset.CreateDefaultRidgesSettings(),
+        seaLevel = TerrainData.DefaultSeaLevel,
     };
 
-    public static TerrainGenerationSettings FromWorldGenSettings(
-        WorldGenSettingsAsset worldGenSettingsAsset,
-        bool useContinentalnessRemap,
-        bool useErosionRemap,
-        bool useRidgesRemap)
+    public static TerrainGenerationSettings Create(int seaLevel)
     {
-        if (worldGenSettingsAsset == null)
-        {
-            TerrainGenerationSettings defaults = Default;
-            defaults.useContinentalnessRemap = useContinentalnessRemap;
-            defaults.useErosionRemap = useErosionRemap;
-            defaults.useRidgesRemap = useRidgesRemap;
-            return defaults;
-        }
-
-        return new TerrainGenerationSettings
-        {
-            useContinentalnessRemap = useContinentalnessRemap,
-            useErosionRemap = useErosionRemap,
-            useRidgesRemap = useRidgesRemap,
-            seaLevel = worldGenSettingsAsset.SeaLevel,
-            continentalness = worldGenSettingsAsset.ToSettings(),
-            erosion = worldGenSettingsAsset.ToErosionSettings(),
-            ridges = worldGenSettingsAsset.ToRidgesSettings(),
-        };
+        TerrainGenerationSettings settings = Default;
+        settings.seaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
+        return settings;
     }
 }
