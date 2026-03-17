@@ -64,9 +64,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
     private NativeArray<SplineTreeBakedPoint> cachedFactorSplinePoints;
     private NativeArray<SplineTreeBakedNode> cachedJaggednessSplineNodes;
     private NativeArray<SplineTreeBakedPoint> cachedJaggednessSplinePoints;
-    private NativeArray<SplineTreeBakedNode> cachedLegacyTerrainHeightSplineNodes;
-    private NativeArray<SplineTreeBakedPoint> cachedLegacyTerrainHeightSplinePoints;
-    private NativeArray<float> cachedContinentalnessHeightLut;
     private WorldGenRemapProfileAsset cachedRemapProfileAsset;
     private int cachedRemapBakeVersion = -1;
     private GenerationMode mode = GenerationMode.None;
@@ -253,6 +250,23 @@ public sealed class WorldGenPrototype : MonoBehaviour
         EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedContinentalnessCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        VanillaClimateNoiseManaged climateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.continentalness.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.continentalness.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.continentalness.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.continentalness.secondPermutations, Allocator.TempJob);
 
         try
         {
@@ -264,6 +278,16 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexZ = sectorIndexZ,
                 useCdfRemap = useCdfRemap,
                 settings = settings,
+                climateOffsetFirstOctaves = climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations = climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves = climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations = climateOffsetSecondPermutations,
+                climateOffsetValueFactor = climateNoise.offset.valueFactor,
+                climateTargetFirstOctaves = climateTargetFirstOctaves,
+                climateTargetFirstPermutations = climateTargetFirstPermutations,
+                climateTargetSecondOctaves = climateTargetSecondOctaves,
+                climateTargetSecondPermutations = climateTargetSecondPermutations,
+                climateTargetValueFactor = climateNoise.continentalness.valueFactor,
                 cdfLut = cdfLut,
                 pixels = pixels,
                 values = values,
@@ -309,6 +333,23 @@ public sealed class WorldGenPrototype : MonoBehaviour
         EnsureRemapLutCache();
         NativeArray<float> cdfLut = cachedErosionCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        VanillaClimateNoiseManaged climateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.erosion.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.erosion.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.erosion.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.erosion.secondPermutations, Allocator.TempJob);
 
         try
         {
@@ -320,6 +361,16 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexZ = sectorIndexZ,
                 useCdfRemap = useCdfRemap,
                 settings = settings,
+                climateOffsetFirstOctaves = climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations = climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves = climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations = climateOffsetSecondPermutations,
+                climateOffsetValueFactor = climateNoise.offset.valueFactor,
+                climateTargetFirstOctaves = climateTargetFirstOctaves,
+                climateTargetFirstPermutations = climateTargetFirstPermutations,
+                climateTargetSecondOctaves = climateTargetSecondOctaves,
+                climateTargetSecondPermutations = climateTargetSecondPermutations,
+                climateTargetValueFactor = climateNoise.erosion.valueFactor,
                 cdfLut = cdfLut,
                 pixels = pixels,
                 values = values,
@@ -352,6 +403,46 @@ public sealed class WorldGenPrototype : MonoBehaviour
             {
                 statsValues.Dispose();
             }
+
+            if (climateOffsetFirstOctaves.IsCreated)
+            {
+                climateOffsetFirstOctaves.Dispose();
+            }
+
+            if (climateOffsetFirstPermutations.IsCreated)
+            {
+                climateOffsetFirstPermutations.Dispose();
+            }
+
+            if (climateOffsetSecondOctaves.IsCreated)
+            {
+                climateOffsetSecondOctaves.Dispose();
+            }
+
+            if (climateOffsetSecondPermutations.IsCreated)
+            {
+                climateOffsetSecondPermutations.Dispose();
+            }
+
+            if (climateTargetFirstOctaves.IsCreated)
+            {
+                climateTargetFirstOctaves.Dispose();
+            }
+
+            if (climateTargetFirstPermutations.IsCreated)
+            {
+                climateTargetFirstPermutations.Dispose();
+            }
+
+            if (climateTargetSecondOctaves.IsCreated)
+            {
+                climateTargetSecondOctaves.Dispose();
+            }
+
+            if (climateTargetSecondPermutations.IsCreated)
+            {
+                climateTargetSecondPermutations.Dispose();
+            }
         }
     }
 
@@ -365,6 +456,61 @@ public sealed class WorldGenPrototype : MonoBehaviour
         EnsureRemapLutCache();
         EnsureFilterLutCache();
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        VanillaClimateNoiseManaged climateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.continentalness.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateContinentalnessFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.continentalness.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.continentalness.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateContinentalnessSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.continentalness.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateErosionFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.erosion.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateErosionFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.erosion.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateErosionSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.erosion.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateErosionSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.erosion.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateRidgeFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateRidgeFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateRidgeSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateRidgeSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.secondPermutations, Allocator.TempJob);
+        VanillaBlendedNoiseManaged blendedNoise = VanillaNoise.CreateManagedOverworldBlendedNoise(seed);
+        VanillaNormalNoiseManaged jaggedNoise = VanillaNoise.CreateManagedJaggedNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves =
+            VanillaNoise.CreateNativeOctaves(blendedNoise.minLimitOctaves, Allocator.TempJob);
+        NativeArray<int> blendedMinLimitPermutations =
+            VanillaNoise.CreateNativePermutations(blendedNoise.minLimitPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves =
+            VanillaNoise.CreateNativeOctaves(blendedNoise.maxLimitOctaves, Allocator.TempJob);
+        NativeArray<int> blendedMaxLimitPermutations =
+            VanillaNoise.CreateNativePermutations(blendedNoise.maxLimitPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves =
+            VanillaNoise.CreateNativeOctaves(blendedNoise.mainOctaves, Allocator.TempJob);
+        NativeArray<int> blendedMainPermutations =
+            VanillaNoise.CreateNativePermutations(blendedNoise.mainPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(jaggedNoise.firstOctaves, Allocator.TempJob);
+        NativeArray<int> jaggedFirstPermutations =
+            VanillaNoise.CreateNativePermutations(jaggedNoise.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(jaggedNoise.secondOctaves, Allocator.TempJob);
+        NativeArray<int> jaggedSecondPermutations =
+            VanillaNoise.CreateNativePermutations(jaggedNoise.secondPermutations, Allocator.TempJob);
 
         try
         {
@@ -380,6 +526,26 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 continentalnessSettings = continentalnessSettings,
                 erosionSettings = BuildErosionSettings(),
                 ridgesSettings = BuildRidgesSettings(),
+                climateOffsetFirstOctaves = climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations = climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves = climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations = climateOffsetSecondPermutations,
+                climateOffsetValueFactor = climateNoise.offset.valueFactor,
+                climateContinentalnessFirstOctaves = climateContinentalnessFirstOctaves,
+                climateContinentalnessFirstPermutations = climateContinentalnessFirstPermutations,
+                climateContinentalnessSecondOctaves = climateContinentalnessSecondOctaves,
+                climateContinentalnessSecondPermutations = climateContinentalnessSecondPermutations,
+                climateContinentalnessValueFactor = climateNoise.continentalness.valueFactor,
+                climateErosionFirstOctaves = climateErosionFirstOctaves,
+                climateErosionFirstPermutations = climateErosionFirstPermutations,
+                climateErosionSecondOctaves = climateErosionSecondOctaves,
+                climateErosionSecondPermutations = climateErosionSecondPermutations,
+                climateErosionValueFactor = climateNoise.erosion.valueFactor,
+                climateRidgeFirstOctaves = climateRidgeFirstOctaves,
+                climateRidgeFirstPermutations = climateRidgeFirstPermutations,
+                climateRidgeSecondOctaves = climateRidgeSecondOctaves,
+                climateRidgeSecondPermutations = climateRidgeSecondPermutations,
+                climateRidgeValueFactor = climateNoise.ridge.valueFactor,
                 continentalnessCdfLut = cachedContinentalnessCdfLut,
                 erosionCdfLut = cachedErosionCdfLut,
                 ridgesCdfLut = cachedRidgesCdfLut,
@@ -389,9 +555,17 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 factorSplinePoints = cachedFactorSplinePoints,
                 jaggednessSplineNodes = cachedJaggednessSplineNodes,
                 jaggednessSplinePoints = cachedJaggednessSplinePoints,
-                legacyTerrainHeightSplineNodes = cachedLegacyTerrainHeightSplineNodes,
-                legacyTerrainHeightSplinePoints = cachedLegacyTerrainHeightSplinePoints,
-                continentalnessHeightLut = cachedContinentalnessHeightLut,
+                blendedMinLimitOctaves = blendedMinLimitOctaves,
+                blendedMinLimitPermutations = blendedMinLimitPermutations,
+                blendedMaxLimitOctaves = blendedMaxLimitOctaves,
+                blendedMaxLimitPermutations = blendedMaxLimitPermutations,
+                blendedMainOctaves = blendedMainOctaves,
+                blendedMainPermutations = blendedMainPermutations,
+                jaggedFirstOctaves = jaggedFirstOctaves,
+                jaggedFirstPermutations = jaggedFirstPermutations,
+                jaggedSecondOctaves = jaggedSecondOctaves,
+                jaggedSecondPermutations = jaggedSecondPermutations,
+                jaggedValueFactor = jaggedNoise.valueFactor,
                 pixels = pixels,
                 values = values,
             }.Schedule(pixels.Length, 64);
@@ -422,6 +596,136 @@ public sealed class WorldGenPrototype : MonoBehaviour
             if (statsValues.IsCreated)
             {
                 statsValues.Dispose();
+            }
+
+            if (climateOffsetFirstOctaves.IsCreated)
+            {
+                climateOffsetFirstOctaves.Dispose();
+            }
+
+            if (climateOffsetFirstPermutations.IsCreated)
+            {
+                climateOffsetFirstPermutations.Dispose();
+            }
+
+            if (climateOffsetSecondOctaves.IsCreated)
+            {
+                climateOffsetSecondOctaves.Dispose();
+            }
+
+            if (climateOffsetSecondPermutations.IsCreated)
+            {
+                climateOffsetSecondPermutations.Dispose();
+            }
+
+            if (climateContinentalnessFirstOctaves.IsCreated)
+            {
+                climateContinentalnessFirstOctaves.Dispose();
+            }
+
+            if (climateContinentalnessFirstPermutations.IsCreated)
+            {
+                climateContinentalnessFirstPermutations.Dispose();
+            }
+
+            if (climateContinentalnessSecondOctaves.IsCreated)
+            {
+                climateContinentalnessSecondOctaves.Dispose();
+            }
+
+            if (climateContinentalnessSecondPermutations.IsCreated)
+            {
+                climateContinentalnessSecondPermutations.Dispose();
+            }
+
+            if (climateErosionFirstOctaves.IsCreated)
+            {
+                climateErosionFirstOctaves.Dispose();
+            }
+
+            if (climateErosionFirstPermutations.IsCreated)
+            {
+                climateErosionFirstPermutations.Dispose();
+            }
+
+            if (climateErosionSecondOctaves.IsCreated)
+            {
+                climateErosionSecondOctaves.Dispose();
+            }
+
+            if (climateErosionSecondPermutations.IsCreated)
+            {
+                climateErosionSecondPermutations.Dispose();
+            }
+
+            if (climateRidgeFirstOctaves.IsCreated)
+            {
+                climateRidgeFirstOctaves.Dispose();
+            }
+
+            if (climateRidgeFirstPermutations.IsCreated)
+            {
+                climateRidgeFirstPermutations.Dispose();
+            }
+
+            if (climateRidgeSecondOctaves.IsCreated)
+            {
+                climateRidgeSecondOctaves.Dispose();
+            }
+
+            if (climateRidgeSecondPermutations.IsCreated)
+            {
+                climateRidgeSecondPermutations.Dispose();
+            }
+
+            if (blendedMinLimitOctaves.IsCreated)
+            {
+                blendedMinLimitOctaves.Dispose();
+            }
+
+            if (blendedMinLimitPermutations.IsCreated)
+            {
+                blendedMinLimitPermutations.Dispose();
+            }
+
+            if (blendedMaxLimitOctaves.IsCreated)
+            {
+                blendedMaxLimitOctaves.Dispose();
+            }
+
+            if (blendedMaxLimitPermutations.IsCreated)
+            {
+                blendedMaxLimitPermutations.Dispose();
+            }
+
+            if (blendedMainOctaves.IsCreated)
+            {
+                blendedMainOctaves.Dispose();
+            }
+
+            if (blendedMainPermutations.IsCreated)
+            {
+                blendedMainPermutations.Dispose();
+            }
+
+            if (jaggedFirstOctaves.IsCreated)
+            {
+                jaggedFirstOctaves.Dispose();
+            }
+
+            if (jaggedFirstPermutations.IsCreated)
+            {
+                jaggedFirstPermutations.Dispose();
+            }
+
+            if (jaggedSecondOctaves.IsCreated)
+            {
+                jaggedSecondOctaves.Dispose();
+            }
+
+            if (jaggedSecondPermutations.IsCreated)
+            {
+                jaggedSecondPermutations.Dispose();
             }
         }
     }
@@ -437,6 +741,23 @@ public sealed class WorldGenPrototype : MonoBehaviour
         EnsureFilterLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        VanillaClimateNoiseManaged climateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.secondPermutations, Allocator.TempJob);
 
         try
         {
@@ -448,6 +769,16 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexZ = sectorIndexZ,
                 useCdfRemap = useCdfRemap,
                 settings = settings,
+                climateOffsetFirstOctaves = climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations = climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves = climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations = climateOffsetSecondPermutations,
+                climateOffsetValueFactor = climateNoise.offset.valueFactor,
+                climateTargetFirstOctaves = climateTargetFirstOctaves,
+                climateTargetFirstPermutations = climateTargetFirstPermutations,
+                climateTargetSecondOctaves = climateTargetSecondOctaves,
+                climateTargetSecondPermutations = climateTargetSecondPermutations,
+                climateTargetValueFactor = climateNoise.ridge.valueFactor,
                 cdfLut = cdfLut,
                 pixels = pixels,
                 values = values,
@@ -479,6 +810,46 @@ public sealed class WorldGenPrototype : MonoBehaviour
             if (statsValues.IsCreated)
             {
                 statsValues.Dispose();
+            }
+
+            if (climateOffsetFirstOctaves.IsCreated)
+            {
+                climateOffsetFirstOctaves.Dispose();
+            }
+
+            if (climateOffsetFirstPermutations.IsCreated)
+            {
+                climateOffsetFirstPermutations.Dispose();
+            }
+
+            if (climateOffsetSecondOctaves.IsCreated)
+            {
+                climateOffsetSecondOctaves.Dispose();
+            }
+
+            if (climateOffsetSecondPermutations.IsCreated)
+            {
+                climateOffsetSecondPermutations.Dispose();
+            }
+
+            if (climateTargetFirstOctaves.IsCreated)
+            {
+                climateTargetFirstOctaves.Dispose();
+            }
+
+            if (climateTargetFirstPermutations.IsCreated)
+            {
+                climateTargetFirstPermutations.Dispose();
+            }
+
+            if (climateTargetSecondOctaves.IsCreated)
+            {
+                climateTargetSecondOctaves.Dispose();
+            }
+
+            if (climateTargetSecondPermutations.IsCreated)
+            {
+                climateTargetSecondPermutations.Dispose();
             }
         }
     }
@@ -494,6 +865,23 @@ public sealed class WorldGenPrototype : MonoBehaviour
         EnsureFilterLutCache();
         NativeArray<float> cdfLut = cachedRidgesCdfLut;
         NativeArray<float> statsValues = new(3, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        VanillaClimateNoiseManaged climateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.offset.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateOffsetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.offset.secondPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.firstOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetFirstPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.firstPermutations, Allocator.TempJob);
+        NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves =
+            VanillaNoise.CreateNativeOctaves(climateNoise.ridge.secondOctaves, Allocator.TempJob);
+        NativeArray<int> climateTargetSecondPermutations =
+            VanillaNoise.CreateNativePermutations(climateNoise.ridge.secondPermutations, Allocator.TempJob);
 
         try
         {
@@ -505,6 +893,16 @@ public sealed class WorldGenPrototype : MonoBehaviour
                 sectorIndexZ = sectorIndexZ,
                 useCdfRemap = useCdfRemap,
                 settings = settings,
+                climateOffsetFirstOctaves = climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations = climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves = climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations = climateOffsetSecondPermutations,
+                climateOffsetValueFactor = climateNoise.offset.valueFactor,
+                climateTargetFirstOctaves = climateTargetFirstOctaves,
+                climateTargetFirstPermutations = climateTargetFirstPermutations,
+                climateTargetSecondOctaves = climateTargetSecondOctaves,
+                climateTargetSecondPermutations = climateTargetSecondPermutations,
+                climateTargetValueFactor = climateNoise.ridge.valueFactor,
                 cdfLut = cdfLut,
                 pixels = pixels,
                 values = values,
@@ -536,6 +934,46 @@ public sealed class WorldGenPrototype : MonoBehaviour
             if (statsValues.IsCreated)
             {
                 statsValues.Dispose();
+            }
+
+            if (climateOffsetFirstOctaves.IsCreated)
+            {
+                climateOffsetFirstOctaves.Dispose();
+            }
+
+            if (climateOffsetFirstPermutations.IsCreated)
+            {
+                climateOffsetFirstPermutations.Dispose();
+            }
+
+            if (climateOffsetSecondOctaves.IsCreated)
+            {
+                climateOffsetSecondOctaves.Dispose();
+            }
+
+            if (climateOffsetSecondPermutations.IsCreated)
+            {
+                climateOffsetSecondPermutations.Dispose();
+            }
+
+            if (climateTargetFirstOctaves.IsCreated)
+            {
+                climateTargetFirstOctaves.Dispose();
+            }
+
+            if (climateTargetFirstPermutations.IsCreated)
+            {
+                climateTargetFirstPermutations.Dispose();
+            }
+
+            if (climateTargetSecondOctaves.IsCreated)
+            {
+                climateTargetSecondOctaves.Dispose();
+            }
+
+            if (climateTargetSecondPermutations.IsCreated)
+            {
+                climateTargetSecondPermutations.Dispose();
             }
         }
     }
@@ -689,19 +1127,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
             CacheSplineTree(GetFactorSplineTreeAsset(), ref cachedFactorSplineNodes, ref cachedFactorSplinePoints);
             CacheSplineTree(GetJaggednessSplineTreeAsset(), ref cachedJaggednessSplineNodes, ref cachedJaggednessSplinePoints);
         }
-        else if (UseLegacyTerrainHeightSplineTree())
-        {
-            CacheSplineTree(worldGenSettingsAsset.LegacyTerrainHeightSplineTree, ref cachedLegacyTerrainHeightSplineNodes, ref cachedLegacyTerrainHeightSplinePoints);
-        }
-        else if (UseContinentalnessHeightSpline())
-        {
-            float[] sourceLut = worldGenSettingsAsset.LegacyContinentalnessHeightSpline.BakedLut;
-            cachedContinentalnessHeightLut = new NativeArray<float>(sourceLut.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            for (int i = 0; i < sourceLut.Length; i++)
-            {
-                cachedContinentalnessHeightLut[i] = sourceLut[i];
-            }
-        }
     }
 
     private bool UseRemap()
@@ -722,20 +1147,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
         return GetOffsetSplineTreeAsset() != null &&
                GetFactorSplineTreeAsset() != null &&
                GetJaggednessSplineTreeAsset() != null;
-    }
-
-    private bool UseContinentalnessHeightSpline()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.LegacyContinentalnessHeightSpline != null &&
-               worldGenSettingsAsset.LegacyContinentalnessHeightSpline.HasBakedLut;
-    }
-
-    private bool UseLegacyTerrainHeightSplineTree()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.LegacyTerrainHeightSplineTree != null &&
-               worldGenSettingsAsset.LegacyTerrainHeightSplineTree.HasBakedTree;
     }
 
     private bool UseErosionRemap()
@@ -807,20 +1218,6 @@ public sealed class WorldGenPrototype : MonoBehaviour
             cachedJaggednessSplinePoints.Dispose();
         }
 
-        if (cachedLegacyTerrainHeightSplineNodes.IsCreated)
-        {
-            cachedLegacyTerrainHeightSplineNodes.Dispose();
-        }
-
-        if (cachedLegacyTerrainHeightSplinePoints.IsCreated)
-        {
-            cachedLegacyTerrainHeightSplinePoints.Dispose();
-        }
-
-        if (cachedContinentalnessHeightLut.IsCreated)
-        {
-            cachedContinentalnessHeightLut.Dispose();
-        }
     }
 
     private static void CacheSplineTree(

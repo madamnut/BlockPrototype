@@ -10,10 +10,9 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     [SerializeField] private SplineTreeAsset offsetSplineTree;
     [SerializeField] private SplineTreeAsset factorSplineTree;
     [SerializeField] private SplineTreeAsset jaggednessSplineTree;
-    [FormerlySerializedAs("terrainHeightSplineTree")]
-    [SerializeField, HideInInspector] private SplineTreeAsset legacyTerrainHeightSplineTree;
-    [FormerlySerializedAs("continentalnessHeightSpline")]
-    [SerializeField, HideInInspector] private CurveLutAsset legacyContinentalnessHeightSpline;
+
+    [Header("Water")]
+    [SerializeField, Min(0)] private int seaLevel = WorldGenDensity.InternalSeaLevel;
 
     [Header("Value Remap")]
     [FormerlySerializedAs("useContinentalnessCdfRemap")]
@@ -140,8 +139,7 @@ public sealed class WorldGenSettingsAsset : ScriptableObject
     public SplineTreeAsset OffsetSplineTree => offsetSplineTree;
     public SplineTreeAsset FactorSplineTree => factorSplineTree;
     public SplineTreeAsset JaggednessSplineTree => jaggednessSplineTree;
-    public SplineTreeAsset LegacyTerrainHeightSplineTree => legacyTerrainHeightSplineTree;
-    public CurveLutAsset LegacyContinentalnessHeightSpline => legacyContinentalnessHeightSpline;
+    public int SeaLevel => Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
     public bool UseContinentalnessRemap => useContinentalnessRemap;
     public bool UseErosionRemap => useErosionRemap;
     public bool UseRidgesRemap => useRidgesRemap;

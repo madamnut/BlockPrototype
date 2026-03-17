@@ -123,26 +123,45 @@ public sealed class TerrainData : IDisposable
         public int chunkX;
         public int chunkZ;
         public int seed;
-        public bool useContinentalnessRemap;
-        public bool useErosionRemap;
-        public bool useRidgesRemap;
-        public ContinentalnessSettings continentalness;
-        public ErosionSettings erosion;
-        public RidgesSettings ridges;
-
-        [ReadOnly] public NativeArray<float> continentalnessCdfLut;
-        [ReadOnly] public NativeArray<float> erosionCdfLut;
-        [ReadOnly] public NativeArray<float> ridgesCdfLut;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateContinentalnessFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateContinentalnessSecondPermutations;
+        public float climateContinentalnessValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateErosionFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateErosionFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateErosionSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateErosionSecondPermutations;
+        public float climateErosionValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateRidgeFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateRidgeFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateRidgeSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateRidgeSecondPermutations;
+        public float climateRidgeValueFactor;
         [ReadOnly] public NativeArray<SplineTreeBakedNode> offsetSplineNodes;
         [ReadOnly] public NativeArray<SplineTreeBakedPoint> offsetSplinePoints;
         [ReadOnly] public NativeArray<SplineTreeBakedNode> factorSplineNodes;
         [ReadOnly] public NativeArray<SplineTreeBakedPoint> factorSplinePoints;
         [ReadOnly] public NativeArray<SplineTreeBakedNode> jaggednessSplineNodes;
         [ReadOnly] public NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints;
-        [ReadOnly] public NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes;
-        [ReadOnly] public NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints;
-        [ReadOnly] public NativeArray<float> continentalnessHeightLut;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves;
+        [ReadOnly] public NativeArray<int> blendedMinLimitPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves;
+        [ReadOnly] public NativeArray<int> blendedMaxLimitPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves;
+        [ReadOnly] public NativeArray<int> blendedMainPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves;
+        [ReadOnly] public NativeArray<int> jaggedFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves;
+        [ReadOnly] public NativeArray<int> jaggedSecondPermutations;
+        public float jaggedValueFactor;
         public NativeArray<int> columnHeights;
+        [NativeDisableContainerSafetyRestriction] public NativeArray<BlockType> blocks;
 
         public void Execute(int index)
         {
@@ -150,42 +169,54 @@ public sealed class TerrainData : IDisposable
             int localZ = index / ChunkSize;
             int worldX = (chunkX * ChunkSize) + localX;
             int worldZ = (chunkZ * ChunkSize) + localZ;
-            columnHeights[index] = SampleSurfaceHeight(worldX, worldZ);
+            GenerateColumn(worldX, worldZ, localX, localZ, index);
         }
 
-        private int SampleSurfaceHeight(int worldX, int worldZ)
+        private void GenerateColumn(int worldX, int worldZ, int localX, int localZ, int columnIndex)
         {
-            float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
-            float worldRegionZ = worldZ / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
-            float rawContinentalness = WorldGenPrototypeJobs.SampleRawContinentalness(
-                seed,
-                worldRegionX,
-                worldRegionZ,
-                continentalness);
-            float continentalnessValue = RemapRawNoise(
-                rawContinentalness,
-                useContinentalnessRemap,
-                continentalnessCdfLut);
-            float rawErosion = WorldGenPrototypeJobs.SampleRawErosion(
-                seed,
-                worldRegionX,
-                worldRegionZ,
-                erosion);
-            float erosionValue = RemapRawNoise(
-                rawErosion,
-                useErosionRemap,
-                erosionCdfLut);
-            float rawRidges = WorldGenPrototypeJobs.SampleRawRidges(
-                seed,
-                worldRegionX,
-                worldRegionZ,
-                ridges);
-            float weirdnessValue = RemapRawNoise(
-                rawRidges,
-                useRidgesRemap,
-                ridgesCdfLut);
+            float continentalnessValue = VanillaNoise.SampleOverworldContinentalness(
+                worldX,
+                worldZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateContinentalnessFirstOctaves,
+                climateContinentalnessFirstPermutations,
+                climateContinentalnessSecondOctaves,
+                climateContinentalnessSecondPermutations,
+                climateContinentalnessValueFactor);
+            float erosionValue = VanillaNoise.SampleOverworldErosion(
+                worldX,
+                worldZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateErosionFirstOctaves,
+                climateErosionFirstPermutations,
+                climateErosionSecondOctaves,
+                climateErosionSecondPermutations,
+                climateErosionValueFactor);
+            float weirdnessValue = VanillaNoise.SampleOverworldWeirdness(
+                worldX,
+                worldZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateRidgeFirstOctaves,
+                climateRidgeFirstPermutations,
+                climateRidgeSecondOctaves,
+                climateRidgeSecondPermutations,
+                climateRidgeValueFactor);
             float foldedWeirdnessValue = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdnessValue);
-            return ComposeSurfaceHeight(
+            int surfaceHeight = ComposeSurfaceHeight(
+                worldX,
+                worldZ,
                 continentalnessValue,
                 erosionValue,
                 weirdnessValue,
@@ -196,13 +227,99 @@ public sealed class TerrainData : IDisposable
                 factorSplinePoints,
                 jaggednessSplineNodes,
                 jaggednessSplinePoints,
-                legacyTerrainHeightSplineNodes,
-                legacyTerrainHeightSplinePoints,
-                continentalnessHeightLut,
+                blendedMinLimitOctaves,
+                blendedMinLimitPermutations,
+                blendedMaxLimitOctaves,
+                blendedMaxLimitPermutations,
+                blendedMainOctaves,
+                blendedMainPermutations,
+                jaggedFirstOctaves,
+                jaggedFirstPermutations,
+                jaggedSecondOctaves,
+                jaggedSecondPermutations,
+                jaggedValueFactor,
                 WorldHeight);
+
+            columnHeights[columnIndex] = surfaceHeight;
+
+            TerrainShapeSample shape = default;
+            bool useDensityTrees =
+                offsetSplineNodes.IsCreated &&
+                offsetSplinePoints.IsCreated &&
+                factorSplineNodes.IsCreated &&
+                factorSplinePoints.IsCreated &&
+                jaggednessSplineNodes.IsCreated &&
+                jaggednessSplinePoints.IsCreated &&
+                offsetSplineNodes.Length > 0 &&
+                offsetSplinePoints.Length > 0 &&
+                factorSplineNodes.Length > 0 &&
+                factorSplinePoints.Length > 0 &&
+                jaggednessSplineNodes.Length > 0 &&
+                jaggednessSplinePoints.Length > 0;
+
+            float jaggedNoise = 0f;
+            if (useDensityTrees)
+            {
+                shape = EvaluateTerrainShape(
+                    continentalnessValue,
+                    erosionValue,
+                    weirdnessValue,
+                    foldedWeirdnessValue,
+                    offsetSplineNodes,
+                    offsetSplinePoints,
+                    factorSplineNodes,
+                    factorSplinePoints,
+                    jaggednessSplineNodes,
+                    jaggednessSplinePoints);
+                jaggedNoise = EvaluateJaggedNoise(
+                    worldX,
+                    worldZ,
+                    jaggedFirstOctaves,
+                    jaggedFirstPermutations,
+                    jaggedSecondOctaves,
+                    jaggedSecondPermutations,
+                    jaggedValueFactor);
+            }
+
+            for (int worldY = 0; worldY < WorldHeight; worldY++)
+            {
+                BlockType blockType = BlockType.Air;
+                if (useDensityTrees)
+                {
+                    float base3DNoise = EvaluateBase3DNoise(
+                        worldX,
+                        worldY,
+                        worldZ,
+                        WorldHeight,
+                        blendedMinLimitOctaves,
+                        blendedMinLimitPermutations,
+                        blendedMaxLimitOctaves,
+                        blendedMaxLimitPermutations,
+                        blendedMainOctaves,
+                        blendedMainPermutations);
+                    float density = WorldGenDensity.EvaluateDensity(
+                        worldY,
+                        WorldHeight,
+                        shape,
+                        jaggedNoise,
+                        base3DNoise);
+                    if (density > 0f)
+                    {
+                        blockType = BlockType.Rock;
+                    }
+                }
+                else if (worldY <= surfaceHeight)
+                {
+                    blockType = BlockType.Rock;
+                }
+
+                blocks[GetIndex(localX, worldY, localZ)] = blockType;
+            }
         }
 
         private static int ComposeSurfaceHeight(
+            int worldX,
+            int worldZ,
             float continentalnessValue,
             float erosionValue,
             float weirdnessValue,
@@ -213,9 +330,17 @@ public sealed class TerrainData : IDisposable
             NativeArray<SplineTreeBakedPoint> factorSplinePoints,
             NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
             NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints,
-            NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes,
-            NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints,
-            NativeArray<float> heightLut,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves,
+            NativeArray<int> blendedMinLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves,
+            NativeArray<int> blendedMaxLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves,
+            NativeArray<int> blendedMainPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves,
+            NativeArray<int> jaggedFirstPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves,
+            NativeArray<int> jaggedSecondPermutations,
+            float jaggedValueFactor,
             int worldHeight)
         {
             if (offsetSplineNodes.IsCreated &&
@@ -242,36 +367,120 @@ public sealed class TerrainData : IDisposable
                     factorSplinePoints,
                     jaggednessSplineNodes,
                     jaggednessSplinePoints);
-                return WorldGenDensity.FindSurfaceHeight(worldHeight, shape, foldedWeirdnessValue);
+                float jaggedNoise = EvaluateJaggedNoise(
+                    worldX,
+                    worldZ,
+                    jaggedFirstOctaves,
+                    jaggedFirstPermutations,
+                    jaggedSecondOctaves,
+                    jaggedSecondPermutations,
+                    jaggedValueFactor);
+                return FindSurfaceHeightFromDensity(
+                    worldX,
+                    worldZ,
+                    worldHeight,
+                    shape,
+                    jaggedNoise,
+                    blendedMinLimitOctaves,
+                    blendedMinLimitPermutations,
+                    blendedMaxLimitOctaves,
+                    blendedMaxLimitPermutations,
+                    blendedMainOctaves,
+                    blendedMainPermutations);
             }
 
-            if (legacyTerrainHeightSplineNodes.IsCreated &&
-                legacyTerrainHeightSplinePoints.IsCreated &&
-                legacyTerrainHeightSplineNodes.Length > 0 &&
-                legacyTerrainHeightSplinePoints.Length > 0)
+            return 0;
+        }
+
+        private static int FindSurfaceHeightFromDensity(
+            int worldX,
+            int worldZ,
+            int worldHeight,
+            TerrainShapeSample shape,
+            float jaggedNoise,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves,
+            NativeArray<int> blendedMinLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves,
+            NativeArray<int> blendedMaxLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves,
+            NativeArray<int> blendedMainPermutations)
+        {
+            for (int worldY = worldHeight - 1; worldY >= 0; worldY--)
             {
-                return SplineTreeEvaluator.EvaluateHeight(
-                    continentalnessValue,
-                    erosionValue,
-                    weirdnessValue,
-                    foldedWeirdnessValue,
-                    legacyTerrainHeightSplineNodes,
-                    legacyTerrainHeightSplinePoints,
-                    worldHeight);
+                float base3DNoise = EvaluateBase3DNoise(
+                    worldX,
+                    worldY,
+                    worldZ,
+                    worldHeight,
+                    blendedMinLimitOctaves,
+                    blendedMinLimitPermutations,
+                    blendedMaxLimitOctaves,
+                    blendedMaxLimitPermutations,
+                    blendedMainOctaves,
+                    blendedMainPermutations);
+                float density = WorldGenDensity.EvaluateDensity(worldY, worldHeight, shape, jaggedNoise, base3DNoise);
+                if (density > 0f)
+                {
+                    return worldY;
+                }
             }
 
-            if (heightLut.IsCreated && heightLut.Length > 1)
+            return -1;
+        }
+
+        private static float EvaluateBase3DNoise(
+            int worldX,
+            int worldY,
+            int worldZ,
+            int worldHeight,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves,
+            NativeArray<int> blendedMinLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves,
+            NativeArray<int> blendedMaxLimitPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves,
+            NativeArray<int> blendedMainPermutations)
+        {
+            return VanillaNoise.SampleOverworldBlendedNoise(
+                worldX,
+                WorldGenDensity.ToVanillaY(worldY, worldHeight),
+                worldZ,
+                blendedMinLimitOctaves,
+                blendedMinLimitPermutations,
+                blendedMaxLimitOctaves,
+                blendedMaxLimitPermutations,
+                blendedMainOctaves,
+                blendedMainPermutations);
+        }
+
+        private static float EvaluateJaggedNoise(
+            int worldX,
+            int worldZ,
+            NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves,
+            NativeArray<int> jaggedFirstPermutations,
+            NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves,
+            NativeArray<int> jaggedSecondPermutations,
+            float jaggedValueFactor)
+        {
+            if (!jaggedFirstOctaves.IsCreated ||
+                !jaggedFirstPermutations.IsCreated ||
+                !jaggedSecondOctaves.IsCreated ||
+                !jaggedSecondPermutations.IsCreated ||
+                jaggedFirstOctaves.Length == 0 ||
+                jaggedFirstPermutations.Length == 0 ||
+                jaggedSecondOctaves.Length == 0 ||
+                jaggedSecondPermutations.Length == 0)
             {
-                float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
-                float scaledIndex = normalized * (heightLut.Length - 1);
-                int lowerIndex = (int)math.floor(scaledIndex);
-                int upperIndex = math.min(lowerIndex + 1, heightLut.Length - 1);
-                float t = scaledIndex - lowerIndex;
-                return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, worldHeight - 1);
+                return 0f;
             }
 
-            float normalizedContinentalness = math.saturate((continentalnessValue + 1f) * 0.5f);
-            return math.clamp((int)math.round(math.lerp(0f, 180f, normalizedContinentalness)), 0, worldHeight - 1);
+            return VanillaNoise.SampleJaggedNoise(
+                worldX,
+                worldZ,
+                jaggedFirstOctaves,
+                jaggedFirstPermutations,
+                jaggedSecondOctaves,
+                jaggedSecondPermutations,
+                jaggedValueFactor);
         }
 
         private static TerrainShapeSample EvaluateTerrainShape(
@@ -310,21 +519,6 @@ public sealed class TerrainData : IDisposable
             return new TerrainShapeSample(offset, math.max(0.0001f, factor), jaggedness);
         }
 
-        private static float RemapRawNoise(float rawValue, bool useCdfRemap, NativeArray<float> cdfLut)
-        {
-            float normalized = math.saturate(rawValue);
-            if (useCdfRemap && cdfLut.IsCreated && cdfLut.Length > 1)
-            {
-                float scaledIndex = normalized * (cdfLut.Length - 1);
-                int lowerIndex = (int)math.floor(scaledIndex);
-                int upperIndex = math.min(lowerIndex + 1, cdfLut.Length - 1);
-                float t = scaledIndex - lowerIndex;
-                normalized = math.lerp(cdfLut[lowerIndex], cdfLut[upperIndex], t);
-            }
-
-            return (normalized * 2f) - 1f;
-        }
-
     }
 
     [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
@@ -350,7 +544,7 @@ public sealed class TerrainData : IDisposable
 
     public const int ChunkSize = 16;
     public const int SubChunkSize = 16;
-    public const int WorldHeight = 256;
+    public const int WorldHeight = WorldGenDensity.VanillaMaxYExclusive - WorldGenDensity.VanillaMinY;
     public const int SubChunkCountY = WorldHeight / SubChunkSize;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
@@ -366,9 +560,9 @@ public sealed class TerrainData : IDisposable
     private readonly SplineTreeBakedPoint[] _managedFactorSplinePoints;
     private readonly SplineTreeBakedNode[] _managedJaggednessSplineNodes;
     private readonly SplineTreeBakedPoint[] _managedJaggednessSplinePoints;
-    private readonly SplineTreeBakedNode[] _managedLegacyTerrainHeightSplineNodes;
-    private readonly SplineTreeBakedPoint[] _managedLegacyTerrainHeightSplinePoints;
-    private readonly float[] _managedContinentalnessHeightLut;
+    private readonly VanillaClimateNoiseManaged _managedClimateNoise;
+    private readonly VanillaBlendedNoiseManaged _managedBlendedNoise;
+    private readonly VanillaNormalNoiseManaged _managedJaggedNoise;
     private NativeArray<float> _continentalnessCdfLut;
     private NativeArray<float> _erosionCdfLut;
     private NativeArray<float> _ridgesCdfLut;
@@ -378,9 +572,37 @@ public sealed class TerrainData : IDisposable
     private NativeArray<SplineTreeBakedPoint> _factorSplinePoints;
     private NativeArray<SplineTreeBakedNode> _jaggednessSplineNodes;
     private NativeArray<SplineTreeBakedPoint> _jaggednessSplinePoints;
-    private NativeArray<SplineTreeBakedNode> _legacyTerrainHeightSplineNodes;
-    private NativeArray<SplineTreeBakedPoint> _legacyTerrainHeightSplinePoints;
-    private NativeArray<float> _continentalnessHeightLut;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateOffsetFirstOctaves;
+    private NativeArray<int> _climateOffsetFirstPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateOffsetSecondOctaves;
+    private NativeArray<int> _climateOffsetSecondPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateContinentalnessFirstOctaves;
+    private NativeArray<int> _climateContinentalnessFirstPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateContinentalnessSecondOctaves;
+    private NativeArray<int> _climateContinentalnessSecondPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateErosionFirstOctaves;
+    private NativeArray<int> _climateErosionFirstPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateErosionSecondOctaves;
+    private NativeArray<int> _climateErosionSecondPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateRidgeFirstOctaves;
+    private NativeArray<int> _climateRidgeFirstPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _climateRidgeSecondOctaves;
+    private NativeArray<int> _climateRidgeSecondPermutations;
+    private readonly float _climateOffsetValueFactor;
+    private readonly float _climateContinentalnessValueFactor;
+    private readonly float _climateErosionValueFactor;
+    private readonly float _climateRidgeValueFactor;
+    private NativeArray<VanillaImprovedNoiseOctave> _blendedMinLimitOctaves;
+    private NativeArray<int> _blendedMinLimitPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _blendedMaxLimitOctaves;
+    private NativeArray<int> _blendedMaxLimitPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _blendedMainOctaves;
+    private NativeArray<int> _blendedMainPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _jaggedFirstOctaves;
+    private NativeArray<int> _jaggedFirstPermutations;
+    private NativeArray<VanillaImprovedNoiseOctave> _jaggedSecondOctaves;
+    private NativeArray<int> _jaggedSecondPermutations;
+    private readonly float _jaggedValueFactor;
     public TerrainData(
         int seed,
         TerrainGenerationSettings settings,
@@ -392,10 +614,7 @@ public sealed class TerrainData : IDisposable
         SplineTreeBakedNode[] factorSplineNodes = null,
         SplineTreeBakedPoint[] factorSplinePoints = null,
         SplineTreeBakedNode[] jaggednessSplineNodes = null,
-        SplineTreeBakedPoint[] jaggednessSplinePoints = null,
-        SplineTreeBakedNode[] legacyTerrainHeightSplineNodes = null,
-        SplineTreeBakedPoint[] legacyTerrainHeightSplinePoints = null,
-        float[] continentalnessHeightLut = null)
+        SplineTreeBakedPoint[] jaggednessSplinePoints = null)
     {
         _seed = seed;
         _settings = settings;
@@ -408,9 +627,9 @@ public sealed class TerrainData : IDisposable
         _managedFactorSplinePoints = factorSplinePoints;
         _managedJaggednessSplineNodes = jaggednessSplineNodes;
         _managedJaggednessSplinePoints = jaggednessSplinePoints;
-        _managedLegacyTerrainHeightSplineNodes = legacyTerrainHeightSplineNodes;
-        _managedLegacyTerrainHeightSplinePoints = legacyTerrainHeightSplinePoints;
-        _managedContinentalnessHeightLut = continentalnessHeightLut;
+        _managedClimateNoise = VanillaNoise.CreateManagedOverworldClimateNoise(seed);
+        _managedBlendedNoise = VanillaNoise.CreateManagedOverworldBlendedNoise(seed);
+        _managedJaggedNoise = VanillaNoise.CreateManagedJaggedNoise(seed);
         _continentalnessCdfLut = CreateNativeLut(settings.useContinentalnessRemap, continentalnessCdfLut);
         _erosionCdfLut = CreateNativeLut(settings.useErosionRemap, erosionCdfLut);
         _ridgesCdfLut = CreateNativeLut(settings.useRidgesRemap, ridgesCdfLut);
@@ -420,9 +639,37 @@ public sealed class TerrainData : IDisposable
         _factorSplinePoints = CreateNativeSplinePoints(factorSplinePoints);
         _jaggednessSplineNodes = CreateNativeSplineNodes(jaggednessSplineNodes);
         _jaggednessSplinePoints = CreateNativeSplinePoints(jaggednessSplinePoints);
-        _legacyTerrainHeightSplineNodes = CreateNativeSplineNodes(legacyTerrainHeightSplineNodes);
-        _legacyTerrainHeightSplinePoints = CreateNativeSplinePoints(legacyTerrainHeightSplinePoints);
-        _continentalnessHeightLut = CreateNativeLut(continentalnessHeightLut != null && continentalnessHeightLut.Length > 1, continentalnessHeightLut);
+        _climateOffsetFirstOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.offset.firstOctaves, Allocator.Persistent);
+        _climateOffsetFirstPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.offset.firstPermutations, Allocator.Persistent);
+        _climateOffsetSecondOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.offset.secondOctaves, Allocator.Persistent);
+        _climateOffsetSecondPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.offset.secondPermutations, Allocator.Persistent);
+        _climateContinentalnessFirstOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.continentalness.firstOctaves, Allocator.Persistent);
+        _climateContinentalnessFirstPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.continentalness.firstPermutations, Allocator.Persistent);
+        _climateContinentalnessSecondOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.continentalness.secondOctaves, Allocator.Persistent);
+        _climateContinentalnessSecondPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.continentalness.secondPermutations, Allocator.Persistent);
+        _climateErosionFirstOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.erosion.firstOctaves, Allocator.Persistent);
+        _climateErosionFirstPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.erosion.firstPermutations, Allocator.Persistent);
+        _climateErosionSecondOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.erosion.secondOctaves, Allocator.Persistent);
+        _climateErosionSecondPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.erosion.secondPermutations, Allocator.Persistent);
+        _climateRidgeFirstOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.ridge.firstOctaves, Allocator.Persistent);
+        _climateRidgeFirstPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.ridge.firstPermutations, Allocator.Persistent);
+        _climateRidgeSecondOctaves = VanillaNoise.CreateNativeOctaves(_managedClimateNoise.ridge.secondOctaves, Allocator.Persistent);
+        _climateRidgeSecondPermutations = VanillaNoise.CreateNativePermutations(_managedClimateNoise.ridge.secondPermutations, Allocator.Persistent);
+        _climateOffsetValueFactor = _managedClimateNoise.offset.valueFactor;
+        _climateContinentalnessValueFactor = _managedClimateNoise.continentalness.valueFactor;
+        _climateErosionValueFactor = _managedClimateNoise.erosion.valueFactor;
+        _climateRidgeValueFactor = _managedClimateNoise.ridge.valueFactor;
+        _blendedMinLimitOctaves = VanillaNoise.CreateNativeOctaves(_managedBlendedNoise.minLimitOctaves, Allocator.Persistent);
+        _blendedMinLimitPermutations = VanillaNoise.CreateNativePermutations(_managedBlendedNoise.minLimitPermutations, Allocator.Persistent);
+        _blendedMaxLimitOctaves = VanillaNoise.CreateNativeOctaves(_managedBlendedNoise.maxLimitOctaves, Allocator.Persistent);
+        _blendedMaxLimitPermutations = VanillaNoise.CreateNativePermutations(_managedBlendedNoise.maxLimitPermutations, Allocator.Persistent);
+        _blendedMainOctaves = VanillaNoise.CreateNativeOctaves(_managedBlendedNoise.mainOctaves, Allocator.Persistent);
+        _blendedMainPermutations = VanillaNoise.CreateNativePermutations(_managedBlendedNoise.mainPermutations, Allocator.Persistent);
+        _jaggedFirstOctaves = VanillaNoise.CreateNativeOctaves(_managedJaggedNoise.firstOctaves, Allocator.Persistent);
+        _jaggedFirstPermutations = VanillaNoise.CreateNativePermutations(_managedJaggedNoise.firstPermutations, Allocator.Persistent);
+        _jaggedSecondOctaves = VanillaNoise.CreateNativeOctaves(_managedJaggedNoise.secondOctaves, Allocator.Persistent);
+        _jaggedSecondPermutations = VanillaNoise.CreateNativePermutations(_managedJaggedNoise.secondPermutations, Allocator.Persistent);
+        _jaggedValueFactor = _managedJaggedNoise.valueFactor;
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
@@ -432,24 +679,19 @@ public sealed class TerrainData : IDisposable
         int height = WorldGenSampler.SampleSurfaceHeight(
             worldX,
             worldZ,
-            _seed,
-            _settings,
-            _managedContinentalnessCdfLut,
-            _managedErosionCdfLut,
-            _managedRidgesCdfLut,
+            _managedClimateNoise,
+            _managedBlendedNoise,
+            _managedJaggedNoise,
             _managedOffsetSplineNodes,
             _managedOffsetSplinePoints,
             _managedFactorSplineNodes,
             _managedFactorSplinePoints,
             _managedJaggednessSplineNodes,
-            _managedJaggednessSplinePoints,
-            _managedLegacyTerrainHeightSplineNodes,
-            _managedLegacyTerrainHeightSplinePoints,
-            _managedContinentalnessHeightLut);
-        float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _seed, _settings, _managedContinentalnessCdfLut);
-        float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
-        float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
-        float foldedWeirdness = WorldGenSampler.SampleFoldedWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
+            _managedJaggednessSplinePoints);
+        float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _managedClimateNoise);
+        float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _managedClimateNoise);
+        float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _managedClimateNoise);
+        float foldedWeirdness = WorldGenSampler.SampleFoldedWeirdness(worldX, worldZ, _managedClimateNoise);
 
         return new WorldGenDebugSample(
             height,
@@ -477,45 +719,29 @@ public sealed class TerrainData : IDisposable
                 int columnIndex = (localZ * ChunkSize) + localX;
                 int worldX = (chunkX * ChunkSize) + localX;
                 int worldZ = (chunkZ * ChunkSize) + localZ;
-                float worldRegionX = worldX / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
-                float worldRegionZ = worldZ / (float)WorldGenPrototypeJobs.RegionSizeInBlocks;
-
                 long stageStart = stopwatch.ElapsedTicks;
-                float rawContinentalness = WorldGenPrototypeJobs.SampleRawContinentalness(
-                    _seed,
-                    worldRegionX,
-                    worldRegionZ,
-                    _settings.continentalness);
+                float continentalness = WorldGenSampler.SampleContinentalness(worldX, worldZ, _managedClimateNoise);
+                float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _managedClimateNoise);
+                float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _managedClimateNoise);
+                float foldedWeirdness = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdness);
                 rawSampleTicks += stopwatch.ElapsedTicks - stageStart;
 
                 stageStart = stopwatch.ElapsedTicks;
-                float continentalness = WorldGenSampler.RemapRawContinentalness(
-                    rawContinentalness,
-                    _settings.useContinentalnessRemap,
-                    _managedContinentalnessCdfLut);
-                remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
-
-                stageStart = stopwatch.ElapsedTicks;
-                float erosion = WorldGenSampler.SampleErosion(worldX, worldZ, _seed, _settings, _managedErosionCdfLut);
-                float weirdness = WorldGenSampler.SampleWeirdness(worldX, worldZ, _seed, _settings, _managedRidgesCdfLut);
-                float foldedWeirdness = WorldGenPrototypeJobs.CalculatePvFromWeirdness(weirdness);
-                remapFilterTicks += stopwatch.ElapsedTicks - stageStart;
-
-                stageStart = stopwatch.ElapsedTicks;
                 int terrainHeight = WorldGenSampler.ComposeSurfaceHeight(
+                    worldX,
+                    worldZ,
                     continentalness,
                     erosion,
-                weirdness,
-                foldedWeirdness,
-                _managedOffsetSplineNodes,
-                _managedOffsetSplinePoints,
-                _managedFactorSplineNodes,
-                _managedFactorSplinePoints,
-                _managedJaggednessSplineNodes,
-                _managedJaggednessSplinePoints,
-                _managedLegacyTerrainHeightSplineNodes,
-                _managedLegacyTerrainHeightSplinePoints,
-                _managedContinentalnessHeightLut);
+                    weirdness,
+                    foldedWeirdness,
+                    _managedOffsetSplineNodes,
+                    _managedOffsetSplinePoints,
+                    _managedFactorSplineNodes,
+                    _managedFactorSplinePoints,
+                    _managedJaggednessSplineNodes,
+                    _managedJaggednessSplinePoints,
+                    _managedBlendedNoise,
+                    _managedJaggedNoise);
                 composeHeightTicks += stopwatch.ElapsedTicks - stageStart;
                 columnHeights[columnIndex] = terrainHeight;
             }
@@ -617,19 +843,134 @@ public sealed class TerrainData : IDisposable
             _jaggednessSplinePoints.Dispose();
         }
 
-        if (_legacyTerrainHeightSplineNodes.IsCreated)
+        if (_climateOffsetFirstOctaves.IsCreated)
         {
-            _legacyTerrainHeightSplineNodes.Dispose();
+            _climateOffsetFirstOctaves.Dispose();
         }
 
-        if (_legacyTerrainHeightSplinePoints.IsCreated)
+        if (_climateOffsetFirstPermutations.IsCreated)
         {
-            _legacyTerrainHeightSplinePoints.Dispose();
+            _climateOffsetFirstPermutations.Dispose();
         }
 
-        if (_continentalnessHeightLut.IsCreated)
+        if (_climateOffsetSecondOctaves.IsCreated)
         {
-            _continentalnessHeightLut.Dispose();
+            _climateOffsetSecondOctaves.Dispose();
+        }
+
+        if (_climateOffsetSecondPermutations.IsCreated)
+        {
+            _climateOffsetSecondPermutations.Dispose();
+        }
+
+        if (_climateContinentalnessFirstOctaves.IsCreated)
+        {
+            _climateContinentalnessFirstOctaves.Dispose();
+        }
+
+        if (_climateContinentalnessFirstPermutations.IsCreated)
+        {
+            _climateContinentalnessFirstPermutations.Dispose();
+        }
+
+        if (_climateContinentalnessSecondOctaves.IsCreated)
+        {
+            _climateContinentalnessSecondOctaves.Dispose();
+        }
+
+        if (_climateContinentalnessSecondPermutations.IsCreated)
+        {
+            _climateContinentalnessSecondPermutations.Dispose();
+        }
+
+        if (_climateErosionFirstOctaves.IsCreated)
+        {
+            _climateErosionFirstOctaves.Dispose();
+        }
+
+        if (_climateErosionFirstPermutations.IsCreated)
+        {
+            _climateErosionFirstPermutations.Dispose();
+        }
+
+        if (_climateErosionSecondOctaves.IsCreated)
+        {
+            _climateErosionSecondOctaves.Dispose();
+        }
+
+        if (_climateErosionSecondPermutations.IsCreated)
+        {
+            _climateErosionSecondPermutations.Dispose();
+        }
+
+        if (_climateRidgeFirstOctaves.IsCreated)
+        {
+            _climateRidgeFirstOctaves.Dispose();
+        }
+
+        if (_climateRidgeFirstPermutations.IsCreated)
+        {
+            _climateRidgeFirstPermutations.Dispose();
+        }
+
+        if (_climateRidgeSecondOctaves.IsCreated)
+        {
+            _climateRidgeSecondOctaves.Dispose();
+        }
+
+        if (_climateRidgeSecondPermutations.IsCreated)
+        {
+            _climateRidgeSecondPermutations.Dispose();
+        }
+
+        if (_blendedMinLimitOctaves.IsCreated)
+        {
+            _blendedMinLimitOctaves.Dispose();
+        }
+
+        if (_blendedMinLimitPermutations.IsCreated)
+        {
+            _blendedMinLimitPermutations.Dispose();
+        }
+
+        if (_blendedMaxLimitOctaves.IsCreated)
+        {
+            _blendedMaxLimitOctaves.Dispose();
+        }
+
+        if (_blendedMaxLimitPermutations.IsCreated)
+        {
+            _blendedMaxLimitPermutations.Dispose();
+        }
+
+        if (_blendedMainOctaves.IsCreated)
+        {
+            _blendedMainOctaves.Dispose();
+        }
+
+        if (_blendedMainPermutations.IsCreated)
+        {
+            _blendedMainPermutations.Dispose();
+        }
+
+        if (_jaggedFirstOctaves.IsCreated)
+        {
+            _jaggedFirstOctaves.Dispose();
+        }
+
+        if (_jaggedFirstPermutations.IsCreated)
+        {
+            _jaggedFirstPermutations.Dispose();
+        }
+
+        if (_jaggedSecondOctaves.IsCreated)
+        {
+            _jaggedSecondOctaves.Dispose();
+        }
+
+        if (_jaggedSecondPermutations.IsCreated)
+        {
+            _jaggedSecondPermutations.Dispose();
         }
     }
 
@@ -649,41 +990,54 @@ public sealed class TerrainData : IDisposable
             heightReadyTime = -1d,
         };
 
-        SampleChunkColumnHeightsJob heightJob = new()
-        {
-            chunkX = chunkX,
-            chunkZ = chunkZ,
-            seed = _seed,
-            useContinentalnessRemap = _settings.useContinentalnessRemap,
-            useErosionRemap = _settings.useErosionRemap,
-            useRidgesRemap = _settings.useRidgesRemap,
-            continentalness = _settings.continentalness,
-            erosion = _settings.erosion,
-            ridges = _settings.ridges,
-            continentalnessCdfLut = _continentalnessCdfLut,
-            erosionCdfLut = _erosionCdfLut,
-            ridgesCdfLut = _ridgesCdfLut,
+          SampleChunkColumnHeightsJob heightJob = new()
+          {
+              chunkX = chunkX,
+              chunkZ = chunkZ,
+            climateOffsetFirstOctaves = _climateOffsetFirstOctaves,
+            climateOffsetFirstPermutations = _climateOffsetFirstPermutations,
+            climateOffsetSecondOctaves = _climateOffsetSecondOctaves,
+            climateOffsetSecondPermutations = _climateOffsetSecondPermutations,
+            climateOffsetValueFactor = _climateOffsetValueFactor,
+            climateContinentalnessFirstOctaves = _climateContinentalnessFirstOctaves,
+            climateContinentalnessFirstPermutations = _climateContinentalnessFirstPermutations,
+            climateContinentalnessSecondOctaves = _climateContinentalnessSecondOctaves,
+            climateContinentalnessSecondPermutations = _climateContinentalnessSecondPermutations,
+            climateContinentalnessValueFactor = _climateContinentalnessValueFactor,
+            climateErosionFirstOctaves = _climateErosionFirstOctaves,
+            climateErosionFirstPermutations = _climateErosionFirstPermutations,
+            climateErosionSecondOctaves = _climateErosionSecondOctaves,
+            climateErosionSecondPermutations = _climateErosionSecondPermutations,
+            climateErosionValueFactor = _climateErosionValueFactor,
+            climateRidgeFirstOctaves = _climateRidgeFirstOctaves,
+            climateRidgeFirstPermutations = _climateRidgeFirstPermutations,
+            climateRidgeSecondOctaves = _climateRidgeSecondOctaves,
+            climateRidgeSecondPermutations = _climateRidgeSecondPermutations,
+            climateRidgeValueFactor = _climateRidgeValueFactor,
             offsetSplineNodes = _offsetSplineNodes,
             offsetSplinePoints = _offsetSplinePoints,
             factorSplineNodes = _factorSplineNodes,
             factorSplinePoints = _factorSplinePoints,
             jaggednessSplineNodes = _jaggednessSplineNodes,
             jaggednessSplinePoints = _jaggednessSplinePoints,
-            legacyTerrainHeightSplineNodes = _legacyTerrainHeightSplineNodes,
-            legacyTerrainHeightSplinePoints = _legacyTerrainHeightSplinePoints,
-            continentalnessHeightLut = _continentalnessHeightLut,
-            columnHeights = pending.columnHeights,
-        };
-
-        FillChunkColumnBlocksJob blockFillJob = new()
-        {
+            blendedMinLimitOctaves = _blendedMinLimitOctaves,
+            blendedMinLimitPermutations = _blendedMinLimitPermutations,
+            blendedMaxLimitOctaves = _blendedMaxLimitOctaves,
+            blendedMaxLimitPermutations = _blendedMaxLimitPermutations,
+            blendedMainOctaves = _blendedMainOctaves,
+            blendedMainPermutations = _blendedMainPermutations,
+            jaggedFirstOctaves = _jaggedFirstOctaves,
+            jaggedFirstPermutations = _jaggedFirstPermutations,
+            jaggedSecondOctaves = _jaggedSecondOctaves,
+            jaggedSecondPermutations = _jaggedSecondPermutations,
+            jaggedValueFactor = _jaggedValueFactor,
             columnHeights = pending.columnHeights,
             blocks = pending.blocks,
         };
 
         pending.heightHandle = heightJob.Schedule(ChunkSize * ChunkSize, ChunkSize);
-        pending.blockFillHandle = blockFillJob.Schedule(ChunkSize * ChunkSize, ChunkSize, pending.heightHandle);
-        pending.handle = pending.blockFillHandle;
+        pending.blockFillHandle = default;
+        pending.handle = pending.heightHandle;
         _pendingChunkColumns.Add(key, pending);
         _pendingChunkKeys.Add(key);
         return true;
@@ -1102,6 +1456,8 @@ public sealed class TerrainData : IDisposable
         ushort[] managedFoliageIds = new ushort[managedBlocks.Length];
         byte[] subChunkContents = new byte[SubChunkCountY];
         int maxHeight = -1;
+        int seaLevel = Mathf.Clamp(_settings.seaLevel, 0, WorldHeight - 1);
+        bool hasAnyFluid = false;
 
         for (int i = 0; i < pending.columnHeights.Length; i++)
         {
@@ -1110,13 +1466,69 @@ public sealed class TerrainData : IDisposable
             {
                 maxHeight = columnHeight;
             }
+        }
 
-            if (columnHeight >= 0)
+        for (int localZ = 0; localZ < ChunkSize; localZ++)
+        {
+            for (int localX = 0; localX < ChunkSize; localX++)
             {
-                int highestSolidSubChunk = math.min(columnHeight / SubChunkSize, SubChunkCountY - 1);
-                for (int subChunkY = 0; subChunkY <= highestSolidSubChunk; subChunkY++)
+                int columnIndex = (localZ * ChunkSize) + localX;
+                int surfaceHeight = managedColumnHeights[columnIndex];
+                int startFillY = Mathf.Max(surfaceHeight + 1, 0);
+                if (startFillY > seaLevel)
                 {
-                    subChunkContents[subChunkY] |= ChunkColumnData.SolidContentBit;
+                    continue;
+                }
+
+                for (int worldY = startFillY; worldY <= seaLevel; worldY++)
+                {
+                    int blockIndex = GetIndex(localX, worldY, localZ);
+                    if (managedBlocks[blockIndex] != BlockType.Air)
+                    {
+                        continue;
+                    }
+
+                    managedFluids[blockIndex] = VoxelFluid.Water(100);
+                    hasAnyFluid = true;
+                }
+            }
+        }
+
+        if (hasAnyFluid && seaLevel > maxHeight)
+        {
+            maxHeight = seaLevel;
+        }
+
+        for (int subChunkY = 0; subChunkY < SubChunkCountY; subChunkY++)
+        {
+            int startY = subChunkY * SubChunkSize;
+            int endY = math.min(startY + SubChunkSize, WorldHeight);
+            bool hasSolid = false;
+            bool hasFluid = false;
+            for (int worldY = startY; worldY < endY && (!hasSolid || !hasFluid); worldY++)
+            {
+                for (int localZ = 0; localZ < ChunkSize && (!hasSolid || !hasFluid); localZ++)
+                {
+                    for (int localX = 0; localX < ChunkSize; localX++)
+                    {
+                        int index = GetIndex(localX, worldY, localZ);
+                        if (!hasSolid && managedBlocks[index] != BlockType.Air)
+                        {
+                            hasSolid = true;
+                            subChunkContents[subChunkY] |= ChunkColumnData.SolidContentBit;
+                        }
+
+                        if (!hasFluid && managedFluids[index].Exists)
+                        {
+                            hasFluid = true;
+                            subChunkContents[subChunkY] |= ChunkColumnData.FluidContentBit;
+                        }
+
+                        if (hasSolid && hasFluid)
+                        {
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1239,20 +1651,15 @@ public sealed class TerrainData : IDisposable
         return WorldGenSampler.SampleSurfaceHeight(
             worldX,
             worldZ,
-            _seed,
-            _settings,
-            _managedContinentalnessCdfLut,
-            _managedErosionCdfLut,
-            _managedRidgesCdfLut,
+            _managedClimateNoise,
+            _managedBlendedNoise,
+            _managedJaggedNoise,
             _managedOffsetSplineNodes,
             _managedOffsetSplinePoints,
             _managedFactorSplineNodes,
             _managedFactorSplinePoints,
             _managedJaggednessSplineNodes,
-            _managedJaggednessSplinePoints,
-            _managedLegacyTerrainHeightSplineNodes,
-            _managedLegacyTerrainHeightSplinePoints,
-            _managedContinentalnessHeightLut);
+            _managedJaggednessSplinePoints);
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)

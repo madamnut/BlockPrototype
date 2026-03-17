@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 491bf644b7f953f49a800d330d45e763, type: 3}
   m_Name: EarthSettings
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenSettingsAsset
-  terrainHeightSplineTree: {fileID: 11400000, guid: 755bfce79fd680b4bb0eef57ade17287, type: 2}
-  legacyContinentalnessHeightSpline: {fileID: 11400000, guid: cbd1f66acca4bfd498839b3ca03e7a61, type: 2}
-  useContinentalnessRemap: 1
-  useErosionRemap: 1
-  useRidgesRemap: 1
+  offsetSplineTree: {fileID: 11400000, guid: c1522f94efb1f7441ac416bd6da2e4ab, type: 2}
+  factorSplineTree: {fileID: 11400000, guid: 145e6e6429416d4418a9b851a4b0f673, type: 2}
+  jaggednessSplineTree: {fileID: 11400000, guid: 07ca1e7549898d84990777f1ca9f4633, type: 2}
+  seaLevel: 127
+  useContinentalnessRemap: 0
+  useErosionRemap: 0
+  useRidgesRemap: 0
   useWarp: 1
   warpOctaves: 2
   warpFrequency: 3

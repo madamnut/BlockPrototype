@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9178229920f3c6a488e87a8b46eea3eb, type: 3}
-  m_Name: SplineTree
+  m_Name: Offset
   m_EditorClassIdentifier: Assembly-CSharp::SplineTreeAsset
   rootNode:
     coordinate: 0
     points:
-    - location: -1.1
+    - location: -1
       derivative: 0
       valueType: 0
       constantValue: 0.044
       childNode:
         rid: -2
-    - location: -1.02
+    - location: -1
       derivative: 0
       valueType: 0
       constantValue: -0.2222
@@ -50,41 +50,1465 @@ MonoBehaviour:
       valueType: 1
       constantValue: 0
       childNode:
-        rid: 6465792843346346430
+        rid: 6465792860671443299
     - location: -0.15
       derivative: 0
       valueType: 1
       constantValue: 0
       childNode:
-        rid: 6465792843346346431
+        rid: 6465792860671443300
     - location: -0.1
       derivative: 0
       valueType: 1
       constantValue: 0
       childNode:
-        rid: 6465792843346346432
+        rid: 6465792860671443301
     - location: 0.25
       derivative: 0
       valueType: 1
       constantValue: 0
       childNode:
-        rid: 6465792843346346433
+        rid: 6465792860671443302
     - location: 1
       derivative: 0
       valueType: 1
       constantValue: 0
       childNode:
-        rid: 6465792843346346434
-  bakedNodes: []
-  bakedPoints: []
-  bakeVersion: 0
-  bakedSummary: Not baked
+        rid: 6465792860671443303
+  bakedNodes:
+  - coordinate: 0
+    firstPointIndex: 0
+    pointCount: 10
+  - coordinate: 1
+    firstPointIndex: 5
+    pointCount: 7
+  - coordinate: 2
+    firstPointIndex: 5
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 8
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 11
+    pointCount: 6
+  - coordinate: 2
+    firstPointIndex: 18
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 24
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 30
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 36
+    pointCount: 5
+  - coordinate: 1
+    firstPointIndex: 43
+    pointCount: 7
+  - coordinate: 2
+    firstPointIndex: 43
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 46
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 49
+    pointCount: 6
+  - coordinate: 2
+    firstPointIndex: 56
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 62
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 68
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 74
+    pointCount: 5
+  - coordinate: 1
+    firstPointIndex: 81
+    pointCount: 7
+  - coordinate: 2
+    firstPointIndex: 81
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 84
+    pointCount: 2
+  - coordinate: 2
+    firstPointIndex: 87
+    pointCount: 6
+  - coordinate: 2
+    firstPointIndex: 94
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 100
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 106
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 112
+    pointCount: 5
+  - coordinate: 1
+    firstPointIndex: 119
+    pointCount: 11
+  - coordinate: 2
+    firstPointIndex: 119
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 123
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 127
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 131
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 137
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 143
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 149
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 155
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 156
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 164
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 165
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 173
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 179
+    pointCount: 5
+  - coordinate: 1
+    firstPointIndex: 186
+    pointCount: 11
+  - coordinate: 2
+    firstPointIndex: 186
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 190
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 194
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 198
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 204
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 210
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 216
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 222
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 223
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 231
+    pointCount: 3
+  - coordinate: 2
+    firstPointIndex: 232
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 240
+    pointCount: 5
+  - coordinate: 2
+    firstPointIndex: 246
+    pointCount: 5
+  bakedPoints:
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.044
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.51
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.44
+    derivative: 0
+    valueType: 0
+    constantValue: -0.12
+    childNodeIndex: -1
+  - location: -0.18
+    derivative: 0
+    valueType: 0
+    constantValue: -0.12
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: -0.08880186
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: 0.69000006
+    childNodeIndex: -1
+  - location: -0.85
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 2
+  - location: -1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: -0.115760356
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: 0.6400001
+    childNodeIndex: -1
+  - location: -0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 3
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.75
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.65
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.5954547
+    derivative: 0
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 0.6054547
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.100000024
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 4
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.3
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.35
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 5
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.15
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.1
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 6
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.15
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.2
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 7
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.02
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.06
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 8
+  - location: -0.16
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 1
+  - location: -1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: -0.08880186
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: 0.69000006
+    childNodeIndex: -1
+  - location: -0.85
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 10
+  - location: -1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: -0.115760356
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: 0.6400001
+    childNodeIndex: -1
+  - location: -0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 11
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.75
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.65
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.5954547
+    derivative: 0
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 0.6054547
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.100000024
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 12
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.3
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.35
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 13
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.15
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.1
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 14
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.15
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.2
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 15
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.02
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.06
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 16
+  - location: -0.15
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 9
+  - location: -1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: -0.08880186
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.38940096
+    valueType: 0
+    constantValue: 0.69000006
+    childNodeIndex: -1
+  - location: -0.85
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 18
+  - location: -1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: -0.115760356
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.37788022
+    valueType: 0
+    constantValue: 0.6400001
+    childNodeIndex: -1
+  - location: -0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 19
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.75
+    derivative: 0
+    valueType: 0
+    constantValue: -0.2222
+    childNodeIndex: -1
+  - location: -0.65
+    derivative: 0
+    valueType: 0
+    constantValue: 0
+    childNodeIndex: -1
+  - location: 0.5954547
+    derivative: 0
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 0.6054547
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.000000029802322
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.2534563
+    valueType: 0
+    constantValue: 0.100000024
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 20
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.25
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.35
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 21
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0.01
+    valueType: 0
+    constantValue: 0.001
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.01
+    valueType: 0
+    constantValue: 0.003
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.094000004
+    valueType: 0
+    constantValue: 0.05
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.007000001
+    valueType: 0
+    constantValue: 0.060000002
+    childNodeIndex: -1
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 22
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.2
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 23
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.02
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.12
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 24
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 17
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.20235021
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.5138249
+    valueType: 0
+    constantValue: 0.7161751
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.5138249
+    valueType: 0
+    constantValue: 1.23
+    childNodeIndex: -1
+  - location: -0.85
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 26
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.2
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.43317974
+    valueType: 0
+    constantValue: 0.44682026
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.43317974
+    valueType: 0
+    constantValue: 0.88
+    childNodeIndex: -1
+  - location: -0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 27
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.2
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.3917051
+    valueType: 0
+    constantValue: 0.30829495
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.3917051
+    valueType: 0
+    constantValue: 0.70000005
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 28
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.25
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.35
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.35
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.35
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049000014
+    valueType: 0
+    constantValue: 0.42000002
+    childNodeIndex: -1
+  - location: -0.35
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 29
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0.07
+    valueType: 0
+    constantValue: 0.0069999998
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.07
+    valueType: 0
+    constantValue: 0.021
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.658
+    valueType: 0
+    constantValue: 0.35
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049000014
+    valueType: 0
+    constantValue: 0.42000002
+    childNodeIndex: -1
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 30
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.2
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 31
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 32
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 34
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.17
+    childNodeIndex: -1
+  - location: 0.45
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 33
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 36
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.17
+    childNodeIndex: -1
+  - location: 0.55
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 35
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.58
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 37
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.02
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: -0.03
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.12
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 38
+  - location: 0.25
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 25
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.34792626
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.5760369
+    valueType: 0
+    constantValue: 0.9239631
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.5760369
+    valueType: 0
+    constantValue: 1.5
+    childNodeIndex: -1
+  - location: -0.85
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 40
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.2
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.4608295
+    valueType: 0
+    constantValue: 0.5391705
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.4608295
+    valueType: 0
+    constantValue: 1
+    childNodeIndex: -1
+  - location: -0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 41
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: 0.2
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.4608295
+    valueType: 0
+    constantValue: 0.5391705
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.4608295
+    valueType: 0
+    constantValue: 1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 42
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.2
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.5
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.5
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.5
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.070000015
+    valueType: 0
+    constantValue: 0.6
+    childNodeIndex: -1
+  - location: -0.35
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 43
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0.099999994
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0.099999994
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.94
+    valueType: 0
+    constantValue: 0.5
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.070000015
+    valueType: 0
+    constantValue: 0.6
+    childNodeIndex: -1
+  - location: -0.1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 44
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.2
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 45
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 46
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 48
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.17
+    childNodeIndex: -1
+  - location: 0.45
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 47
+  - location: -1
+    derivative: 0
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 50
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.17
+    childNodeIndex: -1
+  - location: 0.55
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 49
+  - location: -1
+    derivative: 0.5
+    valueType: 0
+    constantValue: -0.05
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.58
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 51
+  - location: -1
+    derivative: 0.015
+    valueType: 0
+    constantValue: -0.02
+    childNodeIndex: -1
+  - location: -0.4
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0
+    derivative: 0
+    valueType: 0
+    constantValue: 0.01
+    childNodeIndex: -1
+  - location: 0.4
+    derivative: 0.04
+    valueType: 0
+    constantValue: 0.03
+    childNodeIndex: -1
+  - location: 1
+    derivative: 0.049
+    valueType: 0
+    constantValue: 0.1
+    childNodeIndex: -1
+  - location: 0.7
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 52
+  - location: 1
+    derivative: 0
+    valueType: 1
+    constantValue: 0
+    childNodeIndex: 39
+  bakeVersion: 6
+  bakedSummary: Nodes 53, Points 253
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 6465792843346346430
+    - rid: 6465792860671443299
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 1
@@ -94,44 +1518,44 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346435
+            rid: 6465792860671443304
         - location: -0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346436
+            rid: 6465792860671443305
         - location: -0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346437
+            rid: 6465792860671443306
         - location: -0.35
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346438
+            rid: 6465792860671443307
         - location: -0.1
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346439
+            rid: 6465792860671443308
         - location: 0.2
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346440
+            rid: 6465792860671443309
         - location: 0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346441
-    - rid: 6465792843346346431
+            rid: 6465792860671443310
+    - rid: 6465792860671443300
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 1
@@ -141,44 +1565,44 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346442
+            rid: 6465792860671443311
         - location: -0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346443
+            rid: 6465792860671443312
         - location: -0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346444
+            rid: 6465792860671443313
         - location: -0.35
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346445
+            rid: 6465792860671443314
         - location: -0.1
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346446
+            rid: 6465792860671443315
         - location: 0.2
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346447
+            rid: 6465792860671443316
         - location: 0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346448
-    - rid: 6465792843346346432
+            rid: 6465792860671443317
+    - rid: 6465792860671443301
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 1
@@ -188,44 +1612,44 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346449
+            rid: 6465792860671443318
         - location: -0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346450
+            rid: 6465792860671443319
         - location: -0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346451
+            rid: 6465792860671443320
         - location: -0.35
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346452
+            rid: 6465792860671443321
         - location: -0.1
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346453
+            rid: 6465792860671443322
         - location: 0.2
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346454
+            rid: 6465792860671443323
         - location: 0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346455
-    - rid: 6465792843346346433
+            rid: 6465792860671443324
+    - rid: 6465792860671443302
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 1
@@ -235,68 +1659,68 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346456
+            rid: 6465792860671443325
         - location: -0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346457
+            rid: 6465792860671443326
         - location: -0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346458
+            rid: 6465792860671443327
         - location: -0.35
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346459
+            rid: 6465792860671443328
         - location: -0.1
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346460
+            rid: 6465792860671443329
         - location: 0.2
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346461
+            rid: 6465792860671443330
         - location: 0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346462
+            rid: 6465792860671443331
         - location: 0.45
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346463
+            rid: 6465792860671443332
         - location: 0.55
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346464
+            rid: 6465792860671443333
         - location: 0.58
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346465
+            rid: 6465792860671443334
         - location: 0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346466
-    - rid: 6465792843346346434
+            rid: 6465792860671443335
+    - rid: 6465792860671443303
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 1
@@ -306,68 +1730,68 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346467
+            rid: 6465792860671443336
         - location: -0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346468
+            rid: 6465792860671443337
         - location: -0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346469
+            rid: 6465792860671443338
         - location: -0.35
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346470
+            rid: 6465792860671443339
         - location: -0.1
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346471
+            rid: 6465792860671443340
         - location: 0.2
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346472
+            rid: 6465792860671443341
         - location: 0.4
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346473
+            rid: 6465792860671443342
         - location: 0.45
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346474
+            rid: 6465792860671443343
         - location: 0.55
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346475
+            rid: 6465792860671443344
         - location: 0.58
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346476
+            rid: 6465792860671443345
         - location: 0.7
           derivative: 0
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346477
-    - rid: 6465792843346346435
+            rid: 6465792860671443346
+    - rid: 6465792860671443304
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -384,7 +1808,7 @@ MonoBehaviour:
           constantValue: 0.69000006
           childNode:
             rid: -2
-    - rid: 6465792843346346436
+    - rid: 6465792860671443305
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -401,7 +1825,7 @@ MonoBehaviour:
           constantValue: 0.6400001
           childNode:
             rid: -2
-    - rid: 6465792843346346437
+    - rid: 6465792860671443306
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -442,7 +1866,7 @@ MonoBehaviour:
           constantValue: 0.100000024
           childNode:
             rid: -2
-    - rid: 6465792843346346438
+    - rid: 6465792860671443307
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -477,7 +1901,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346439
+    - rid: 6465792860671443308
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -512,7 +1936,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346440
+    - rid: 6465792860671443309
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -547,7 +1971,7 @@ MonoBehaviour:
           constantValue: 0
           childNode:
             rid: -2
-    - rid: 6465792843346346441
+    - rid: 6465792860671443310
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -582,7 +2006,7 @@ MonoBehaviour:
           constantValue: 0
           childNode:
             rid: -2
-    - rid: 6465792843346346442
+    - rid: 6465792860671443311
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -599,7 +2023,7 @@ MonoBehaviour:
           constantValue: 0.69000006
           childNode:
             rid: -2
-    - rid: 6465792843346346443
+    - rid: 6465792860671443312
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -616,7 +2040,7 @@ MonoBehaviour:
           constantValue: 0.6400001
           childNode:
             rid: -2
-    - rid: 6465792843346346444
+    - rid: 6465792860671443313
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -657,7 +2081,7 @@ MonoBehaviour:
           constantValue: 0.100000024
           childNode:
             rid: -2
-    - rid: 6465792843346346445
+    - rid: 6465792860671443314
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -692,7 +2116,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346446
+    - rid: 6465792860671443315
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -727,7 +2151,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346447
+    - rid: 6465792860671443316
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -762,7 +2186,7 @@ MonoBehaviour:
           constantValue: 0
           childNode:
             rid: -2
-    - rid: 6465792843346346448
+    - rid: 6465792860671443317
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -797,7 +2221,7 @@ MonoBehaviour:
           constantValue: 0
           childNode:
             rid: -2
-    - rid: 6465792843346346449
+    - rid: 6465792860671443318
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -814,7 +2238,7 @@ MonoBehaviour:
           constantValue: 0.69000006
           childNode:
             rid: -2
-    - rid: 6465792843346346450
+    - rid: 6465792860671443319
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -831,7 +2255,7 @@ MonoBehaviour:
           constantValue: 0.6400001
           childNode:
             rid: -2
-    - rid: 6465792843346346451
+    - rid: 6465792860671443320
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -872,7 +2296,7 @@ MonoBehaviour:
           constantValue: 0.100000024
           childNode:
             rid: -2
-    - rid: 6465792843346346452
+    - rid: 6465792860671443321
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -907,7 +2331,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346453
+    - rid: 6465792860671443322
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -942,7 +2366,7 @@ MonoBehaviour:
           constantValue: 0.060000002
           childNode:
             rid: -2
-    - rid: 6465792843346346454
+    - rid: 6465792860671443323
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -977,7 +2401,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346455
+    - rid: 6465792860671443324
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1012,7 +2436,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346456
+    - rid: 6465792860671443325
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1035,7 +2459,7 @@ MonoBehaviour:
           constantValue: 1.23
           childNode:
             rid: -2
-    - rid: 6465792843346346457
+    - rid: 6465792860671443326
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1058,7 +2482,7 @@ MonoBehaviour:
           constantValue: 0.88
           childNode:
             rid: -2
-    - rid: 6465792843346346458
+    - rid: 6465792860671443327
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1081,7 +2505,7 @@ MonoBehaviour:
           constantValue: 0.70000005
           childNode:
             rid: -2
-    - rid: 6465792843346346459
+    - rid: 6465792860671443328
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1116,7 +2540,7 @@ MonoBehaviour:
           constantValue: 0.42000002
           childNode:
             rid: -2
-    - rid: 6465792843346346460
+    - rid: 6465792860671443329
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1151,7 +2575,7 @@ MonoBehaviour:
           constantValue: 0.42000002
           childNode:
             rid: -2
-    - rid: 6465792843346346461
+    - rid: 6465792860671443330
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1186,7 +2610,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346462
+    - rid: 6465792860671443331
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1221,7 +2645,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346463
+    - rid: 6465792860671443332
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1237,14 +2661,14 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346478
+            rid: 6465792860671443347
         - location: 0
           derivative: 0
           valueType: 0
           constantValue: 0.17
           childNode:
             rid: -2
-    - rid: 6465792843346346464
+    - rid: 6465792860671443333
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1260,14 +2684,14 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346479
+            rid: 6465792860671443348
         - location: 0
           derivative: 0
           valueType: 0
           constantValue: 0.17
           childNode:
             rid: -2
-    - rid: 6465792843346346465
+    - rid: 6465792860671443334
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1302,7 +2726,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346466
+    - rid: 6465792860671443335
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1337,7 +2761,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346467
+    - rid: 6465792860671443336
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1360,7 +2784,7 @@ MonoBehaviour:
           constantValue: 1.5
           childNode:
             rid: -2
-    - rid: 6465792843346346468
+    - rid: 6465792860671443337
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1383,7 +2807,7 @@ MonoBehaviour:
           constantValue: 1
           childNode:
             rid: -2
-    - rid: 6465792843346346469
+    - rid: 6465792860671443338
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1406,7 +2830,7 @@ MonoBehaviour:
           constantValue: 1
           childNode:
             rid: -2
-    - rid: 6465792843346346470
+    - rid: 6465792860671443339
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1441,7 +2865,7 @@ MonoBehaviour:
           constantValue: 0.6
           childNode:
             rid: -2
-    - rid: 6465792843346346471
+    - rid: 6465792860671443340
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1476,7 +2900,7 @@ MonoBehaviour:
           constantValue: 0.6
           childNode:
             rid: -2
-    - rid: 6465792843346346472
+    - rid: 6465792860671443341
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1511,7 +2935,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346473
+    - rid: 6465792860671443342
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1546,7 +2970,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346474
+    - rid: 6465792860671443343
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1562,14 +2986,14 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346480
+            rid: 6465792860671443349
         - location: 0
           derivative: 0
           valueType: 0
           constantValue: 0.17
           childNode:
             rid: -2
-    - rid: 6465792843346346475
+    - rid: 6465792860671443344
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1585,14 +3009,14 @@ MonoBehaviour:
           valueType: 1
           constantValue: 0
           childNode:
-            rid: 6465792843346346481
+            rid: 6465792860671443350
         - location: 0
           derivative: 0
           valueType: 0
           constantValue: 0.17
           childNode:
             rid: -2
-    - rid: 6465792843346346476
+    - rid: 6465792860671443345
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1627,7 +3051,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346477
+    - rid: 6465792860671443346
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1662,7 +3086,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346478
+    - rid: 6465792860671443347
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1697,7 +3121,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346479
+    - rid: 6465792860671443348
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1732,7 +3156,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346480
+    - rid: 6465792860671443349
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2
@@ -1767,7 +3191,7 @@ MonoBehaviour:
           constantValue: 0.1
           childNode:
             rid: -2
-    - rid: 6465792843346346481
+    - rid: 6465792860671443350
       type: {class: SplineTreeAsset/NodeAsset, ns: , asm: Assembly-CSharp}
       data:
         coordinate: 2

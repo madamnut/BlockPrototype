@@ -243,10 +243,7 @@ public sealed class WorldRuntime : MonoBehaviour
             GetFactorSplineNodes(),
             GetFactorSplinePoints(),
             GetJaggednessSplineNodes(),
-            GetJaggednessSplinePoints(),
-            GetLegacyTerrainHeightSplineNodes(),
-            GetLegacyTerrainHeightSplinePoints(),
-            GetContinentalnessHeightLut());
+            GetJaggednessSplinePoints());
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -758,36 +755,6 @@ public sealed class WorldRuntime : MonoBehaviour
     {
         SplineTreeAsset asset = GetJaggednessSplineTreeAsset();
         return asset != null ? asset.BakedPoints : null;
-    }
-
-    private SplineTreeBakedNode[] GetLegacyTerrainHeightSplineNodes()
-    {
-        return UseLegacyTerrainHeightSplineTree()
-            ? worldGenSettingsAsset.LegacyTerrainHeightSplineTree.BakedNodes
-            : null;
-    }
-
-    private SplineTreeBakedPoint[] GetLegacyTerrainHeightSplinePoints()
-    {
-        return UseLegacyTerrainHeightSplineTree()
-            ? worldGenSettingsAsset.LegacyTerrainHeightSplineTree.BakedPoints
-            : null;
-    }
-
-    private float[] GetContinentalnessHeightLut()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.LegacyContinentalnessHeightSpline != null &&
-               worldGenSettingsAsset.LegacyContinentalnessHeightSpline.HasBakedLut
-            ? worldGenSettingsAsset.LegacyContinentalnessHeightSpline.BakedLut
-            : null;
-    }
-
-    private bool UseLegacyTerrainHeightSplineTree()
-    {
-        return worldGenSettingsAsset != null &&
-               worldGenSettingsAsset.LegacyTerrainHeightSplineTree != null &&
-               worldGenSettingsAsset.LegacyTerrainHeightSplineTree.HasBakedTree;
     }
 
     private SplineTreeAsset GetOffsetSplineTreeAsset()

@@ -199,6 +199,16 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexZ;
         public bool useCdfRemap;
         public ContinentalnessSettings settings;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetSecondPermutations;
+        public float climateTargetValueFactor;
 
         [ReadOnly] public NativeArray<float> cdfLut;
         [WriteOnly] public NativeArray<Color32> pixels;
@@ -210,11 +220,19 @@ public static class WorldGenPrototypeJobs
             int localZ = index / size;
             int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
             int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
-            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
-            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
-
-            float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, settings);
-            float continentalness = RemapRawNoise(rawContinentalness, useCdfRemap, cdfLut);
+            float continentalness = VanillaNoise.SampleOverworldContinentalness(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateTargetFirstOctaves,
+                climateTargetFirstPermutations,
+                climateTargetSecondOctaves,
+                climateTargetSecondPermutations,
+                climateTargetValueFactor);
             values[index] = continentalness;
             pixels[index] = EvaluateContinentalnessColor(continentalness, settings);
         }
@@ -229,6 +247,16 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexZ;
         public bool useCdfRemap;
         public ErosionSettings settings;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetSecondPermutations;
+        public float climateTargetValueFactor;
 
         [ReadOnly] public NativeArray<float> cdfLut;
         [WriteOnly] public NativeArray<Color32> pixels;
@@ -240,11 +268,19 @@ public static class WorldGenPrototypeJobs
             int localZ = index / size;
             int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
             int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
-            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
-            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
-
-            float rawErosion = SampleRawErosion(seed, worldRegionX, worldRegionZ, settings);
-            float erosion = RemapRawNoise(rawErosion, useCdfRemap, cdfLut);
+            float erosion = VanillaNoise.SampleOverworldErosion(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateTargetFirstOctaves,
+                climateTargetFirstPermutations,
+                climateTargetSecondOctaves,
+                climateTargetSecondPermutations,
+                climateTargetValueFactor);
             values[index] = erosion;
             pixels[index] = EvaluateErosionColor(erosion);
         }
@@ -259,6 +295,16 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexZ;
         public bool useCdfRemap;
         public RidgesSettings settings;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetSecondPermutations;
+        public float climateTargetValueFactor;
 
         [ReadOnly] public NativeArray<float> cdfLut;
         [WriteOnly] public NativeArray<Color32> pixels;
@@ -270,13 +316,21 @@ public static class WorldGenPrototypeJobs
             int localZ = index / size;
             int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
             int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
-            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
-            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
-
-            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, settings);
-            float ridges = RemapRawNoise(rawRidges, useCdfRemap, cdfLut);
-            values[index] = ridges;
-            pixels[index] = EvaluateRidgesColor(ridges);
+            float weirdness = VanillaNoise.SampleOverworldWeirdness(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateTargetFirstOctaves,
+                climateTargetFirstPermutations,
+                climateTargetSecondOctaves,
+                climateTargetSecondPermutations,
+                climateTargetValueFactor);
+            values[index] = weirdness;
+            pixels[index] = EvaluateRidgesColor(weirdness);
         }
     }
 
@@ -289,6 +343,16 @@ public static class WorldGenPrototypeJobs
         public int sectorIndexZ;
         public bool useCdfRemap;
         public RidgesSettings settings;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateTargetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateTargetSecondPermutations;
+        public float climateTargetValueFactor;
 
         [ReadOnly] public NativeArray<float> cdfLut;
         [WriteOnly] public NativeArray<Color32> pixels;
@@ -300,11 +364,19 @@ public static class WorldGenPrototypeJobs
             int localZ = index / size;
             int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
             int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
-            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
-            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
-
-            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, settings);
-            float weirdness = RemapRawNoise(rawRidges, useCdfRemap, cdfLut);
+            float weirdness = VanillaNoise.SampleOverworldWeirdness(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateTargetFirstOctaves,
+                climateTargetFirstPermutations,
+                climateTargetSecondOctaves,
+                climateTargetSecondPermutations,
+                climateTargetValueFactor);
             float pv = CalculatePvFromWeirdness(weirdness);
             values[index] = pv;
             pixels[index] = EvaluatePvBandColor(pv);
@@ -324,6 +396,26 @@ public static class WorldGenPrototypeJobs
         public ContinentalnessSettings continentalnessSettings;
         public ErosionSettings erosionSettings;
         public RidgesSettings ridgesSettings;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateOffsetSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateOffsetSecondPermutations;
+        public float climateOffsetValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateContinentalnessFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateContinentalnessSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateContinentalnessSecondPermutations;
+        public float climateContinentalnessValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateErosionFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateErosionFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateErosionSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateErosionSecondPermutations;
+        public float climateErosionValueFactor;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateRidgeFirstOctaves;
+        [ReadOnly] public NativeArray<int> climateRidgeFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> climateRidgeSecondOctaves;
+        [ReadOnly] public NativeArray<int> climateRidgeSecondPermutations;
+        public float climateRidgeValueFactor;
 
         [ReadOnly] public NativeArray<float> continentalnessCdfLut;
         [ReadOnly] public NativeArray<float> erosionCdfLut;
@@ -334,9 +426,17 @@ public static class WorldGenPrototypeJobs
         [ReadOnly] public NativeArray<SplineTreeBakedPoint> factorSplinePoints;
         [ReadOnly] public NativeArray<SplineTreeBakedNode> jaggednessSplineNodes;
         [ReadOnly] public NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints;
-        [ReadOnly] public NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes;
-        [ReadOnly] public NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints;
-        [ReadOnly] public NativeArray<float> continentalnessHeightLut;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves;
+        [ReadOnly] public NativeArray<int> blendedMinLimitPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves;
+        [ReadOnly] public NativeArray<int> blendedMaxLimitPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves;
+        [ReadOnly] public NativeArray<int> blendedMainPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves;
+        [ReadOnly] public NativeArray<int> jaggedFirstPermutations;
+        [ReadOnly] public NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves;
+        [ReadOnly] public NativeArray<int> jaggedSecondPermutations;
+        public float jaggedValueFactor;
         [WriteOnly] public NativeArray<Color32> pixels;
         [WriteOnly] public NativeArray<float> values;
 
@@ -346,17 +446,49 @@ public static class WorldGenPrototypeJobs
             int localZ = index / size;
             int worldBlockX = (sectorIndexX * SectorSizeInBlocks) + localX;
             int worldBlockZ = (sectorIndexZ * SectorSizeInBlocks) + localZ;
-            float worldRegionX = worldBlockX / (float)RegionSizeInBlocks;
-            float worldRegionZ = worldBlockZ / (float)RegionSizeInBlocks;
-
-            float rawContinentalness = SampleRawContinentalness(seed, worldRegionX, worldRegionZ, continentalnessSettings);
-            float continentalness = RemapRawNoise(rawContinentalness, useContinentalnessRemap, continentalnessCdfLut);
-            float rawErosion = SampleRawErosion(seed, worldRegionX, worldRegionZ, erosionSettings);
-            float erosion = RemapRawNoise(rawErosion, useErosionRemap, erosionCdfLut);
-            float rawRidges = SampleRawRidges(seed, worldRegionX, worldRegionZ, ridgesSettings);
-            float weirdness = RemapRawNoise(rawRidges, useRidgesRemap, ridgesCdfLut);
+            float continentalness = VanillaNoise.SampleOverworldContinentalness(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateContinentalnessFirstOctaves,
+                climateContinentalnessFirstPermutations,
+                climateContinentalnessSecondOctaves,
+                climateContinentalnessSecondPermutations,
+                climateContinentalnessValueFactor);
+            float erosion = VanillaNoise.SampleOverworldErosion(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateErosionFirstOctaves,
+                climateErosionFirstPermutations,
+                climateErosionSecondOctaves,
+                climateErosionSecondPermutations,
+                climateErosionValueFactor);
+            float weirdness = VanillaNoise.SampleOverworldWeirdness(
+                worldBlockX,
+                worldBlockZ,
+                climateOffsetFirstOctaves,
+                climateOffsetFirstPermutations,
+                climateOffsetSecondOctaves,
+                climateOffsetSecondPermutations,
+                climateOffsetValueFactor,
+                climateRidgeFirstOctaves,
+                climateRidgeFirstPermutations,
+                climateRidgeSecondOctaves,
+                climateRidgeSecondPermutations,
+                climateRidgeValueFactor);
             float foldedWeirdness = CalculatePvFromWeirdness(weirdness);
             int height = ComposeSurfaceHeight(
+                worldBlockX,
+                worldBlockZ,
                 continentalness,
                 erosion,
                 weirdness,
@@ -367,9 +499,17 @@ public static class WorldGenPrototypeJobs
                 factorSplinePoints,
                 jaggednessSplineNodes,
                 jaggednessSplinePoints,
-                legacyTerrainHeightSplineNodes,
-                legacyTerrainHeightSplinePoints,
-                continentalnessHeightLut);
+                blendedMinLimitOctaves,
+                blendedMinLimitPermutations,
+                blendedMaxLimitOctaves,
+                blendedMaxLimitPermutations,
+                blendedMainOctaves,
+                blendedMainPermutations,
+                jaggedFirstOctaves,
+                jaggedFirstPermutations,
+                jaggedSecondOctaves,
+                jaggedSecondPermutations,
+                jaggedValueFactor);
 
             values[index] = height;
             pixels[index] = EvaluateHeightColor(height);
@@ -938,6 +1078,8 @@ public static class WorldGenPrototypeJobs
     }
 
     private static int ComposeSurfaceHeight(
+        int worldX,
+        int worldZ,
         float continentalnessValue,
         float erosionValue,
         float weirdnessValue,
@@ -948,9 +1090,17 @@ public static class WorldGenPrototypeJobs
         NativeArray<SplineTreeBakedPoint> factorSplinePoints,
         NativeArray<SplineTreeBakedNode> jaggednessSplineNodes,
         NativeArray<SplineTreeBakedPoint> jaggednessSplinePoints,
-        NativeArray<SplineTreeBakedNode> legacyTerrainHeightSplineNodes,
-        NativeArray<SplineTreeBakedPoint> legacyTerrainHeightSplinePoints,
-        NativeArray<float> heightLut)
+        NativeArray<VanillaImprovedNoiseOctave> blendedMinLimitOctaves,
+        NativeArray<int> blendedMinLimitPermutations,
+        NativeArray<VanillaImprovedNoiseOctave> blendedMaxLimitOctaves,
+        NativeArray<int> blendedMaxLimitPermutations,
+        NativeArray<VanillaImprovedNoiseOctave> blendedMainOctaves,
+        NativeArray<int> blendedMainPermutations,
+        NativeArray<VanillaImprovedNoiseOctave> jaggedFirstOctaves,
+        NativeArray<int> jaggedFirstPermutations,
+        NativeArray<VanillaImprovedNoiseOctave> jaggedSecondOctaves,
+        NativeArray<int> jaggedSecondPermutations,
+        float jaggedValueFactor)
     {
         if (offsetSplineNodes.IsCreated &&
             offsetSplinePoints.IsCreated &&
@@ -976,36 +1126,56 @@ public static class WorldGenPrototypeJobs
                 factorSplinePoints,
                 jaggednessSplineNodes,
                 jaggednessSplinePoints);
-            return WorldGenDensity.FindSurfaceHeight(TerrainData.WorldHeight, shape, foldedWeirdnessValue);
+            float jaggedNoise = 0f;
+            if (jaggedFirstOctaves.IsCreated &&
+                jaggedFirstPermutations.IsCreated &&
+                jaggedSecondOctaves.IsCreated &&
+                jaggedSecondPermutations.IsCreated &&
+                jaggedFirstOctaves.Length > 0 &&
+                jaggedFirstPermutations.Length > 0 &&
+                jaggedSecondOctaves.Length > 0 &&
+                jaggedSecondPermutations.Length > 0)
+            {
+                jaggedNoise = VanillaNoise.SampleJaggedNoise(
+                    worldX,
+                    worldZ,
+                    jaggedFirstOctaves,
+                    jaggedFirstPermutations,
+                    jaggedSecondOctaves,
+                    jaggedSecondPermutations,
+                    jaggedValueFactor);
+            }
+
+            if (blendedMinLimitOctaves.IsCreated &&
+                blendedMinLimitPermutations.IsCreated &&
+                blendedMaxLimitOctaves.IsCreated &&
+                blendedMaxLimitPermutations.IsCreated &&
+                blendedMainOctaves.IsCreated &&
+                blendedMainPermutations.IsCreated)
+            {
+                for (int worldY = TerrainData.WorldHeight - 1; worldY >= 0; worldY--)
+                {
+                    float base3DNoise = VanillaNoise.SampleOverworldBlendedNoise(
+                        worldX,
+                        WorldGenDensity.ToVanillaY(worldY, TerrainData.WorldHeight),
+                        worldZ,
+                        blendedMinLimitOctaves,
+                        blendedMinLimitPermutations,
+                        blendedMaxLimitOctaves,
+                        blendedMaxLimitPermutations,
+                        blendedMainOctaves,
+                        blendedMainPermutations);
+                    if (WorldGenDensity.EvaluateDensity(worldY, TerrainData.WorldHeight, shape, jaggedNoise, base3DNoise) > 0f)
+                    {
+                        return worldY;
+                    }
+                }
+
+                return -1;
+            }
         }
 
-        if (legacyTerrainHeightSplineNodes.IsCreated &&
-            legacyTerrainHeightSplinePoints.IsCreated &&
-            legacyTerrainHeightSplineNodes.Length > 0 &&
-            legacyTerrainHeightSplinePoints.Length > 0)
-        {
-            return SplineTreeEvaluator.EvaluateHeight(
-                continentalnessValue,
-                erosionValue,
-                weirdnessValue,
-                foldedWeirdnessValue,
-                legacyTerrainHeightSplineNodes,
-                legacyTerrainHeightSplinePoints,
-                TerrainData.WorldHeight);
-        }
-
-        if (heightLut.IsCreated && heightLut.Length > 1)
-        {
-            float normalized = (math.clamp(continentalnessValue, -1f, 1f) + 1f) * 0.5f;
-            float scaledIndex = normalized * (heightLut.Length - 1);
-            int lowerIndex = (int)math.floor(scaledIndex);
-            int upperIndex = math.min(lowerIndex + 1, heightLut.Length - 1);
-            float t = scaledIndex - lowerIndex;
-            return math.clamp((int)math.round(math.lerp(heightLut[lowerIndex], heightLut[upperIndex], t)), 0, TerrainData.WorldHeight - 1);
-        }
-
-        float normalizedContinentalness = math.saturate((continentalnessValue + 1f) * 0.5f);
-        return (int)math.round(math.lerp(0f, 180f, normalizedContinentalness));
+        return 0;
     }
 
     private static TerrainShapeSample EvaluateTerrainShape(

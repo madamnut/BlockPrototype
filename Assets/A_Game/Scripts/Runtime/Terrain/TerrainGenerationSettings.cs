@@ -8,6 +8,7 @@ public struct TerrainGenerationSettings
     [FormerlySerializedAs("useContinentalnessCdfRemap")] public bool useContinentalnessRemap;
     [FormerlySerializedAs("useErosionCdfRemap")] public bool useErosionRemap;
     [FormerlySerializedAs("useRidgesCdfRemap")] public bool useRidgesRemap;
+    public int seaLevel;
     public ContinentalnessSettings continentalness;
     public ErosionSettings erosion;
     public RidgesSettings ridges;
@@ -20,6 +21,7 @@ public struct TerrainGenerationSettings
         useContinentalnessRemap = false,
         useErosionRemap = false,
         useRidgesRemap = false,
+        seaLevel = WorldGenDensity.InternalSeaLevel,
         continentalness = WorldGenSettingsAsset.CreateDefaultSettings(),
         erosion = WorldGenSettingsAsset.CreateDefaultErosionSettings(),
         ridges = WorldGenSettingsAsset.CreateDefaultRidgesSettings(),
@@ -45,6 +47,7 @@ public struct TerrainGenerationSettings
             useContinentalnessRemap = useContinentalnessRemap,
             useErosionRemap = useErosionRemap,
             useRidgesRemap = useRidgesRemap,
+            seaLevel = worldGenSettingsAsset.SeaLevel,
             continentalness = worldGenSettingsAsset.ToSettings(),
             erosion = worldGenSettingsAsset.ToErosionSettings(),
             ridges = worldGenSettingsAsset.ToRidgesSettings(),

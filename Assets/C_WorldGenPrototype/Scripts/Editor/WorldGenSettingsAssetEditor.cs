@@ -5,6 +5,7 @@ using UnityEngine;
 public sealed class WorldGenSettingsAssetEditor : Editor
 {
     private static bool showHeightSplineValues = true;
+    private static bool showWaterValues = true;
     private static bool showCdfRemapValues = true;
     private static bool showContinentalnessValues = true;
     private static bool showErosionValues = true;
@@ -21,6 +22,11 @@ public sealed class WorldGenSettingsAssetEditor : Editor
             "offsetSplineTree",
             "factorSplineTree",
             "jaggednessSplineTree");
+
+        DrawFoldoutSection(
+            ref showWaterValues,
+            "Water",
+            "seaLevel");
 
         DrawFoldoutSection(
             ref showCdfRemapValues,

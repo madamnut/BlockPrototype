@@ -286,7 +286,19 @@ public sealed class ChunkView
 
         GameObject rootObject = CreateChunkColumnRootObject(usePrefab: true);
         Chunk binding = rootObject.GetComponent<Chunk>();
-        if (binding == null || !HasValidPrefabBinding(binding))
+        if (binding == null)
+        {
+            Object.Destroy(rootObject);
+            return false;
+        }
+
+        if (!HasValidPrefabBinding(binding))
+        {
+            binding.GenerateSubChunks();
+            binding.RebindExistingSubChunks();
+        }
+
+        if (!HasValidPrefabBinding(binding))
         {
             Object.Destroy(rootObject);
             return false;
