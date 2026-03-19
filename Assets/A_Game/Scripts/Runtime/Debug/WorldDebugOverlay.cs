@@ -120,21 +120,58 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             Vector3Int position = worldRuntime.SelectedBlockPosition;
             ushort contentId = worldRuntime.SelectedContentId;
 
-            _upperLeftBuilder.Append("Target Kind: ");
-            _upperLeftBuilder.Append(worldRuntime.SelectedContentKindLabel);
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Target ID: ");
+            _upperLeftBuilder.Append("Target: ");
             _upperLeftBuilder.Append(contentId);
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Target Name: ");
+            _upperLeftBuilder.Append('(');
             _upperLeftBuilder.Append(worldRuntime.SelectedContentName);
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Target Pos: ");
+            _upperLeftBuilder.Append(") [");
             _upperLeftBuilder.Append(position.x);
-            _upperLeftBuilder.Append(", ");
+            _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(position.y);
-            _upperLeftBuilder.Append(", ");
+            _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(position.z);
+            _upperLeftBuilder.Append(']');
+        }
+
+        if (playerController != null)
+        {
+            Vector3 playerPosition = playerController.transform.position;
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Position: ");
+            _upperLeftBuilder.Append(playerPosition.x.ToString("F1"));
+            _upperLeftBuilder.Append(',');
+            _upperLeftBuilder.Append(playerPosition.y.ToString("F1"));
+            _upperLeftBuilder.Append(',');
+            _upperLeftBuilder.Append(playerPosition.z.ToString("F1"));
+            _upperLeftBuilder.Append(" (facing: ");
+            _upperLeftBuilder.Append(GetFacingLabel(playerController.GetInteractionRay().direction));
+            _upperLeftBuilder.Append(')');
+
+            if (worldRuntime != null)
+            {
+                int worldX = Mathf.FloorToInt(playerPosition.x);
+                int worldZ = Mathf.FloorToInt(playerPosition.z);
+                if (worldRuntime.TryGetContinentalnessAt(worldX, worldZ, out float continentalness))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Cont: ");
+                    _upperLeftBuilder.Append(continentalness.ToString("F3"));
+                }
+
+                if (worldRuntime.TryGetWeirdnessAt(worldX, worldZ, out float weirdness))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Weird: ");
+                    _upperLeftBuilder.Append(weirdness.ToString("F3"));
+                }
+
+                if (worldRuntime.TryGetPeaksAndValleysAt(worldX, worldZ, out float peaksAndValleys))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("PV: ");
+                    _upperLeftBuilder.Append(peaksAndValleys.ToString("F3"));
+                }
+            }
         }
 
         upperLeftText.text = _upperLeftBuilder.ToString();
@@ -266,5 +303,22 @@ public sealed class WorldDebugOverlay : MonoBehaviour
     {
         float megabytes = bytes / (1024f * 1024f);
         return megabytes.ToString("F1") + " MB";
+    }
+
+    private static string GetFacingLabel(Vector3 direction)
+    {
+        Vector3 flatDirection = new(direction.x, 0f, direction.z);
+        if (flatDirection.sqrMagnitude <= 0.0001f)
+        {
+            return "North";
+        }
+
+        flatDirection.Normalize();
+        if (Mathf.Abs(flatDirection.x) > Mathf.Abs(flatDirection.z))
+        {
+            return flatDirection.x >= 0f ? "East" : "West";
+        }
+
+        return flatDirection.z >= 0f ? "North" : "South";
     }
 }

@@ -756,8 +756,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 300, y: 270}
-  m_SizeDelta: {x: 600, y: 540}
+  m_AnchoredPosition: {x: 363.7035, y: 270}
+  m_SizeDelta: {x: 727.407, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &443012319
 MonoBehaviour:
@@ -929,8 +929,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -300, y: -270}
-  m_SizeDelta: {x: 600, y: 540}
+  m_AnchoredPosition: {x: -402.74756, y: -270}
+  m_SizeDelta: {x: 805.4951, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &475769495
 MonoBehaviour:
@@ -1146,7 +1146,7 @@ Transform:
   m_GameObject: {fileID: 841338666}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 120.097, z: 0}
+  m_LocalPosition: {x: 0, y: 150, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1415,7 +1415,6 @@ MonoBehaviour:
   renderSizeInChunks: 17
   generationPaddingInChunks: 1
   seed: 8251
-  seaLevel: 127
   terraWorldGenPack: {fileID: 11400000, guid: c4b7ece8838f4c7ca0d7ad8369b71597, type: 2}
   completedChunkGenerationsPerFrame: 4
   chunkColumnsMeshedPerFrame: 2
@@ -1514,8 +1513,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -300, y: 270}
-  m_SizeDelta: {x: 600, y: 540}
+  m_AnchoredPosition: {x: -402.74756, y: 270}
+  m_SizeDelta: {x: 805.4951, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1399868468
 MonoBehaviour:
@@ -1651,8 +1650,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 300, y: -270}
-  m_SizeDelta: {x: 600, y: 540}
+  m_AnchoredPosition: {x: 363.7035, y: -270}
+  m_SizeDelta: {x: 727.407, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1562323632
 MonoBehaviour:

@@ -5,12 +5,14 @@ public sealed class TerraChunkGenerator
     private readonly int _seaLevel;
     private readonly TerraContinentalnessSampler _continentalnessSampler;
     private readonly TerraOffsetMapper _offsetMapper;
+    private readonly TerraFactorMapper _factorMapper;
 
-    public TerraChunkGenerator(int seaLevel, TerraContinentalnessSampler continentalnessSampler, TerraOffsetMapper offsetMapper)
+    public TerraChunkGenerator(int seaLevel, TerraContinentalnessSampler continentalnessSampler, TerraOffsetMapper offsetMapper, TerraFactorMapper factorMapper)
     {
         _seaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
         _continentalnessSampler = continentalnessSampler ?? throw new System.ArgumentNullException(nameof(continentalnessSampler));
         _offsetMapper = offsetMapper ?? throw new System.ArgumentNullException(nameof(offsetMapper));
+        _factorMapper = factorMapper ?? throw new System.ArgumentNullException(nameof(factorMapper));
     }
 
     public int GenerateChunkColumn(int chunkX, int chunkZ, BlockType[] blocks, VoxelFluid[] fluids, int[] columnHeights)
@@ -27,28 +29,38 @@ public sealed class TerraChunkGenerator
                 // Sample continentalness once per column and reuse it for the full Y stack.
                 float continentalness = _continentalnessSampler.Sample(worldX, worldZ);
                 float offset = _offsetMapper.Map(continentalness);
-                int surfaceHeight = Mathf.Clamp(Mathf.RoundToInt(_seaLevel + offset), 1, TerrainData.WorldHeight - 8);
+                float factor = _factorMapper.Map(continentalness);
                 int columnIndex = (localZ * TerrainData.ChunkSize) + localX;
-                columnHeights[columnIndex] = surfaceHeight;
+                int highestSolid = FillSolidColumn(blocks, localX, localZ, offset, factor);
+                columnHeights[columnIndex] = highestSolid;
 
-                FillSolidColumn(blocks, localX, localZ, surfaceHeight);
-                PaintSurfaceLayers(blocks, localX, localZ, surfaceHeight);
-                FillWaterColumn(blocks, fluids, localX, localZ, surfaceHeight);
+                PaintSurfaceLayers(blocks, localX, localZ, highestSolid);
+                FillWaterColumn(blocks, fluids, localX, localZ, highestSolid);
 
-                maxHeight = Mathf.Max(maxHeight, Mathf.Max(surfaceHeight, _seaLevel));
+                maxHeight = Mathf.Max(maxHeight, Mathf.Max(highestSolid, _seaLevel));
             }
         }
 
         return maxHeight;
     }
 
-    private void FillSolidColumn(BlockType[] blocks, int localX, int localZ, int surfaceHeight)
+    private int FillSolidColumn(BlockType[] blocks, int localX, int localZ, float offset, float factor)
     {
-        for (int worldY = 0; worldY <= surfaceHeight; worldY++)
+        int highestSolid = -1;
+        for (int worldY = 0; worldY < TerrainData.WorldHeight; worldY++)
         {
+            float density = GetDensity(worldY, offset, factor);
+            if (density <= 0f)
+            {
+                continue;
+            }
+
             int index = GetIndex(localX, worldY, localZ);
             blocks[index] = BlockType.Rock;
+            highestSolid = worldY;
         }
+
+        return highestSolid;
     }
 
     private void FillWaterColumn(BlockType[] blocks, VoxelFluid[] fluids, int localX, int localZ, int surfaceHeight)
@@ -105,5 +117,12 @@ public sealed class TerraChunkGenerator
     private static int GetIndex(int localX, int worldY, int localZ)
     {
         return ((worldY * TerrainData.ChunkSize) + localZ) * TerrainData.ChunkSize + localX;
+    }
+
+    private float GetDensity(int worldY, float offset, float factor)
+    {
+        float yGradient = _seaLevel - worldY;
+        float depth = yGradient + offset;
+        return depth * factor;
     }
 }

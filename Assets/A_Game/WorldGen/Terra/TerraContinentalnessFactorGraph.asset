@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a1a4e24274004046ae59a1ca0b799ad, type: 3}
+  m_Name: TerraContinentalnessFactorGraph
+  m_EditorClassIdentifier: Assembly-CSharp::TerraContinentalnessFactorGraphAsset
+  points:
+  - x: -1
+    y: 0.55
+  - x: -0.7
+    y: 0.5938227
+  - x: -0.4
+    y: 0.8724772
+  - x: -0.15
+    y: 0.9943885
+  - x: 0.15
+    y: 1.05
+  - x: 0.4
+    y: 1.15
+  - x: 0.7
+    y: 1.3659278
+  - x: 1
+    y: 1.4271663

@@ -5,12 +5,12 @@ using UnityEngine;
 
 public sealed class TerraVanillaContinentalnessNoise
 {
-    private readonly TerraVanillaNormalNoise _offsetNoise;
-    private readonly TerraVanillaNormalNoise _continentalnessNoise;
-    private readonly double _scale;
-    private readonly double _shiftInputScale;
-    private readonly double _continentsXZScale;
-    private readonly double _shiftStrength;
+    private TerraVanillaNormalNoise _offsetNoise;
+    private TerraVanillaNormalNoise _targetNoise;
+    private double _scale;
+    private double _shiftInputScale;
+    private double _targetXZScale;
+    private double _shiftStrength;
 
     public TerraVanillaContinentalnessNoise(int seed, TerraContinentalnessSettingsAsset settings)
     {
@@ -29,18 +29,65 @@ public sealed class TerraVanillaContinentalnessNoise
             throw new InvalidOperationException("Terra continentalness settings are missing continentalness noise parameters.");
         }
 
-        _scale = settings.Scale;
-        _shiftInputScale = settings.ShiftInputScale;
-        _continentsXZScale = settings.ContinentsXZScale;
-        _shiftStrength = settings.ShiftStrength;
+        Initialize(
+            seed,
+            "minecraft:offset",
+            "minecraft:continentalness",
+            settings.Scale,
+            settings.ShiftInputScale,
+            settings.ContinentsXZScale,
+            settings.ShiftStrength,
+            settings.OffsetNoise,
+            settings.ContinentalnessNoise);
+    }
 
-        TerraVanillaNoiseParameters offsetParameters = TerraVanillaNoiseParameters.From(settings.OffsetNoise);
-        TerraVanillaNoiseParameters continentalnessParameters = TerraVanillaNoiseParameters.From(settings.ContinentalnessNoise);
+    public TerraVanillaContinentalnessNoise(
+        int seed,
+        string shiftNoiseHashName,
+        string targetNoiseHashName,
+        float scale,
+        float shiftInputScale,
+        float targetXZScale,
+        float shiftStrength,
+        TerraVanillaNoiseSettingsData offsetNoise,
+        TerraVanillaNoiseSettingsData targetNoise)
+    {
+        Initialize(seed, shiftNoiseHashName, targetNoiseHashName, scale, shiftInputScale, targetXZScale, shiftStrength, offsetNoise, targetNoise);
+    }
+
+    private void Initialize(
+        int seed,
+        string shiftNoiseHashName,
+        string targetNoiseHashName,
+        float scale,
+        float shiftInputScale,
+        float targetXZScale,
+        float shiftStrength,
+        TerraVanillaNoiseSettingsData offsetNoise,
+        TerraVanillaNoiseSettingsData targetNoise)
+    {
+        if (offsetNoise == null)
+        {
+            throw new InvalidOperationException("Shifted noise requires offset noise parameters.");
+        }
+
+        if (targetNoise == null)
+        {
+            throw new InvalidOperationException("Shifted noise requires target noise parameters.");
+        }
+
+        _scale = scale;
+        _shiftInputScale = shiftInputScale;
+        _targetXZScale = targetXZScale;
+        _shiftStrength = shiftStrength;
+
+        TerraVanillaNoiseParameters offsetParameters = TerraVanillaNoiseParameters.From(offsetNoise);
+        TerraVanillaNoiseParameters targetParameters = TerraVanillaNoiseParameters.From(targetNoise);
 
         TerraVanillaXoroshiroRandom random = TerraVanillaXoroshiroRandom.Create(seed);
         TerraVanillaPositionalRandom positional = random.ForkPositional();
-        _offsetNoise = new TerraVanillaNormalNoise(positional.FromHashOf("minecraft:offset"), offsetParameters);
-        _continentalnessNoise = new TerraVanillaNormalNoise(positional.FromHashOf("minecraft:continentalness"), continentalnessParameters);
+        _offsetNoise = new TerraVanillaNormalNoise(positional.FromHashOf(shiftNoiseHashName), offsetParameters);
+        _targetNoise = new TerraVanillaNormalNoise(positional.FromHashOf(targetNoiseHashName), targetParameters);
     }
 
     public float Sample(int worldX, int worldZ)
@@ -51,9 +98,9 @@ public sealed class TerraVanillaContinentalnessNoise
         double shiftX = _offsetNoise.Sample(scaledX * _shiftInputScale, 0d, scaledZ * _shiftInputScale) * _shiftStrength;
         double shiftZ = _offsetNoise.Sample(scaledZ * _shiftInputScale, scaledX * _shiftInputScale, 0d) * _shiftStrength;
 
-        double sampleX = (scaledX * _continentsXZScale) + shiftX;
-        double sampleZ = (scaledZ * _continentsXZScale) + shiftZ;
-        return (float)_continentalnessNoise.Sample(sampleX, 0d, sampleZ);
+        double sampleX = (scaledX * _targetXZScale) + shiftX;
+        double sampleZ = (scaledZ * _targetXZScale) + shiftZ;
+        return (float)_targetNoise.Sample(sampleX, 0d, sampleZ);
     }
 
     private readonly struct TerraVanillaNoiseParameters

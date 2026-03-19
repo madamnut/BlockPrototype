@@ -101,7 +101,8 @@ public sealed class TerrainData : IDisposable
     public const int DefaultSeaLevel = 127;
 
     private readonly int _seed;
-    private readonly TerrainGenerationSettings _settings;
+    private readonly TerraContinentalnessSampler _continentalnessSampler;
+    private readonly TerraWeirdnessSampler _weirdnessSampler;
     private readonly TerraChunkGenerator _terraChunkGenerator;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
@@ -110,18 +111,34 @@ public sealed class TerrainData : IDisposable
     public TerrainData(int seed, TerrainGenerationSettings settings, TerraWorldGenPackAsset worldGenPack)
     {
         _seed = seed;
-        _settings = settings.IsInitialized ? settings : TerrainGenerationSettings.Default;
         if (worldGenPack == null)
         {
             throw new ArgumentNullException(nameof(worldGenPack), "TerrainData requires a TerraWorldGenPackAsset.");
         }
 
-        TerraContinentalnessSampler continentalnessSampler = new(_seed, worldGenPack.ContinentalnessSettings);
+        _continentalnessSampler = new TerraContinentalnessSampler(_seed, worldGenPack.ContinentalnessSettings);
+        _weirdnessSampler = new TerraWeirdnessSampler(_seed, worldGenPack.WeirdnessSettings);
         TerraOffsetMapper offsetMapper = new(worldGenPack.ContinentalnessOffsetGraph);
-        _terraChunkGenerator = new TerraChunkGenerator(_settings.seaLevel, continentalnessSampler, offsetMapper);
+        TerraFactorMapper factorMapper = new(worldGenPack.ContinentalnessFactorGraph);
+        _terraChunkGenerator = new TerraChunkGenerator(worldGenPack.SeaLevel, _continentalnessSampler, offsetMapper, factorMapper);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
+
+    public float SampleContinentalness(int worldX, int worldZ)
+    {
+        return _continentalnessSampler.Sample(worldX, worldZ);
+    }
+
+    public float SampleWeirdness(int worldX, int worldZ)
+    {
+        return _weirdnessSampler.Sample(worldX, worldZ);
+    }
+
+    public float SamplePeaksAndValleys(int worldX, int worldZ)
+    {
+        return TerraPeaksAndValleys.Fold(_weirdnessSampler.Sample(worldX, worldZ));
+    }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
     {

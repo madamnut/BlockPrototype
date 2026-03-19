@@ -20,7 +20,6 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int renderSizeInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
-    [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int seaLevel = TerrainData.DefaultSeaLevel;
     [SerializeField] private TerraWorldGenPackAsset terraWorldGenPack;
 
     [Header("Streaming")]
@@ -68,11 +67,59 @@ public sealed class WorldRuntime : MonoBehaviour
     public Vector3Int SelectedBlockPosition => _worldInteraction != null ? _worldInteraction.SelectedBlockPosition : default;
     public ushort SelectedContentId => _worldInteraction != null ? _worldInteraction.SelectedContentId : (ushort)0;
     public bool SelectedIsFoliage => _worldInteraction != null && _worldInteraction.SelectedIsFoliage;
-    public string SelectedContentKindLabel => _worldInteraction != null ? _worldInteraction.SelectedContentKindLabel : "None";
     public string SelectedContentName => _worldInteraction != null ? _worldInteraction.SelectedContentName : "None";
     public BlockType SelectedBlockType => _worldInteraction != null ? _worldInteraction.GetSelectedBlockType() : BlockType.Air;
     public int RenderSizeInChunks => renderSizeInChunks;
     public TerrainData Terrain => _terrain;
+
+    public bool TryGetSelectedContinentalness(out float continentalness)
+    {
+        continentalness = 0f;
+        if (!HasSelection || _terrain == null)
+        {
+            return false;
+        }
+
+        Vector3Int position = SelectedBlockPosition;
+        continentalness = _terrain.SampleContinentalness(position.x, position.z);
+        return true;
+    }
+
+    public bool TryGetContinentalnessAt(int worldX, int worldZ, out float continentalness)
+    {
+        continentalness = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        continentalness = _terrain.SampleContinentalness(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetWeirdnessAt(int worldX, int worldZ, out float weirdness)
+    {
+        weirdness = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        weirdness = _terrain.SampleWeirdness(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetPeaksAndValleysAt(int worldX, int worldZ, out float peaksAndValleys)
+    {
+        peaksAndValleys = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        peaksAndValleys = _terrain.SamplePeaksAndValleys(worldX, worldZ);
+        return true;
+    }
 
     private void Reset()
     {
@@ -566,9 +613,21 @@ public sealed class WorldRuntime : MonoBehaviour
                 isValid = false;
             }
 
+            if (terraWorldGenPack.WeirdnessSettings == null)
+            {
+                Debug.LogError("WorldRuntime Terra WorldGen Pack is missing a weirdness settings asset.", this);
+                isValid = false;
+            }
+
             if (terraWorldGenPack.ContinentalnessOffsetGraph == null)
             {
                 Debug.LogError("WorldRuntime Terra WorldGen Pack is missing a continentalness offset graph asset.", this);
+                isValid = false;
+            }
+
+            if (terraWorldGenPack.ContinentalnessFactorGraph == null)
+            {
+                Debug.LogError("WorldRuntime Terra WorldGen Pack is missing a continentalness factor graph asset.", this);
                 isValid = false;
             }
         }
@@ -628,7 +687,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void EnsureTerrainSettingsInitialized()
     {
-        terrainSettings = TerrainGenerationSettings.Create(seaLevel);
+        terrainSettings = TerrainGenerationSettings.Default;
     }
 
     private void EnsureRenderSizeIsOdd()
