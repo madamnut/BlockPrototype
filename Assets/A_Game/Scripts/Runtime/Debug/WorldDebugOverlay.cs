@@ -157,8 +157,16 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append("  Weird: ");
             _upperLeftBuilder.Append(sample.weirdness.ToString("F2"));
             _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Folded: ");
-            _upperLeftBuilder.Append(sample.foldedWeirdness.ToString("F2"));
+            _upperLeftBuilder.Append("PV: ");
+            _upperLeftBuilder.Append(sample.peaksAndValleys.ToString("F2"));
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Off: ");
+            _upperLeftBuilder.Append(sample.offset.ToString("F2"));
+            _upperLeftBuilder.Append("  Fac: ");
+            _upperLeftBuilder.Append(sample.factor.ToString("F2"));
+            _upperLeftBuilder.AppendLine();
+            _upperLeftBuilder.Append("Jag: ");
+            _upperLeftBuilder.Append(sample.jaggedness.ToString("F2"));
         }
 
         upperLeftText.text = _upperLeftBuilder.ToString();

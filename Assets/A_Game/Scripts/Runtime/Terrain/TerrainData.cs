@@ -60,20 +60,29 @@ public sealed class TerrainData : IDisposable
         public readonly float continentalness;
         public readonly float erosion;
         public readonly float weirdness;
-        public readonly float foldedWeirdness;
+        public readonly float peaksAndValleys;
+        public readonly float offset;
+        public readonly float factor;
+        public readonly float jaggedness;
 
         public WorldGenDebugSample(
             int height,
             float continentalness,
             float erosion,
             float weirdness,
-            float foldedWeirdness)
+            float peaksAndValleys,
+            float offset,
+            float factor,
+            float jaggedness)
         {
             this.height = height;
             this.continentalness = continentalness;
             this.erosion = erosion;
             this.weirdness = weirdness;
-            this.foldedWeirdness = foldedWeirdness;
+            this.peaksAndValleys = peaksAndValleys;
+            this.offset = offset;
+            this.factor = factor;
+            this.jaggedness = jaggedness;
         }
     }
 
@@ -125,6 +134,7 @@ public sealed class TerrainData : IDisposable
 
     private readonly int _seed;
     private readonly TerrainGenerationSettings _settings;
+    private readonly TerraChunkGenerator _terraChunkGenerator;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
     private readonly List<Vector2Int> _pendingChunkKeys = new();
@@ -133,21 +143,23 @@ public sealed class TerrainData : IDisposable
     {
         _seed = seed;
         _settings = settings.IsInitialized ? settings : TerrainGenerationSettings.Default;
+        _terraChunkGenerator = new TerraChunkGenerator(_seed, _settings.seaLevel, TerraNoiseSettings.Default);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
 
     public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
     {
-        float continentalness = SampleContinentalness(worldX, worldZ);
-        float erosion = SampleErosion(worldX, worldZ);
-        float weirdness = SampleWeirdness(worldX, worldZ);
+        TerraSurfaceSample sample = _terraChunkGenerator.SampleSurface(worldX, worldZ);
         return new WorldGenDebugSample(
-            SampleSurfaceHeight(worldX, worldZ),
-            continentalness,
-            erosion,
-            weirdness,
-            FoldWeirdness(weirdness));
+            sample.surfaceHeight,
+            sample.continentalness,
+            sample.erosion,
+            sample.weirdness,
+            sample.peaksAndValleys,
+            sample.offset,
+            sample.factor,
+            sample.jaggedness);
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
@@ -499,37 +511,7 @@ public sealed class TerrainData : IDisposable
         columnHeights = new int[ChunkSize * ChunkSize];
         byte[] subChunkContents = new byte[SubChunkCountY];
 
-        int maxHeight = -1;
-        for (int localZ = 0; localZ < ChunkSize; localZ++)
-        {
-            for (int localX = 0; localX < ChunkSize; localX++)
-            {
-                int worldX = (chunkX * ChunkSize) + localX;
-                int worldZ = (chunkZ * ChunkSize) + localZ;
-                int surfaceHeight = SampleSurfaceHeight(worldX, worldZ);
-                int columnIndex = (localZ * ChunkSize) + localX;
-                columnHeights[columnIndex] = surfaceHeight;
-
-                for (int worldY = 0; worldY <= surfaceHeight; worldY++)
-                {
-                    int index = GetIndex(localX, worldY, localZ);
-                    blocks[index] = ResolveSolidBlock(surfaceHeight, worldY);
-                }
-
-                int seaLevel = Mathf.Clamp(_settings.seaLevel, 0, WorldHeight - 1);
-                int waterStart = Mathf.Max(surfaceHeight + 1, 0);
-                for (int worldY = waterStart; worldY <= seaLevel; worldY++)
-                {
-                    int index = GetIndex(localX, worldY, localZ);
-                    if (blocks[index] == BlockType.Air)
-                    {
-                        fluids[index] = VoxelFluid.Water(100);
-                    }
-                }
-
-                maxHeight = Mathf.Max(maxHeight, Mathf.Max(surfaceHeight, seaLevel));
-            }
-        }
+        int maxHeight = _terraChunkGenerator.GenerateChunkColumn(chunkX, chunkZ, blocks, fluids, columnHeights);
 
         ChunkColumnData chunk = new(blocks, fluids, foliageIds, columnHeights, subChunkContents, maxHeight);
         for (int subChunkY = 0; subChunkY < SubChunkCountY; subChunkY++)
@@ -539,66 +521,6 @@ public sealed class TerrainData : IDisposable
 
         RecalculateChunkMaxHeight(chunk);
         return chunk;
-    }
-
-    private BlockType ResolveSolidBlock(int surfaceHeight, int worldY)
-    {
-        if (worldY == surfaceHeight)
-        {
-            return BlockType.Grass;
-        }
-
-        if (worldY >= surfaceHeight - 3)
-        {
-            return BlockType.Dirt;
-        }
-
-        return BlockType.Rock;
-    }
-
-    private int SampleSurfaceHeight(int worldX, int worldZ)
-    {
-        float continentalness = SampleContinentalness(worldX, worldZ);
-        float erosion = SampleErosion(worldX, worldZ);
-        float weirdness = SampleWeirdness(worldX, worldZ);
-
-        float baseHeight = _settings.seaLevel + 8f;
-        float continentalHeight = continentalness * 28f;
-        float erosionHeight = erosion * 10f;
-        float ridgeHeight = FoldWeirdness(weirdness) * 18f;
-        int surfaceHeight = Mathf.RoundToInt(baseHeight + continentalHeight + erosionHeight + ridgeHeight);
-        return Mathf.Clamp(surfaceHeight, 1, WorldHeight - 8);
-    }
-
-    private float SampleContinentalness(int worldX, int worldZ)
-    {
-        return SampleSignedNoise(worldX, worldZ, 0.0025f, 0.35f, 0.0055f, 0.15f, 17.17f);
-    }
-
-    private float SampleErosion(int worldX, int worldZ)
-    {
-        return SampleSignedNoise(worldX, worldZ, 0.004f, 0.4f, 0.013f, 0.12f, 91.73f);
-    }
-
-    private float SampleWeirdness(int worldX, int worldZ)
-    {
-        return SampleSignedNoise(worldX, worldZ, 0.0035f, 0.45f, 0.009f, 0.2f, 173.31f);
-    }
-
-    private float SampleSignedNoise(int worldX, int worldZ, float primaryScale, float primaryWeight, float detailScale, float detailWeight, float seedOffset)
-    {
-        float x = worldX + (_seed * 0.137f) + seedOffset;
-        float z = worldZ - (_seed * 0.091f) + seedOffset * 1.7f;
-        float primary = Mathf.PerlinNoise((x * primaryScale) + 10000f, (z * primaryScale) + 10000f);
-        float detail = Mathf.PerlinNoise((x * detailScale) + 20000f, (z * detailScale) + 20000f);
-        float combined = (primary * primaryWeight) + (detail * detailWeight);
-        return Mathf.Clamp((combined * 2f) - 1f, -1f, 1f);
-    }
-
-    private static float FoldWeirdness(float weirdness)
-    {
-        float folded = 1f - Mathf.Abs(weirdness);
-        return Mathf.Clamp((folded * 2f) - 1f, -1f, 1f);
     }
 
     private static double GetCurrentTimeSeconds()
