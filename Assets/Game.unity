@@ -1415,8 +1415,8 @@ MonoBehaviour:
   renderSizeInChunks: 17
   generationPaddingInChunks: 1
   seed: 8251
-  worldGenSettingsAsset: {fileID: 11400000, guid: 32d8acc8826718042af5ebfd2c04f81e, type: 2}
-  worldGenRemapProfileAsset: {fileID: 11400000, guid: 060408cc5cabd4849bad36c985514db0, type: 2}
+  seaLevel: 127
+  terraWorldGenPack: {fileID: 11400000, guid: c4b7ece8838f4c7ca0d7ad8369b71597, type: 2}
   completedChunkGenerationsPerFrame: 4
   chunkColumnsMeshedPerFrame: 2
   chunkGenerationRequestsPerFrame: 8

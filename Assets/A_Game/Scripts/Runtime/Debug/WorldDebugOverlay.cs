@@ -137,38 +137,6 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append(position.z);
         }
 
-        if (worldRuntime != null && worldRuntime.TryGetWorldGenDebugInfo(out Vector2Int worldGenPosition, out TerrainData.WorldGenDebugSample sample))
-        {
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("WorldGen Pos: ");
-            _upperLeftBuilder.Append(worldGenPosition.x);
-            _upperLeftBuilder.Append(", ");
-            _upperLeftBuilder.Append(worldGenPosition.y);
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Height: ");
-            _upperLeftBuilder.Append(sample.height);
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Cont: ");
-            _upperLeftBuilder.Append(sample.continentalness.ToString("F2"));
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Eros: ");
-            _upperLeftBuilder.Append(sample.erosion.ToString("F2"));
-            _upperLeftBuilder.Append("  Weird: ");
-            _upperLeftBuilder.Append(sample.weirdness.ToString("F2"));
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("PV: ");
-            _upperLeftBuilder.Append(sample.peaksAndValleys.ToString("F2"));
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Off: ");
-            _upperLeftBuilder.Append(sample.offset.ToString("F2"));
-            _upperLeftBuilder.Append("  Fac: ");
-            _upperLeftBuilder.Append(sample.factor.ToString("F2"));
-            _upperLeftBuilder.AppendLine();
-            _upperLeftBuilder.Append("Jag: ");
-            _upperLeftBuilder.Append(sample.jaggedness.ToString("F2"));
-        }
-
         upperLeftText.text = _upperLeftBuilder.ToString();
     }
 

@@ -21,6 +21,7 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
     [SerializeField, Range(0, TerrainData.WorldHeight - 1)] private int seaLevel = TerrainData.DefaultSeaLevel;
+    [SerializeField] private TerraWorldGenPackAsset terraWorldGenPack;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -72,40 +73,6 @@ public sealed class WorldRuntime : MonoBehaviour
     public BlockType SelectedBlockType => _worldInteraction != null ? _worldInteraction.GetSelectedBlockType() : BlockType.Air;
     public int RenderSizeInChunks => renderSizeInChunks;
     public TerrainData Terrain => _terrain;
-
-    public bool TryGetWorldGenDebugInfo(out Vector2Int position, out TerrainData.WorldGenDebugSample sample)
-    {
-        position = default;
-        sample = default;
-
-        if (_terrain == null)
-        {
-            return false;
-        }
-
-        Vector3 samplePosition;
-        if (_playerController != null)
-        {
-            samplePosition = _playerController.transform.position;
-        }
-        else if (_resolvedInteractionCamera != null)
-        {
-            samplePosition = _resolvedInteractionCamera.transform.position;
-        }
-        else
-        {
-            return false;
-        }
-
-        if (_worldRoot != null)
-        {
-            samplePosition = _worldRoot.InverseTransformPoint(samplePosition);
-        }
-
-        position = new Vector2Int(Mathf.FloorToInt(samplePosition.x), Mathf.FloorToInt(samplePosition.z));
-        sample = _terrain.SampleWorldGen(position.x, position.y);
-        return true;
-    }
 
     private void Reset()
     {
@@ -226,7 +193,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private void BuildWorld()
     {
         _terrain?.Dispose();
-        _terrain = new TerrainData(seed, terrainSettings);
+        _terrain = new TerrainData(seed, terrainSettings, terraWorldGenPack);
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -584,6 +551,26 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             Debug.LogError("WorldRuntime requires valid terrain generation settings.", this);
             isValid = false;
+        }
+
+        if (terraWorldGenPack == null)
+        {
+            Debug.LogError("WorldRuntime requires a Terra WorldGen Pack reference.", this);
+            isValid = false;
+        }
+        else
+        {
+            if (terraWorldGenPack.ContinentalnessSettings == null)
+            {
+                Debug.LogError("WorldRuntime Terra WorldGen Pack is missing a continentalness settings asset.", this);
+                isValid = false;
+            }
+
+            if (terraWorldGenPack.ContinentalnessOffsetGraph == null)
+            {
+                Debug.LogError("WorldRuntime Terra WorldGen Pack is missing a continentalness offset graph asset.", this);
+                isValid = false;
+            }
         }
 
         if (worldMaterial != null && !worldMaterial.HasProperty("_BlockTextures"))

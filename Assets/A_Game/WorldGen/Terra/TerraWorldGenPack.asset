@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a166bacbc14e8b04cb75ec0e29f3d7a0, type: 3}
+  m_Name: TerraWorldGenPack
+  m_EditorClassIdentifier: Assembly-CSharp::TerraWorldGenPackAsset
+  continentalnessSettings: {fileID: 11400000, guid: d9bfac056cb273b48aca8e71082e6a03, type: 2}
+  continentalnessOffsetGraph: {fileID: 11400000, guid: 59ed1edb6a420684e8ed9f9133349d6b, type: 2}

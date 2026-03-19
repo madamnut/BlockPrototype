@@ -54,38 +54,6 @@ public sealed class TerrainData : IDisposable
         }
     }
 
-    public readonly struct WorldGenDebugSample
-    {
-        public readonly int height;
-        public readonly float continentalness;
-        public readonly float erosion;
-        public readonly float weirdness;
-        public readonly float peaksAndValleys;
-        public readonly float offset;
-        public readonly float factor;
-        public readonly float jaggedness;
-
-        public WorldGenDebugSample(
-            int height,
-            float continentalness,
-            float erosion,
-            float weirdness,
-            float peaksAndValleys,
-            float offset,
-            float factor,
-            float jaggedness)
-        {
-            this.height = height;
-            this.continentalness = continentalness;
-            this.erosion = erosion;
-            this.weirdness = weirdness;
-            this.peaksAndValleys = peaksAndValleys;
-            this.offset = offset;
-            this.factor = factor;
-            this.jaggedness = jaggedness;
-        }
-    }
-
     private sealed class ChunkColumnData
     {
         public const byte SolidContentBit = 1 << 0;
@@ -139,28 +107,21 @@ public sealed class TerrainData : IDisposable
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
     private readonly List<Vector2Int> _pendingChunkKeys = new();
 
-    public TerrainData(int seed, TerrainGenerationSettings settings)
+    public TerrainData(int seed, TerrainGenerationSettings settings, TerraWorldGenPackAsset worldGenPack)
     {
         _seed = seed;
         _settings = settings.IsInitialized ? settings : TerrainGenerationSettings.Default;
-        _terraChunkGenerator = new TerraChunkGenerator(_seed, _settings.seaLevel, TerraNoiseSettings.Default);
+        if (worldGenPack == null)
+        {
+            throw new ArgumentNullException(nameof(worldGenPack), "TerrainData requires a TerraWorldGenPackAsset.");
+        }
+
+        TerraContinentalnessSampler continentalnessSampler = new(_seed, worldGenPack.ContinentalnessSettings);
+        TerraOffsetMapper offsetMapper = new(worldGenPack.ContinentalnessOffsetGraph);
+        _terraChunkGenerator = new TerraChunkGenerator(_settings.seaLevel, continentalnessSampler, offsetMapper);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
-
-    public WorldGenDebugSample SampleWorldGen(int worldX, int worldZ)
-    {
-        TerraSurfaceSample sample = _terraChunkGenerator.SampleSurface(worldX, worldZ);
-        return new WorldGenDebugSample(
-            sample.surfaceHeight,
-            sample.continentalness,
-            sample.erosion,
-            sample.weirdness,
-            sample.peaksAndValleys,
-            sample.offset,
-            sample.factor,
-            sample.jaggedness);
-    }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
     {
