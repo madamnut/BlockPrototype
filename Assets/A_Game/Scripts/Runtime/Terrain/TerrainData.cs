@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public sealed class TerrainData : IDisposable
@@ -86,41 +88,67 @@ public sealed class TerrainData : IDisposable
 
     private sealed class PendingChunkColumnData
     {
-        public PendingChunkColumnData(double requestTime)
+        public PendingChunkColumnData(double requestTime, Task<GeneratedChunkColumnResult> generationTask)
         {
             RequestTime = requestTime;
+            GenerationTask = generationTask;
         }
 
         public double RequestTime { get; }
+        public Task<GeneratedChunkColumnResult> GenerationTask { get; }
+    }
+
+    private sealed class GeneratedChunkColumnResult
+    {
+        public GeneratedChunkColumnResult(ChunkColumnData chunk, double generationMilliseconds)
+        {
+            Chunk = chunk;
+            GenerationMilliseconds = generationMilliseconds;
+        }
+
+        public ChunkColumnData Chunk { get; }
+        public double GenerationMilliseconds { get; }
     }
 
     public const int ChunkSize = 16;
     public const int SubChunkSize = 16;
+    public const int MinecraftMinY = -64;
     public const int WorldHeight = 384;
+    public const int MinecraftHeight = WorldHeight;
+    public const int MinecraftMaxYExclusive = MinecraftMinY + MinecraftHeight;
     public const int SubChunkCountY = WorldHeight / SubChunkSize;
-    public const int DefaultSeaLevel = 127;
+    public const int DefaultSeaLevel = 63 - MinecraftMinY;
+
+    public static int ToMinecraftY(int terraY)
+    {
+        return terraY + MinecraftMinY;
+    }
 
     private readonly int _seed;
-    private readonly TerraContinentalnessSampler _continentalnessSampler;
-    private readonly TerraWeirdnessSampler _weirdnessSampler;
-    private readonly TerraChunkGenerator _terraChunkGenerator;
+    private readonly ContinentalnessSampler _continentalnessSampler;
+    private readonly ErosionSampler _erosionSampler;
+    private readonly WeirdnessSampler _weirdnessSampler;
+    private readonly ChunkGenerator _chunkGenerator;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
     private readonly List<Vector2Int> _pendingChunkKeys = new();
+    private readonly CancellationTokenSource _generationCancellation = new();
 
-    public TerrainData(int seed, TerrainGenerationSettings settings, TerraWorldGenPackAsset worldGenPack)
+    public TerrainData(int seed, TerrainGenerationSettings settings, WorldGenPackAsset worldGenPack)
     {
         _seed = seed;
         if (worldGenPack == null)
         {
-            throw new ArgumentNullException(nameof(worldGenPack), "TerrainData requires a TerraWorldGenPackAsset.");
+            throw new ArgumentNullException(nameof(worldGenPack), "TerrainData requires a WorldGenPackAsset.");
         }
 
-        _continentalnessSampler = new TerraContinentalnessSampler(_seed, worldGenPack.ContinentalnessSettings);
-        _weirdnessSampler = new TerraWeirdnessSampler(_seed, worldGenPack.WeirdnessSettings);
-        TerraOffsetMapper offsetMapper = new(worldGenPack.ContinentalnessOffsetGraph);
-        TerraFactorMapper factorMapper = new(worldGenPack.ContinentalnessFactorGraph);
-        _terraChunkGenerator = new TerraChunkGenerator(worldGenPack.SeaLevel, _continentalnessSampler, offsetMapper, factorMapper);
+        _continentalnessSampler = new ContinentalnessSampler(_seed, worldGenPack.ContinentalnessSettings);
+        _erosionSampler = new ErosionSampler(_seed, worldGenPack.ErosionSettings);
+        _weirdnessSampler = new WeirdnessSampler(_seed, worldGenPack.WeirdnessSettings);
+        JsonSplineMapper offsetMapper = new(worldGenPack.OffsetSplineGraph != null ? worldGenPack.OffsetSplineGraph.RuntimeJson : null);
+        JsonSplineMapper factorMapper = new(worldGenPack.FactorSplineGraph != null ? worldGenPack.FactorSplineGraph.RuntimeJson : null);
+        JsonSplineMapper jaggednessMapper = new(worldGenPack.JaggednessSplineGraph != null ? worldGenPack.JaggednessSplineGraph.RuntimeJson : null);
+        _chunkGenerator = new ChunkGenerator(_seed, worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, offsetMapper, factorMapper, jaggednessMapper);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
@@ -135,9 +163,14 @@ public sealed class TerrainData : IDisposable
         return _weirdnessSampler.Sample(worldX, worldZ);
     }
 
+    public float SampleErosion(int worldX, int worldZ)
+    {
+        return _erosionSampler.Sample(worldX, worldZ);
+    }
+
     public float SamplePeaksAndValleys(int worldX, int worldZ)
     {
-        return TerraPeaksAndValleys.Fold(_weirdnessSampler.Sample(worldX, worldZ));
+        return PeaksAndValleys.Fold(_weirdnessSampler.Sample(worldX, worldZ));
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
@@ -156,9 +189,11 @@ public sealed class TerrainData : IDisposable
 
     public void Dispose()
     {
+        _generationCancellation.Cancel();
         _chunkColumns.Clear();
         _pendingChunkColumns.Clear();
         _pendingChunkKeys.Clear();
+        _generationCancellation.Dispose();
     }
 
     public bool RequestChunkColumn(int chunkX, int chunkZ)
@@ -169,7 +204,17 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        _pendingChunkColumns.Add(key, new PendingChunkColumnData(GetCurrentTimeSeconds()));
+        CancellationToken cancellationToken = _generationCancellation.Token;
+        Task<GeneratedChunkColumnResult> generationTask = Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            double generateStart = GetCurrentTimeSeconds();
+            ChunkColumnData chunk = GenerateChunkColumn(chunkX, chunkZ, out _);
+            double generateEnd = GetCurrentTimeSeconds();
+            return new GeneratedChunkColumnResult(chunk, (generateEnd - generateStart) * 1000d);
+        }, cancellationToken);
+
+        _pendingChunkColumns.Add(key, new PendingChunkColumnData(GetCurrentTimeSeconds(), generationTask));
         _pendingChunkKeys.Add(key);
         return true;
     }
@@ -182,26 +227,43 @@ public sealed class TerrainData : IDisposable
         }
 
         int completions = 0;
-        while (completions < maxCompletions && _pendingChunkKeys.Count > 0)
+        for (int pendingIndex = 0; pendingIndex < _pendingChunkKeys.Count && completions < maxCompletions;)
         {
-            Vector2Int key = _pendingChunkKeys[0];
-            _pendingChunkKeys.RemoveAt(0);
+            Vector2Int key = _pendingChunkKeys[pendingIndex];
             if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+            {
+                _pendingChunkKeys.RemoveAt(pendingIndex);
+                continue;
+            }
+
+            if (!pending.GenerationTask.IsCompleted)
+            {
+                pendingIndex++;
+                continue;
+            }
+
+            _pendingChunkKeys.RemoveAt(pendingIndex);
+            _pendingChunkColumns.Remove(key);
+
+            if (pending.GenerationTask.IsCanceled)
             {
                 continue;
             }
 
-            double generateStart = GetCurrentTimeSeconds();
-            ChunkColumnData chunk = GenerateChunkColumn(key.x, key.y, out int[] columnHeights);
-            double generateEnd = GetCurrentTimeSeconds();
+            if (pending.GenerationTask.IsFaulted)
+            {
+                UnityEngine.Debug.LogException(pending.GenerationTask.Exception);
+                continue;
+            }
 
-            _pendingChunkColumns.Remove(key);
-            _chunkColumns[key] = chunk;
+            double completeTime = GetCurrentTimeSeconds();
+            GeneratedChunkColumnResult result = pending.GenerationTask.Result;
+            _chunkColumns[key] = result.Chunk;
             completedChunkInfos?.Add(new CompletedChunkColumnInfo(
                 key,
-                generateEnd - pending.RequestTime,
+                completeTime - pending.RequestTime,
                 0d,
-                (generateEnd - generateStart) * 1000d,
+                result.GenerationMilliseconds,
                 0d));
             completions++;
         }
@@ -489,7 +551,7 @@ public sealed class TerrainData : IDisposable
         columnHeights = new int[ChunkSize * ChunkSize];
         byte[] subChunkContents = new byte[SubChunkCountY];
 
-        int maxHeight = _terraChunkGenerator.GenerateChunkColumn(chunkX, chunkZ, blocks, fluids, columnHeights);
+        int maxHeight = _chunkGenerator.GenerateChunkColumn(chunkX, chunkZ, blocks, fluids, columnHeights);
 
         ChunkColumnData chunk = new(blocks, fluids, foliageIds, columnHeights, subChunkContents, maxHeight);
         for (int subChunkY = 0; subChunkY < SubChunkCountY; subChunkY++)

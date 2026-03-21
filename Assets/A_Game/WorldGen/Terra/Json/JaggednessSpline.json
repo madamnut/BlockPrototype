@@ -1,0 +1,295 @@
+{
+  "coordinate": "continentalness",
+  "points": [
+    {
+      "location": -0.11,
+      "value": 0,
+      "derivative": 0
+    },
+    {
+      "location": 0.03,
+      "value": 
+      {
+        "coordinate": "erosion",
+        "points": [
+          {
+            "location": -1,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.63,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.3,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.78,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.315,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.15,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.5775,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.315,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.15,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.375,
+            "value": 0,
+            "derivative": 0
+          }
+        ]
+      },
+      "derivative": 0
+    },
+    {
+      "location": 0.65,
+      "value": 
+      {
+        "coordinate": "erosion",
+        "points": [
+          {
+            "location": -1,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.63,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.3,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.63,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.3,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.78,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.63,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.3,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.5775,
+            "value": 
+            {
+              "coordinate": "peaks_and_valleys",
+              "points": [
+                {
+                  "location": 0.2,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 0.45,
+                  "value": 0,
+                  "derivative": 0
+                },
+                {
+                  "location": 1,
+                  "value": 
+                  {
+                    "coordinate": "ridges",
+                    "points": [
+                      {
+                        "location": -0.01,
+                        "value": 0.63,
+                        "derivative": 0
+                      },
+                      {
+                        "location": 0.01,
+                        "value": 0.3,
+                        "derivative": 0
+                      }
+                    ]
+                  },
+                  "derivative": 0
+                }
+              ]
+            },
+            "derivative": 0
+          },
+          {
+            "location": -0.375,
+            "value": 0,
+            "derivative": 0
+          }
+        ]
+      },
+      "derivative": 0
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c014b2f00ad672d4eb07968162406e21, type: 3}
+  m_Name: ContinentalnessSettings
+  m_EditorClassIdentifier: Assembly-CSharp::ContinentalnessSettingsAsset
+  shiftInputScale: 0.25
+  continentsXZScale: 0.25
+  shiftStrength: 4
+  offsetNoise:
+    firstOctave: -3
+    amplitudes:
+    - 1
+    - 1
+    - 1
+    - 0
+  continentalnessNoise:
+    firstOctave: -9
+    amplitudes:
+    - 1
+    - 1
+    - 2
+    - 2
+    - 2
+    - 1
+    - 1
+    - 1
+    - 1

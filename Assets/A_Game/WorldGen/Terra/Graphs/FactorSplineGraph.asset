@@ -1,0 +1,1541 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8987979097637312088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_5
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-8938559181174989816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-8811114372824633831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-8655768301002428697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_8_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5517915174193689478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_8
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.7
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5195660415281261378}
+    derivative: 0
+  - location: -0.15
+    value:
+      useChildSpline: 0
+      constantValue: 1.37
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5494853781802630268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5323480074001254543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_4
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5195660415281261378
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_8_Child_2_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5072547540673841715
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-4806687436293515712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_3
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-4480511635208949068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_7_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-4316456385891601082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_5
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-3985404063918362655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-2837497311121480427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_3
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-2725182636086739135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1801508639070990128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_3
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1789088471376401162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_7
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 6927161390462452258}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1781268934207132178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_8
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 9166386475861089493}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1582614731539728813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_7_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1289583788725477929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_8
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -8655768301002428697}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-1248379733893439713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_5
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 0
+  points:
+  - location: -0.19
+    value:
+      useChildSpline: 0
+      constantValue: 3.95
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.15
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 1068904117007717231}
+    derivative: 0
+  - location: -0.1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 1793931765250038341}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 8379537824160739370}
+    derivative: 0
+  - location: 0.06
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 3015874786233482023}
+    derivative: 0
+  runtimeJson: {fileID: 4900000, guid: 14e4d07a838f4e92841d72bf4fd0a3a9, type: 3}
+--- !u!114 &105344015546049829
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_8_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &1068904117007717231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -0.6
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 4653276955075830356}
+    derivative: 0
+  - location: -0.5
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5072547540673841715}
+    derivative: 0
+  - location: -0.35
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 4437097294627312584}
+    derivative: 0
+  - location: -0.25
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -4806687436293515712}
+    derivative: 0
+  - location: -0.1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 2478940477197697533}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -8987979097637312088}
+    derivative: 0
+  - location: 0.35
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 1671886024681922758}
+    derivative: 0
+  - location: 0.55
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1781268934207132178}
+    derivative: 0
+  - location: 0.62
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &1671886024681922758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_7
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -4480511635208949068}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &1793931765250038341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -0.6
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -3985404063918362655}
+    derivative: 0
+  - location: -0.5
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 6175195596587875021}
+    derivative: 0
+  - location: -0.35
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7240556397997453262}
+    derivative: 0
+  - location: -0.25
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1801508639070990128}
+    derivative: 0
+  - location: -0.1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7725750080511891777}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -4316456385891601082}
+    derivative: 0
+  - location: 0.35
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1789088471376401162}
+    derivative: 0
+  - location: 0.55
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 5590329946631988707}
+    derivative: 0
+  - location: 0.62
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &2478940477197697533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_4
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &2713383403718678215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_9
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.7
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 5298551475756596147}
+    derivative: 0
+  - location: -0.15
+    value:
+      useChildSpline: 0
+      constantValue: 1.37
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &2763661500825723290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3_Child_1_7
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1582614731539728813}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &3015874786233482023
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -0.6
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -8938559181174989816}
+    derivative: 0
+  - location: -0.5
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 4156413060242534469}
+    derivative: 0
+  - location: -0.35
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 3480909342360844101}
+    derivative: 0
+  - location: -0.25
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7977362364520199838}
+    derivative: 0
+  - location: -0.1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 4239712280994325419}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 6104005015695154013}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 6655119517695599902}
+    derivative: 0
+  - location: 0.4
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 8109086314277194853}
+    derivative: 0
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5517915174193689478}
+    derivative: 0
+  - location: 0.55
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 2713383403718678215}
+    derivative: 0
+  - location: 0.58
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &3480909342360844101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &4156413060242534469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &4239712280994325419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_4
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &4437097294627312584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &4653276955075830356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &5298551475756596147
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_9_Child_2_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &5590329946631988707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_8
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: -0.9
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: -0.69
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 105344015546049829}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &6104005015695154013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_5
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &6175195596587875021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &6655119517695599902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_6
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7490497431697164567}
+    derivative: 0
+  - location: 0.7
+    value:
+      useChildSpline: 0
+      constantValue: 1.56
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &6927161390462452258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_7_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7240556397997453262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 5.47
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7490497431697164567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_6_Child_2_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7725750080511891777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_2_Child_1_4
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.05
+    value:
+      useChildSpline: 0
+      constantValue: 2.67
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.05
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7977362364520199838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_3
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &8109086314277194853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_7
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 9125047369423431355}
+    derivative: 0
+  - location: 0.7
+    value:
+      useChildSpline: 0
+      constantValue: 1.56
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &8379537824160739370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_3
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -0.6
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5494853781802630268}
+    derivative: 0
+  - location: -0.5
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -2725182636086739135}
+    derivative: 0
+  - location: -0.35
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -8811114372824633831}
+    derivative: 0
+  - location: -0.25
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -2837497311121480427}
+    derivative: 0
+  - location: -0.1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5323480074001254543}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1248379733893439713}
+    derivative: 0
+  - location: 0.35
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.45
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 2763661500825723290}
+    derivative: 0
+  - location: 0.55
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -1289583788725477929}
+    derivative: 0
+  - location: 0.62
+    value:
+      useChildSpline: 0
+      constantValue: 5.08
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &9125047369423431355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_4_Child_1_7_Child_2_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.2
+    value:
+      useChildSpline: 0
+      constantValue: 6.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.2
+    value:
+      useChildSpline: 0
+      constantValue: 4.69
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &9166386475861089493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: FactorSplineGraph_Child_0_1_Child_1_8_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: 0
+    value:
+      useChildSpline: 0
+      constantValue: 6.25
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.1
+    value:
+      useChildSpline: 0
+      constantValue: 0.625
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}

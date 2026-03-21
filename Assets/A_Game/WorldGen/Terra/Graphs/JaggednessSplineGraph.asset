@@ -1,0 +1,500 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-5919427510821875988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_2_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.315
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.15
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-5699205834828536450
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 9088917305580122433}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-4480656163236576746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 5493595106782362098}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &-779488142083660342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 5160178117342234511}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 0
+  points:
+  - location: -0.11
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.03
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 3680114312884920231}
+    derivative: 0
+  - location: 0.65
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 381145736011877754}
+    derivative: 0
+  runtimeJson: {fileID: 4900000, guid: 41b3597c18fd4c83b596ea4a5d98d2c9, type: 3}
+--- !u!114 &6891347565554368
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_0_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.63
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &381145736011877754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 2748720934569059697}
+    derivative: 0
+  - location: -0.78
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -4480656163236576746}
+    derivative: 0
+  - location: -0.5775
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5699205834828536450}
+    derivative: 0
+  - location: -0.375
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &2748720934569059697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_0
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7200374415481291036}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 6891347565554368}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &3680114312884920231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 1
+  points:
+  - location: -1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -779488142083660342}
+    derivative: 0
+  - location: -0.78
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 8264765073701721129}
+    derivative: 0
+  - location: -0.5775
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7388607244355672252}
+    derivative: 0
+  - location: -0.375
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &5160178117342234511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_0_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.63
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &5493595106782362098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_1_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.63
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7200374415481291036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_0_Child_2_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.63
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7388607244355672252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: -5919427510821875988}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &7803980610345280853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_1_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.315
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.15
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &8264765073701721129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_1_Child_1_1
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 2
+  points:
+  - location: 0.19999999
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.44999996
+    value:
+      useChildSpline: 0
+      constantValue: 0
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 1
+    value:
+      useChildSpline: 1
+      constantValue: 0
+      childSpline: {fileID: 7803980610345280853}
+    derivative: 0
+  runtimeJson: {fileID: 0}
+--- !u!114 &9088917305580122433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c650062344a67b49bc434f16b132d92, type: 3}
+  m_Name: JaggednessSplineGraph_Child_0_2_Child_1_2_Child_2_2
+  m_EditorClassIdentifier: Assembly-CSharp::SplineAsset
+  coordinateKind: 3
+  points:
+  - location: -0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.63
+      childSpline: {fileID: 0}
+    derivative: 0
+  - location: 0.01
+    value:
+      useChildSpline: 0
+      constantValue: 0.3
+      childSpline: {fileID: 0}
+    derivative: 0
+  runtimeJson: {fileID: 0}

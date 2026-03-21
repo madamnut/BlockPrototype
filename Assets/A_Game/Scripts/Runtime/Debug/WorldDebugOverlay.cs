@@ -158,6 +158,13 @@ public sealed class WorldDebugOverlay : MonoBehaviour
                     _upperLeftBuilder.Append(continentalness.ToString("F3"));
                 }
 
+                if (worldRuntime.TryGetErosionAt(worldX, worldZ, out float erosion))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Eros: ");
+                    _upperLeftBuilder.Append(erosion.ToString("F3"));
+                }
+
                 if (worldRuntime.TryGetWeirdnessAt(worldX, worldZ, out float weirdness))
                 {
                     _upperLeftBuilder.AppendLine();
