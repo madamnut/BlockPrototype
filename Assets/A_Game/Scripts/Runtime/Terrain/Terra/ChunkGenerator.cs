@@ -2,6 +2,9 @@ using UnityEngine;
 
 public sealed class ChunkGenerator
 {
+    // Vanilla overworld/offset wraps the imported spline with this bias when blend_alpha=1
+    // (which is the normal case outside old chunk blending).
+    private const float VanillaOffsetBias = -0.5037500262260437f;
     private const int CellWidth = 4;
     private const int CellHeight = 8;
     private const int CellCountXZ = TerrainData.ChunkSize / CellWidth;
@@ -74,9 +77,9 @@ public sealed class ChunkGenerator
                 float ridges = _weirdnessSampler.Sample(worldX, worldZ);
                 float peaksAndValleys = PeaksAndValleys.Fold(ridges);
                 SplineContext splineContext = new(continentalness, erosion, peaksAndValleys, ridges);
-                float offset = _offsetMapper.Evaluate(splineContext);
-                float factor = _factorMapper.Evaluate(splineContext);
-                float jaggedness = _jaggednessMapper.Evaluate(splineContext);
+                float offset = EvaluateOffset(splineContext);
+                float factor = EvaluateFactor(splineContext);
+                float jaggedness = EvaluateJaggedness(splineContext);
                 float jaggedNoise = _jaggedNoise.Sample(worldX, worldZ);
 
                 for (int cornerY = 0; cornerY < CornerCountY; cornerY++)
@@ -185,6 +188,21 @@ public sealed class ChunkGenerator
         float baseTerrainNoise = _terrainNoise.Sample(worldX, minecraftY, worldZ);
         float terrainShape = slopedCheese + baseTerrainNoise;
         return ApplyFinalDensitySlides(minecraftY, terrainShape);
+    }
+
+    private float EvaluateOffset(in SplineContext context)
+    {
+        return VanillaOffsetBias + _offsetMapper.Evaluate(context);
+    }
+
+    private float EvaluateFactor(in SplineContext context)
+    {
+        return _factorMapper.Evaluate(context);
+    }
+
+    private float EvaluateJaggedness(in SplineContext context)
+    {
+        return _jaggednessMapper.Evaluate(context);
     }
 
     private static float GetVanillaDepthGradient(int minecraftY)
