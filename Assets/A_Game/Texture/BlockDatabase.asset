@@ -50,7 +50,7 @@ MonoBehaviour:
     backLayer: 5
     frontLayer: 5
   - blockId: 5
-    displayName: Leaves
+    displayName: Gravel
     kind: 0
     leftLayer: 7
     rightLayer: 7
@@ -58,12 +58,48 @@ MonoBehaviour:
     topLayer: 7
     backLayer: 7
     frontLayer: 7
-  - blockId: 100
-    displayName: Plant
-    kind: 1
+  - blockId: 6
+    displayName: Mud
+    kind: 0
     leftLayer: 8
     rightLayer: 8
     bottomLayer: 8
     topLayer: 8
     backLayer: 8
     frontLayer: 8
+  - blockId: 7
+    displayName: Clay
+    kind: 0
+    leftLayer: 9
+    rightLayer: 9
+    bottomLayer: 9
+    topLayer: 9
+    backLayer: 9
+    frontLayer: 9
+  - blockId: 8
+    displayName: Sand
+    kind: 0
+    leftLayer: 10
+    rightLayer: 10
+    bottomLayer: 10
+    topLayer: 10
+    backLayer: 10
+    frontLayer: 10
+  - blockId: 1000
+    displayName: Leaves
+    kind: 0
+    leftLayer: 11
+    rightLayer: 11
+    bottomLayer: 11
+    topLayer: 11
+    backLayer: 11
+    frontLayer: 11
+  - blockId: 2000
+    displayName: Plant
+    kind: 1
+    leftLayer: 12
+    rightLayer: 12
+    bottomLayer: 12
+    topLayer: 12
+    backLayer: 12
+    frontLayer: 12

@@ -30,8 +30,20 @@ MonoBehaviour:
     blockName: Log
     kind: 0
   - blockId: 5
+    blockName: Gravel
+    kind: 0
+  - blockId: 6
+    blockName: Mud
+    kind: 0
+  - blockId: 7
+    blockName: Clay
+    kind: 0
+  - blockId: 8
+    blockName: Sand
+    kind: 0
+  - blockId: 1000
     blockName: Leaves
     kind: 0
-  - blockId: 100
+  - blockId: 2000
     blockName: Plant
     kind: 1
