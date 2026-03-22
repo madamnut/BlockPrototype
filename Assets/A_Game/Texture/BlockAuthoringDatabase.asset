@@ -41,6 +41,9 @@ MonoBehaviour:
   - blockId: 8
     blockName: Sand
     kind: 0
+  - blockId: 9
+    blockName: Bedrock
+    kind: 0
   - blockId: 1000
     blockName: Leaves
     kind: 0

@@ -49,14 +49,14 @@ Material:
     - _SrcBlend: 1
     - _SurfaceAlpha: 1
     - _WaveAAmplitude: 0.7
-    - _WaveADistortion: 0.012
+    - _WaveADistortion: 0.005
     - _WaveANoiseScale: 0.18
     - _WaveANoiseStrength: 0.45
     - _WaveAScale: 0.06
     - _WaveASpacing: 18
     - _WaveASpeed: 0.35
     - _WaveBAmplitude: 0.35
-    - _WaveBDistortion: 0.018
+    - _WaveBDistortion: 0.005
     - _WaveBNoiseScale: 0.41
     - _WaveBNoiseStrength: 0.6
     - _WaveBScale: 0.14

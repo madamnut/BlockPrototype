@@ -128,6 +128,8 @@ public sealed class TerrainData : IDisposable
     private readonly ContinentalnessSampler _continentalnessSampler;
     private readonly ErosionSampler _erosionSampler;
     private readonly WeirdnessSampler _weirdnessSampler;
+    private readonly TemperatureSampler _temperatureSampler;
+    private readonly HumiditySampler _humiditySampler;
     private readonly ChunkGenerator _chunkGenerator;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
@@ -145,10 +147,12 @@ public sealed class TerrainData : IDisposable
         _continentalnessSampler = new ContinentalnessSampler(_seed, worldGenPack.ContinentalnessSettings);
         _erosionSampler = new ErosionSampler(_seed, worldGenPack.ErosionSettings);
         _weirdnessSampler = new WeirdnessSampler(_seed, worldGenPack.WeirdnessSettings);
+        _temperatureSampler = new TemperatureSampler(_seed, worldGenPack.TemperatureSettings);
+        _humiditySampler = new HumiditySampler(_seed, worldGenPack.HumiditySettings);
         JsonSplineMapper offsetMapper = new(worldGenPack.OffsetSplineGraph != null ? worldGenPack.OffsetSplineGraph.RuntimeJson : null);
         JsonSplineMapper factorMapper = new(worldGenPack.FactorSplineGraph != null ? worldGenPack.FactorSplineGraph.RuntimeJson : null);
         JsonSplineMapper jaggednessMapper = new(worldGenPack.JaggednessSplineGraph != null ? worldGenPack.JaggednessSplineGraph.RuntimeJson : null);
-        _chunkGenerator = new ChunkGenerator(_seed, worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, offsetMapper, factorMapper, jaggednessMapper);
+        _chunkGenerator = new ChunkGenerator(_seed, worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, offsetMapper, factorMapper, jaggednessMapper, worldGenPack.SurfaceRuleJson);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
@@ -171,6 +175,24 @@ public sealed class TerrainData : IDisposable
     public float SamplePeaksAndValleys(int worldX, int worldZ)
     {
         return PeaksAndValleys.Fold(_weirdnessSampler.Sample(worldX, worldZ));
+    }
+
+    public float SampleTemperature(int worldX, int worldZ)
+    {
+        return _temperatureSampler.Sample(worldX, worldZ);
+    }
+
+    public float SampleHumidity(int worldX, int worldZ)
+    {
+        return _humiditySampler.Sample(worldX, worldZ);
+    }
+
+    public BiomeKind SampleBiome(int worldX, int worldZ)
+    {
+        float continentalness = _continentalnessSampler.Sample(worldX, worldZ);
+        float erosion = _erosionSampler.Sample(worldX, worldZ);
+        float weirdness = _weirdnessSampler.Sample(worldX, worldZ);
+        return BiomeClassifier.Classify(continentalness, erosion, weirdness);
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)

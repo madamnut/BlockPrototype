@@ -134,6 +134,42 @@ public sealed class WorldRuntime : MonoBehaviour
         return true;
     }
 
+    public bool TryGetTemperatureAt(int worldX, int worldZ, out float temperature)
+    {
+        temperature = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        temperature = _terrain.SampleTemperature(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetHumidityAt(int worldX, int worldZ, out float humidity)
+    {
+        humidity = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        humidity = _terrain.SampleHumidity(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetBiomeAt(int worldX, int worldZ, out BiomeKind biome)
+    {
+        biome = BiomeKind.Land;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        biome = _terrain.SampleBiome(worldX, worldZ);
+        return true;
+    }
+
     private void Reset()
     {
         EnsureRenderSizeIsOdd();
@@ -632,6 +668,18 @@ public sealed class WorldRuntime : MonoBehaviour
                 isValid = false;
             }
 
+            if (worldGenPack.TemperatureSettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a temperature settings asset.", this);
+                isValid = false;
+            }
+
+            if (worldGenPack.HumiditySettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a humidity settings asset.", this);
+                isValid = false;
+            }
+
             if (worldGenPack.ErosionSettings == null)
             {
                 Debug.LogError("WorldRuntime WorldGen Pack is missing an erosion settings asset.", this);
@@ -698,6 +746,7 @@ public sealed class WorldRuntime : MonoBehaviour
         if (blockDatabase != null)
         {
             isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Rock);
+            isValid &= ValidateRequiredBlockDefinition((ushort)BlockType.Bedrock);
         }
 
         return isValid;

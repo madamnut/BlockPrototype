@@ -85,8 +85,8 @@ MonoBehaviour:
     topLayer: 10
     backLayer: 10
     frontLayer: 10
-  - blockId: 1000
-    displayName: Leaves
+  - blockId: 9
+    displayName: Bedrock
     kind: 0
     leftLayer: 11
     rightLayer: 11
@@ -94,12 +94,21 @@ MonoBehaviour:
     topLayer: 11
     backLayer: 11
     frontLayer: 11
-  - blockId: 2000
-    displayName: Plant
-    kind: 1
+  - blockId: 1000
+    displayName: Leaves
+    kind: 0
     leftLayer: 12
     rightLayer: 12
     bottomLayer: 12
     topLayer: 12
     backLayer: 12
     frontLayer: 12
+  - blockId: 2000
+    displayName: Plant
+    kind: 1
+    leftLayer: 13
+    rightLayer: 13
+    bottomLayer: 13
+    topLayer: 13
+    backLayer: 13
+    frontLayer: 13

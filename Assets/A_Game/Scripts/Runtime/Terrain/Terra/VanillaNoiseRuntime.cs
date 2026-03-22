@@ -367,6 +367,13 @@ internal sealed class VanillaPositionalRandom
         ulong hi = VanillaNoiseMath.ReadUInt64BigEndian(hash, 8);
         return new VanillaXoroshiroRandom(lo ^ _seedLo, hi ^ _seedHi);
     }
+
+    public VanillaXoroshiroRandom At(int x, int y, int z)
+    {
+        long hashedSeed = VanillaNoiseMath.GetCoordinateSeed(x, y, z);
+        ulong seedLo = unchecked((ulong)hashedSeed) ^ _seedLo;
+        return new VanillaXoroshiroRandom(seedLo, _seedHi);
+    }
 }
 
 internal sealed class VanillaXoroshiroRandom
@@ -426,6 +433,11 @@ internal sealed class VanillaXoroshiroRandom
     public double NextDouble()
     {
         return (NextULong() >> 11) * DoubleMultiplier;
+    }
+
+    public float NextFloat()
+    {
+        return (float)(NextULong() >> 40) * 5.9604645E-8f;
     }
 
     private ulong NextULong()
@@ -518,5 +530,12 @@ internal static class VanillaNoiseMath
         }
 
         return value;
+    }
+
+    public static long GetCoordinateSeed(int x, int y, int z)
+    {
+        long value = (x * 3129871L) ^ (z * 116129781L) ^ y;
+        value = value * value * 42317861L + value * 11L;
+        return value >> 16;
     }
 }
