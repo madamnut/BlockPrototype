@@ -20,8 +20,6 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int renderSizeInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
-    [FormerlySerializedAs("terraWorldGenPack")]
-    [SerializeField] private WorldGenPackAsset worldGenPack;
 
     [Header("Streaming")]
     [SerializeField, Min(1)] private int completedChunkGenerationsPerFrame = 4;
@@ -170,6 +168,18 @@ public sealed class WorldRuntime : MonoBehaviour
         return true;
     }
 
+    public bool TryGetBiomeNameAt(int worldX, int worldZ, out string biomeName)
+    {
+        biomeName = string.Empty;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        biomeName = _terrain.SampleBiomeName(worldX, worldZ);
+        return true;
+    }
+
     private void Reset()
     {
         EnsureRenderSizeIsOdd();
@@ -289,7 +299,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private void BuildWorld()
     {
         _terrain?.Dispose();
-        _terrain = new TerrainData(seed, terrainSettings, worldGenPack);
+        _terrain = new TerrainData(seed, terrainSettings);
 
         DisposePendingChunkMeshJobs();
         _chunkView?.DestroyAll();
@@ -647,77 +657,6 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             Debug.LogError("WorldRuntime requires valid terrain generation settings.", this);
             isValid = false;
-        }
-
-        if (worldGenPack == null)
-        {
-            Debug.LogError("WorldRuntime requires a WorldGen Pack reference.", this);
-            isValid = false;
-        }
-        else
-        {
-            if (worldGenPack.ContinentalnessSettings == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a continentalness settings asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.WeirdnessSettings == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a weirdness settings asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.TemperatureSettings == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a temperature settings asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.HumiditySettings == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a humidity settings asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.ErosionSettings == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing an erosion settings asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.OffsetSplineGraph == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing an offset spline graph asset.", this);
-                isValid = false;
-            }
-            else if (worldGenPack.OffsetSplineGraph.RuntimeJson == null)
-            {
-                Debug.LogError("WorldRuntime offset spline graph is missing its baked runtime JSON asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.FactorSplineGraph == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a factor spline graph asset.", this);
-                isValid = false;
-            }
-            else if (worldGenPack.FactorSplineGraph.RuntimeJson == null)
-            {
-                Debug.LogError("WorldRuntime factor spline graph is missing its baked runtime JSON asset.", this);
-                isValid = false;
-            }
-
-            if (worldGenPack.JaggednessSplineGraph == null)
-            {
-                Debug.LogError("WorldRuntime WorldGen Pack is missing a jaggedness spline graph asset.", this);
-                isValid = false;
-            }
-            else if (worldGenPack.JaggednessSplineGraph.RuntimeJson == null)
-            {
-                Debug.LogError("WorldRuntime jaggedness spline graph is missing its baked runtime JSON asset.", this);
-                isValid = false;
-            }
         }
 
         if (worldMaterial != null && !worldMaterial.HasProperty("_BlockTextures"))

@@ -1414,7 +1414,7 @@ MonoBehaviour:
   chunkColumnPrefab: {fileID: 6545087223548192322, guid: dd6bb9761279da842a3e351fe345faf3, type: 3}
   renderSizeInChunks: 33
   generationPaddingInChunks: 1
-  seed: 15248
+  seed: 138745
   worldGenPack: {fileID: 11400000, guid: c4b7ece8838f4c7ca0d7ad8369b71597, type: 2}
   completedChunkGenerationsPerFrame: 4
   chunkColumnsMeshedPerFrame: 2
