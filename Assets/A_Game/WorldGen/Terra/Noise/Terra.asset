@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c5a3fc7b02047e29d24420f7bc0ad6a, type: 3}
+  m_Name: Terra
+  m_EditorClassIdentifier: 
+  seaLevel: 127
+  gnd: {fileID: 11400000, guid: 51dc53150d81429faa4b33ad2da10d5d, type: 2}
+  liftNestedSpline: {fileID: 11400000, guid: 832cebf1b10c43a43bcc4a1a400293f5, type: 2}
+  relief: {fileID: 11400000, guid: 35c1029e1d3e46b89ebd0469c80490a1, type: 2}
+  vein: {fileID: 11400000, guid: 69e510fca882420fb18897ea76fe6e50, type: 2}
+  temperature: {fileID: 11400000, guid: c4f61cc729364ac89c3b6e99b547d0cb, type: 2}
+  precipitation: {fileID: 11400000, guid: b624a278bd764ebbaac57e5a2cc2b478, type: 2}

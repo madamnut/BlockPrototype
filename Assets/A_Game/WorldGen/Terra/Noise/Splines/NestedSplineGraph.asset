@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba468abeb906ec74988f035712f5d375, type: 3}
+  m_Name: NestedSplineGraph
+  m_EditorClassIdentifier: Assembly-CSharp::NestedSplineGraphAsset
+  rootLayer:
+    axis: 0
+    rootSpline: {fileID: 11400000, guid: 9c8639bceb06f8b48b4522da30f04333, type: 2}
+    segments:
+    - endInput: -1
+      useChildLayer: 0
+      childLayer:
+        axis: 0
+        rootSpline: {fileID: 0}
+        segments: []
+    - endInput: -0.75
+      useChildLayer: 0
+      childLayer:
+        axis: 0
+        rootSpline: {fileID: 0}
+        segments: []
+    - endInput: -0.5
+      useChildLayer: 0
+      childLayer:
+        axis: 0
+        rootSpline: {fileID: 0}
+        segments: []
+    - endInput: -0.25
+      useChildLayer: 0
+      childLayer:
+        axis: 0
+        rootSpline: {fileID: 0}
+        segments: []
+    - endInput: 0
+      useChildLayer: 0
+      childLayer:
+        axis: 0
+        rootSpline: {fileID: 0}
+        segments: []
+    - endInput: 1
+      useChildLayer: 1
+      childLayer:
+        axis: 1
+        rootSpline: {fileID: 11400000, guid: 1b533d40696e1ad47968b58c829a3744, type: 2}
+        segments:
+        - endInput: 1
+          useChildLayer: 0
+          childLayer:
+            axis: 2
+            rootSpline: {fileID: 11400000, guid: 46e8e6f894d8c5b4687d2f4e62c36dc6, type: 2}

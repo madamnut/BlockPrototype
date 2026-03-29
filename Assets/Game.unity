@@ -756,8 +756,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 363.7035, y: 270}
-  m_SizeDelta: {x: 727.407, y: 540}
+  m_AnchoredPosition: {x: 431.51685, y: 270}
+  m_SizeDelta: {x: 863.0337, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &443012319
 MonoBehaviour:
@@ -929,8 +929,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -402.74756, y: -270}
-  m_SizeDelta: {x: 805.4951, y: 540}
+  m_AnchoredPosition: {x: -445.9015, y: -270}
+  m_SizeDelta: {x: 891.803, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &475769495
 MonoBehaviour:
@@ -1414,8 +1414,9 @@ MonoBehaviour:
   chunkColumnPrefab: {fileID: 6545087223548192322, guid: dd6bb9761279da842a3e351fe345faf3, type: 3}
   renderSizeInChunks: 33
   generationPaddingInChunks: 1
-  seed: 138745
-  worldGenPack: {fileID: 11400000, guid: c4b7ece8838f4c7ca0d7ad8369b71597, type: 2}
+  seed: 813575
+  terrainSettings:
+    terraWorldGen: {fileID: 11400000, guid: 85f44b62a8cf4f2ca862a54cfe0dfce0, type: 2}
   completedChunkGenerationsPerFrame: 4
   chunkColumnsMeshedPerFrame: 2
   chunkGenerationRequestsPerFrame: 8
@@ -1423,16 +1424,6 @@ MonoBehaviour:
   interactionDistance: 16
   selectionColor: {r: 1, g: 1, b: 1, a: 1}
   chunkBoundaryColor: {r: 0.2, g: 0.9, b: 1, a: 0.16}
-  enablePlanarReflection: 1
-  planarReflectionRenderScale: 0.5
-  planarReflectionCullingMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  planarReflectionClipPlaneOffset: 0.05
-  planarReflectionRenderShadows: 1
-  planarReflectionAllowHdr: 1
-  planarReflectionFarClip: 180
-  planarReflectionUpdateInterval: 1
 --- !u!4 &1212262540
 Transform:
   m_ObjectHideFlags: 0
@@ -1513,8 +1504,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -402.74756, y: 270}
-  m_SizeDelta: {x: 805.4951, y: 540}
+  m_AnchoredPosition: {x: -445.9015, y: 270}
+  m_SizeDelta: {x: 891.803, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1399868468
 MonoBehaviour:
@@ -1650,8 +1641,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 363.7035, y: -270}
-  m_SizeDelta: {x: 727.407, y: 540}
+  m_AnchoredPosition: {x: 431.51685, y: -270}
+  m_SizeDelta: {x: 863.0337, y: 540}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1562323632
 MonoBehaviour:

@@ -1,113 +1,462 @@
+using System;
+using System.Collections.Generic;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
-public sealed class TileableNoiseChunkGenerator
+public sealed class TileableNoiseChunkGenerator : IDisposable
 {
-    public const int WorldSizeXZ = 640;
-
-    private const float MacroFrequency = 1f / 320f;
-    private const float DetailFrequency = 1f / 96f;
-    private const float BaseSurfaceHeight = 72f;
-    private const float SurfaceHeightRange = 72f;
-    private const int MacroOctaves = 3;
-    private const int DetailOctaves = 4;
-    private const float Persistence = 0.5f;
-    private const float Lacunarity = 2f;
-
-    private readonly Vector2 _macroOffset;
-    private readonly Vector2 _detailOffset;
-
-    public TileableNoiseChunkGenerator(int seed)
+    public sealed class PendingChunkColumnGeneration : IDisposable
     {
-        Random.State previousState = Random.state;
-        Random.InitState(seed);
-        _macroOffset = new Vector2(Random.Range(-10000f, 10000f), Random.Range(-10000f, 10000f));
-        _detailOffset = new Vector2(Random.Range(-10000f, 10000f), Random.Range(-10000f, 10000f));
-        Random.state = previousState;
+        public int chunkX;
+        public int chunkZ;
+        public readonly NativeArray<float> sampledSurfaceHeights;
+        public readonly NativeArray<BlockType> blocks;
+        public readonly NativeArray<VoxelFluid> fluids;
+        public readonly NativeArray<int> columnHeights;
+        public readonly NativeArray<byte> subChunkContents;
+        public readonly NativeArray<int> maxHeight;
+
+        public JobHandle handle;
+
+        public PendingChunkColumnGeneration(int chunkX, int chunkZ, int sampleCountPerAxis)
+        {
+            this.chunkX = chunkX;
+            this.chunkZ = chunkZ;
+            sampledSurfaceHeights = new NativeArray<float>(sampleCountPerAxis * sampleCountPerAxis, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            blocks = new NativeArray<BlockType>(TerrainData.ChunkSize * TerrainData.WorldHeight * TerrainData.ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            fluids = new NativeArray<VoxelFluid>(TerrainData.ChunkSize * TerrainData.WorldHeight * TerrainData.ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            columnHeights = new NativeArray<int>(TerrainData.ChunkSize * TerrainData.ChunkSize, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            subChunkContents = new NativeArray<byte>(TerrainData.SubChunkCountY, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            maxHeight = new NativeArray<int>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            handle = default;
+        }
+
+        public bool IsCompleted => handle.IsCompleted;
+
+        public void Complete()
+        {
+            handle.Complete();
+        }
+
+        public void PrepareForSchedule(int nextChunkX, int nextChunkZ)
+        {
+            Complete();
+            chunkX = nextChunkX;
+            chunkZ = nextChunkZ;
+            handle = default;
+            ClearNativeArray(blocks);
+            ClearNativeArray(fluids);
+            ClearNativeArray(columnHeights);
+            ClearNativeArray(subChunkContents);
+            ClearNativeArray(maxHeight);
+        }
+
+        public void Dispose()
+        {
+            Complete();
+            if (sampledSurfaceHeights.IsCreated)
+            {
+                sampledSurfaceHeights.Dispose();
+            }
+
+            if (blocks.IsCreated)
+            {
+                blocks.Dispose();
+            }
+
+            if (fluids.IsCreated)
+            {
+                fluids.Dispose();
+            }
+
+            if (columnHeights.IsCreated)
+            {
+                columnHeights.Dispose();
+            }
+
+            if (subChunkContents.IsCreated)
+            {
+                subChunkContents.Dispose();
+            }
+
+            if (maxHeight.IsCreated)
+            {
+                maxHeight.Dispose();
+            }
+        }
     }
 
-    public int GenerateChunkColumn(int chunkX, int chunkZ, BlockType[] blocks, VoxelFluid[] fluids, int[] columnHeights)
+    [BurstCompile(FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+    private struct FillChunkColumnJob : IJob
     {
-        _ = fluids;
+        public GndJobData gndSampler;
+        public ReliefJobData reliefSampler;
+        public VeinJobData veinSampler;
+        public int chunkWorldX;
+        public int chunkWorldZ;
+        public int sampleSpacing;
+        public int sampleCountPerAxis;
+        public int seaLevel;
+        [ReadOnly] public NativeArray<float> nestedBaseHeightLut;
+        public int nestedBaseHeightResolution;
 
-        int maxHeight = -1;
-        int chunkWorldX = chunkX * TerrainData.ChunkSize;
-        int chunkWorldZ = chunkZ * TerrainData.ChunkSize;
-        for (int localZ = 0; localZ < TerrainData.ChunkSize; localZ++)
+        public NativeArray<float> sampledSurfaceHeights;
+        public NativeArray<BlockType> blocks;
+        public NativeArray<VoxelFluid> fluids;
+        public NativeArray<int> columnHeights;
+        public NativeArray<byte> subChunkContents;
+        public NativeArray<int> maxHeightOut;
+
+        public void Execute()
         {
-            int worldZ = chunkWorldZ + localZ;
-            for (int localX = 0; localX < TerrainData.ChunkSize; localX++)
-            {
-                int worldX = chunkWorldX + localX;
-                int surfaceHeight = SampleSurfaceHeight(worldX, worldZ);
-                columnHeights[(localZ * TerrainData.ChunkSize) + localX] = surfaceHeight;
-                maxHeight = Mathf.Max(maxHeight, surfaceHeight);
+            BuildGlobalSurfaceSamples();
 
-                for (int worldY = 0; worldY <= surfaceHeight; worldY++)
+            int maxHeight = -1;
+            for (int localZ = 0; localZ < TerrainData.ChunkSize; localZ++)
+            {
+                for (int localX = 0; localX < TerrainData.ChunkSize; localX++)
                 {
-                    blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
+                    int surfaceHeight = EvaluateInterpolatedSurfaceHeight(sampledSurfaceHeights, localX, localZ, sampleSpacing, sampleCountPerAxis);
+                    int columnIndex = (localZ * TerrainData.ChunkSize) + localX;
+                    columnHeights[columnIndex] = surfaceHeight;
+                    maxHeight = math.max(maxHeight, surfaceHeight);
+
+                    for (int worldY = 0; worldY <= surfaceHeight; worldY++)
+                    {
+                        blocks[GetIndex(localX, worldY, localZ)] = BlockType.Rock;
+                    }
+
+                    ApplySurfaceLayers(localX, localZ, surfaceHeight, blocks);
+                    MarkSubChunkRange(subChunkContents, 0, surfaceHeight, ChunkColumnContentBits.Solid);
+
+                    if (surfaceHeight < seaLevel)
+                    {
+                        for (int worldY = surfaceHeight + 1; worldY <= seaLevel; worldY++)
+                        {
+                            fluids[GetIndex(localX, worldY, localZ)] = new VoxelFluid
+                            {
+                                fluidId = (byte)VoxelFluidType.Water,
+                                amount = byte.MaxValue,
+                            };
+                        }
+
+                        MarkSubChunkRange(subChunkContents, surfaceHeight + 1, seaLevel, ChunkColumnContentBits.Fluid);
+                        maxHeight = math.max(maxHeight, seaLevel);
+                    }
+                }
+            }
+
+            maxHeightOut[0] = maxHeight;
+        }
+
+        private void BuildGlobalSurfaceSamples()
+        {
+            for (int sampleZ = 0; sampleZ < sampleCountPerAxis; sampleZ++)
+            {
+                int sampleWorldZ = chunkWorldZ + (sampleZ * sampleSpacing);
+                for (int sampleX = 0; sampleX < sampleCountPerAxis; sampleX++)
+                {
+                    int sampleWorldX = chunkWorldX + (sampleX * sampleSpacing);
+                    float gnd = GndBurstUtility.SampleGnd(gndSampler, sampleWorldX, sampleWorldZ);
+                    float relief = ClimateBurstUtility.SampleRelief(reliefSampler, sampleWorldX, sampleWorldZ);
+                    float veinFold = ClimateBurstUtility.FoldVein(ClimateBurstUtility.SampleVein(veinSampler, sampleWorldX, sampleWorldZ));
+                    sampledSurfaceHeights[GetSampleIndex(sampleX, sampleZ, sampleCountPerAxis)] =
+                        EvaluateLiftHeight(
+                            gnd,
+                            relief,
+                            veinFold,
+                            nestedBaseHeightLut,
+                            nestedBaseHeightResolution);
                 }
             }
         }
 
-        return maxHeight;
-    }
-
-    private int SampleSurfaceHeight(int worldX, int worldZ)
-    {
-        float wrappedX = PositiveModulo(worldX, WorldSizeXZ);
-        float wrappedZ = PositiveModulo(worldZ, WorldSizeXZ);
-
-        float macroNoise = SampleFractalNoise(wrappedX, wrappedZ, MacroFrequency, MacroOctaves, _macroOffset);
-        float detailNoise = SampleFractalNoise(wrappedX, wrappedZ, DetailFrequency, DetailOctaves, _detailOffset);
-        float combinedNoise = Mathf.Clamp01((macroNoise * 0.7f) + (detailNoise * 0.3f));
-        return Mathf.RoundToInt(BaseSurfaceHeight + (combinedNoise * SurfaceHeightRange));
-    }
-
-    private float SampleFractalNoise(float worldX, float worldZ, float baseFrequency, int octaves, Vector2 offset)
-    {
-        float amplitude = 1f;
-        float frequency = baseFrequency;
-        float total = 0f;
-        float amplitudeSum = 0f;
-
-        for (int octave = 0; octave < octaves; octave++)
+        private static void ApplySurfaceLayers(int localX, int localZ, int surfaceHeight, NativeArray<BlockType> blocks)
         {
-            float sampleX = worldX * frequency;
-            float sampleZ = worldZ * frequency;
-            float period = WorldSizeXZ * frequency;
-            float octaveSample = SampleTileablePerlin(sampleX, sampleZ, period, period, offset + new Vector2(octave * 37.17f, octave * 53.41f));
-            total += octaveSample * amplitude;
-            amplitudeSum += amplitude;
-            amplitude *= Persistence;
-            frequency *= Lacunarity;
+            if (surfaceHeight < 0)
+            {
+                return;
+            }
+
+            blocks[GetIndex(localX, surfaceHeight, localZ)] = BlockType.Grass;
+
+            int dirtStartY = math.max(0, surfaceHeight - 3);
+            for (int worldY = dirtStartY; worldY < surfaceHeight; worldY++)
+            {
+                blocks[GetIndex(localX, worldY, localZ)] = BlockType.Dirt;
+            }
         }
 
-        return amplitudeSum > 0f ? total / amplitudeSum : 0f;
+        private static float EvaluateLiftHeight(
+            float gnd,
+            float relief,
+            float veinFold,
+            NativeArray<float> nestedBaseLut,
+            int nestedBaseResolution)
+        {
+            if (nestedBaseResolution >= 2 && nestedBaseLut.IsCreated)
+            {
+                return NestedSplineGraphUtility.EvaluateLut3D(nestedBaseLut, nestedBaseResolution, gnd, relief, veinFold);
+            }
+
+            return math.lerp(40f, 196f, math.saturate((gnd + 1f) * 0.5f));
+        }
     }
 
-    private static float SampleTileablePerlin(float x, float z, float periodX, float periodZ, Vector2 offset)
+    private readonly GndSampler _gndSampler;
+    private readonly ReliefSampler _reliefSampler;
+    private readonly VeinSampler _veinSampler;
+    private readonly NativeArray<float> _nestedBaseHeightLut;
+    private readonly int _nestedBaseHeightResolution;
+    private readonly Stack<PendingChunkColumnGeneration> _pendingGenerationPool = new();
+
+    public TileableNoiseChunkGenerator(int seed)
+        : this(seed, GndRuntimeSettings.CreateDefault(), ReliefRuntimeSettings.CreateDefault(), VeinRuntimeSettings.CreateDefault(), LiftRuntimeSettings.CreateDefault())
     {
-        float u = x / periodX;
-        float v = z / periodZ;
-
-        float a = Mathf.PerlinNoise(x + offset.x, z + offset.y);
-        float b = Mathf.PerlinNoise((x - periodX) + offset.x, z + offset.y);
-        float c = Mathf.PerlinNoise(x + offset.x, (z - periodZ) + offset.y);
-        float d = Mathf.PerlinNoise((x - periodX) + offset.x, (z - periodZ) + offset.y);
-
-        float x0 = Mathf.Lerp(a, b, u);
-        float x1 = Mathf.Lerp(c, d, u);
-        return Mathf.Lerp(x0, x1, v);
     }
 
-    private static float PositiveModulo(int value, int modulus)
+    public TileableNoiseChunkGenerator(int seed, GndRuntimeSettings settings)
+        : this(seed, settings, ReliefRuntimeSettings.CreateDefault(), VeinRuntimeSettings.CreateDefault(), LiftRuntimeSettings.CreateDefault())
     {
-        int result = value % modulus;
-        return result < 0 ? result + modulus : result;
+    }
+
+    public TileableNoiseChunkGenerator(
+        int seed,
+        GndRuntimeSettings gndSettings,
+        ReliefRuntimeSettings reliefSettings,
+        VeinRuntimeSettings veinSettings,
+        LiftRuntimeSettings liftSettings)
+    {
+        _gndSampler = new GndSampler(gndSettings, seed);
+        _reliefSampler = new ReliefSampler(reliefSettings, seed);
+        _veinSampler = new VeinSampler(veinSettings, seed);
+        _nestedBaseHeightResolution = liftSettings.nestedBaseHeightResolution;
+        if (liftSettings.nestedBaseHeightLut != null && liftSettings.nestedBaseHeightResolution >= 2)
+        {
+            _nestedBaseHeightLut = new NativeArray<float>(liftSettings.nestedBaseHeightLut, Allocator.Persistent);
+        }
+    }
+
+    public int GenerateChunkColumn(int chunkX, int chunkZ, BlockType[] blocks, VoxelFluid[] fluids, int[] columnHeights, byte[] subChunkContents)
+    {
+        PendingChunkColumnGeneration pending = ScheduleChunkColumn(chunkX, chunkZ);
+        try
+        {
+            return CompleteChunkColumn(pending, blocks, fluids, columnHeights, subChunkContents);
+        }
+        finally
+        {
+            ReturnPendingChunkColumnGeneration(pending);
+        }
+    }
+
+    public PendingChunkColumnGeneration ScheduleChunkColumn(int chunkX, int chunkZ)
+    {
+        int sampleSpacing = _gndSampler.SampleSpacing;
+        int seaLevel = _gndSampler.SeaLevel;
+        int sampleCountPerAxis = Mathf.CeilToInt(TerrainData.ChunkSize / (float)sampleSpacing) + 1;
+        int chunkWorldX = chunkX * TerrainData.ChunkSize;
+        int chunkWorldZ = chunkZ * TerrainData.ChunkSize;
+        PendingChunkColumnGeneration pending = RentPendingChunkColumnGeneration(chunkX, chunkZ, sampleCountPerAxis);
+        FillChunkColumnJob fillJob = new()
+        {
+            gndSampler = _gndSampler.JobData,
+            reliefSampler = _reliefSampler.JobData,
+            veinSampler = _veinSampler.JobData,
+            chunkWorldX = chunkWorldX,
+            chunkWorldZ = chunkWorldZ,
+            sampleSpacing = sampleSpacing,
+            sampleCountPerAxis = sampleCountPerAxis,
+            seaLevel = seaLevel,
+            nestedBaseHeightLut = _nestedBaseHeightLut,
+            nestedBaseHeightResolution = _nestedBaseHeightResolution,
+            sampledSurfaceHeights = pending.sampledSurfaceHeights,
+            blocks = pending.blocks,
+            fluids = pending.fluids,
+            columnHeights = pending.columnHeights,
+            subChunkContents = pending.subChunkContents,
+            maxHeightOut = pending.maxHeight,
+        };
+        pending.handle = fillJob.Schedule();
+        return pending;
+    }
+
+    public int CompleteChunkColumn(
+        PendingChunkColumnGeneration pending,
+        BlockType[] blocks,
+        VoxelFluid[] fluids,
+        int[] columnHeights,
+        byte[] subChunkContents)
+    {
+        pending.Complete();
+        pending.blocks.CopyTo(blocks);
+        pending.fluids.CopyTo(fluids);
+        pending.columnHeights.CopyTo(columnHeights);
+        pending.subChunkContents.CopyTo(subChunkContents);
+        return pending.maxHeight[0];
+    }
+
+    public void ReturnPendingChunkColumnGeneration(PendingChunkColumnGeneration pending)
+    {
+        if (pending == null)
+        {
+            return;
+        }
+
+        pending.Complete();
+        pending.handle = default;
+        _pendingGenerationPool.Push(pending);
+    }
+
+    public float SampleGnd(int worldX, int worldZ)
+    {
+        return _gndSampler.SampleGnd(worldX, worldZ);
+    }
+
+    private static int EvaluateInterpolatedSurfaceHeight(float[] sampledSurfaceHeights, int localX, int localZ, int sampleSpacing, int sampleCountPerAxis)
+    {
+        int cellX = localX / sampleSpacing;
+        int cellZ = localZ / sampleSpacing;
+        float tx = (localX - (cellX * sampleSpacing)) / (float)sampleSpacing;
+        float tz = (localZ - (cellZ * sampleSpacing)) / (float)sampleSpacing;
+
+        float h00 = sampledSurfaceHeights[GetSampleIndex(cellX, cellZ, sampleCountPerAxis)];
+        float h10 = sampledSurfaceHeights[GetSampleIndex(cellX + 1, cellZ, sampleCountPerAxis)];
+        float h01 = sampledSurfaceHeights[GetSampleIndex(cellX, cellZ + 1, sampleCountPerAxis)];
+        float h11 = sampledSurfaceHeights[GetSampleIndex(cellX + 1, cellZ + 1, sampleCountPerAxis)];
+        float x0 = Mathf.Lerp(h00, h10, tx);
+        float x1 = Mathf.Lerp(h01, h11, tx);
+        float surfaceHeight = Mathf.Lerp(x0, x1, tz);
+        return Mathf.Clamp(Mathf.FloorToInt(surfaceHeight), 0, TerrainData.WorldHeight - 1);
+    }
+
+    private static int EvaluateInterpolatedSurfaceHeight(NativeArray<float> sampledSurfaceHeights, int localX, int localZ, int sampleSpacing, int sampleCountPerAxis)
+    {
+        int cellX = localX / sampleSpacing;
+        int cellZ = localZ / sampleSpacing;
+        float tx = (localX - (cellX * sampleSpacing)) / (float)sampleSpacing;
+        float tz = (localZ - (cellZ * sampleSpacing)) / (float)sampleSpacing;
+
+        float h00 = sampledSurfaceHeights[GetSampleIndex(cellX, cellZ, sampleCountPerAxis)];
+        float h10 = sampledSurfaceHeights[GetSampleIndex(cellX + 1, cellZ, sampleCountPerAxis)];
+        float h01 = sampledSurfaceHeights[GetSampleIndex(cellX, cellZ + 1, sampleCountPerAxis)];
+        float h11 = sampledSurfaceHeights[GetSampleIndex(cellX + 1, cellZ + 1, sampleCountPerAxis)];
+        float x0 = math.lerp(h00, h10, tx);
+        float x1 = math.lerp(h01, h11, tx);
+        float surfaceHeight = math.lerp(x0, x1, tz);
+        return math.clamp((int)math.floor(surfaceHeight), 0, TerrainData.WorldHeight - 1);
+    }
+
+    private static int GetSampleIndex(int sampleX, int sampleZ, int sampleCountPerAxis)
+    {
+        return (sampleZ * sampleCountPerAxis) + sampleX;
     }
 
     private static int GetIndex(int localX, int worldY, int localZ)
     {
         return ((worldY * TerrainData.ChunkSize) + localZ) * TerrainData.ChunkSize + localX;
+    }
+
+    private static void MarkSubChunkRange(byte[] subChunkContents, int startY, int endY, byte contentBit)
+    {
+        if (subChunkContents == null || contentBit == 0 || startY > endY)
+        {
+            return;
+        }
+
+        int clampedStartY = Mathf.Clamp(startY, 0, TerrainData.WorldHeight - 1);
+        int clampedEndY = Mathf.Clamp(endY, 0, TerrainData.WorldHeight - 1);
+        if (clampedStartY > clampedEndY)
+        {
+            return;
+        }
+
+        int startSubChunkY = clampedStartY / TerrainData.SubChunkSize;
+        int endSubChunkY = clampedEndY / TerrainData.SubChunkSize;
+        for (int subChunkY = startSubChunkY; subChunkY <= endSubChunkY; subChunkY++)
+        {
+            subChunkContents[subChunkY] |= contentBit;
+        }
+    }
+
+    private static void MarkSubChunkRange(NativeArray<byte> subChunkContents, int startY, int endY, byte contentBit)
+    {
+        if (!subChunkContents.IsCreated || contentBit == 0 || startY > endY)
+        {
+            return;
+        }
+
+        int clampedStartY = math.clamp(startY, 0, TerrainData.WorldHeight - 1);
+        int clampedEndY = math.clamp(endY, 0, TerrainData.WorldHeight - 1);
+        if (clampedStartY > clampedEndY)
+        {
+            return;
+        }
+
+        int startSubChunkY = clampedStartY / TerrainData.SubChunkSize;
+        int endSubChunkY = clampedEndY / TerrainData.SubChunkSize;
+        for (int subChunkY = startSubChunkY; subChunkY <= endSubChunkY; subChunkY++)
+        {
+            subChunkContents[subChunkY] = (byte)(subChunkContents[subChunkY] | contentBit);
+        }
+    }
+
+    private static class ChunkColumnContentBits
+    {
+        public const byte Solid = 1 << 0;
+        public const byte Fluid = 1 << 1;
+    }
+
+    public void Dispose()
+    {
+        while (_pendingGenerationPool.Count > 0)
+        {
+            _pendingGenerationPool.Pop().Dispose();
+        }
+
+        _gndSampler.Dispose();
+        _reliefSampler.Dispose();
+        _veinSampler.Dispose();
+
+        if (_nestedBaseHeightLut.IsCreated)
+        {
+            _nestedBaseHeightLut.Dispose();
+        }
+    }
+
+    private PendingChunkColumnGeneration RentPendingChunkColumnGeneration(int chunkX, int chunkZ, int sampleCountPerAxis)
+    {
+        int sampleBufferLength = sampleCountPerAxis * sampleCountPerAxis;
+        while (_pendingGenerationPool.Count > 0)
+        {
+            PendingChunkColumnGeneration pooled = _pendingGenerationPool.Pop();
+            if (!pooled.sampledSurfaceHeights.IsCreated || pooled.sampledSurfaceHeights.Length != sampleBufferLength)
+            {
+                pooled.Dispose();
+                continue;
+            }
+
+            pooled.PrepareForSchedule(chunkX, chunkZ);
+            return pooled;
+        }
+
+        return new PendingChunkColumnGeneration(chunkX, chunkZ, sampleCountPerAxis);
+    }
+
+    private static void ClearNativeArray<T>(NativeArray<T> array) where T : struct
+    {
+        if (!array.IsCreated || array.Length == 0)
+        {
+            return;
+        }
+
+        T defaultValue = default;
+        for (int i = 0; i < array.Length; i++)
+        {
+            array[i] = defaultValue;
+        }
     }
 }

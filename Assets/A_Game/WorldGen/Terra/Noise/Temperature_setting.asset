@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 091bbb652624e2f48ae3e56b23dcc331, type: 3}
+  m_Name: Temperature_setting
+  m_EditorClassIdentifier: 
+  worldSizeXZ: 65536
+  latitudeStrength: 0.85
+  latitudePhaseDegrees: 0
+  latitudeWarpStrength: 5000
+  latitudeWarpBaseCycles: 3
+  latitudeWarpOctaveCount: 2
+  latitudeWarpPersistence: 0.5
+  latitudeWarpLacunarity: 2
+  noiseBaseCycles: 4
+  noiseOctaveCount: 3
+  noisePersistence: 0.5
+  noiseLacunarity: 2
+  noiseStrength: 0.15

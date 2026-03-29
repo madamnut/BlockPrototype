@@ -194,32 +194,6 @@ public sealed class ChunkView
         column.Root.SetActive(HasAnyVisibleGeometry(column));
     }
 
-    public void PopulateVisibleFluidRenderers(WaterReflection waterReflection)
-    {
-        if (waterReflection == null)
-        {
-            return;
-        }
-
-        waterReflection.ResetVisibleFluidRenderers();
-        foreach (ChunkColumnInstance column in _chunkColumnInstances.Values)
-        {
-            if (column == null)
-            {
-                continue;
-            }
-
-            for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
-            {
-                SubChunkInstance subChunk = column.SubChunks[subChunkY];
-                if (IsSubChunkVisible(subChunk) && subChunk.MeshRenderer != null && subChunk.HasFluidGeometry)
-                {
-                    waterReflection.AddVisibleFluidRenderer(subChunk.MeshRenderer);
-                }
-            }
-        }
-    }
-
     private ChunkColumnInstance GetOrCreateChunkColumnInstance(int chunkX, int chunkZ)
     {
         Vector2Int chunkCoords = new(chunkX, chunkZ);

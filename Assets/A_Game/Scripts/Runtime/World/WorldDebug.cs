@@ -5,20 +5,6 @@ using UnityEngine.Rendering.Universal;
 
 public sealed class WorldDebug
 {
-    public readonly struct OverlayVisibility
-    {
-        public readonly bool selectionVisible;
-        public readonly bool chunkBoundariesVisible;
-        public readonly bool playerCollisionVisible;
-
-        public OverlayVisibility(bool selectionVisible, bool chunkBoundariesVisible, bool playerCollisionVisible)
-        {
-            this.selectionVisible = selectionVisible;
-            this.chunkBoundariesVisible = chunkBoundariesVisible;
-            this.playerCollisionVisible = playerCollisionVisible;
-        }
-    }
-
     private readonly Transform _ownerTransform;
     private readonly Material _fallbackWorldMaterial;
     private readonly Color _selectionColor;
@@ -164,48 +150,6 @@ public sealed class WorldDebug
         _selectionOutline.transform.SetParent(worldRoot, false);
         _selectionOutline.transform.localPosition = blockPosition;
         _selectionOutline.SetActive(true);
-    }
-
-    public OverlayVisibility HideForReflection()
-    {
-        bool selectionVisible = _selectionOutline != null && _selectionOutline.activeSelf;
-        bool chunkBoundariesVisible = _chunkBoundaryRoot != null && _chunkBoundaryRoot.activeSelf;
-        bool playerCollisionVisible = _playerCollisionOutline != null && _playerCollisionOutline.activeSelf;
-
-        if (selectionVisible)
-        {
-            _selectionOutline.SetActive(false);
-        }
-
-        if (chunkBoundariesVisible)
-        {
-            _chunkBoundaryRoot.SetActive(false);
-        }
-
-        if (playerCollisionVisible)
-        {
-            _playerCollisionOutline.SetActive(false);
-        }
-
-        return new OverlayVisibility(selectionVisible, chunkBoundariesVisible, playerCollisionVisible);
-    }
-
-    public void RestoreAfterReflection(OverlayVisibility visibility)
-    {
-        if (visibility.selectionVisible && _selectionOutline != null)
-        {
-            _selectionOutline.SetActive(true);
-        }
-
-        if (visibility.chunkBoundariesVisible && _chunkBoundaryRoot != null)
-        {
-            _chunkBoundaryRoot.SetActive(true);
-        }
-
-        if (visibility.playerCollisionVisible && _playerCollisionOutline != null && _playerCollisionVisible)
-        {
-            _playerCollisionOutline.SetActive(true);
-        }
     }
 
     private void CreateSelectionOutline()

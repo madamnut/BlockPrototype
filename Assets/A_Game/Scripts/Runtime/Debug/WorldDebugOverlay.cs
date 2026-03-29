@@ -119,30 +119,34 @@ public sealed class WorldDebugOverlay : MonoBehaviour
         {
             Vector3Int position = worldRuntime.SelectedBlockPosition;
             ushort contentId = worldRuntime.SelectedContentId;
+            int wrappedTargetX = WrapWorldCoordinate(position.x);
+            int wrappedTargetZ = WrapWorldCoordinate(position.z);
 
             _upperLeftBuilder.Append("Target: ");
             _upperLeftBuilder.Append(contentId);
             _upperLeftBuilder.Append('(');
             _upperLeftBuilder.Append(worldRuntime.SelectedContentName);
             _upperLeftBuilder.Append(") [");
-            _upperLeftBuilder.Append(position.x);
+            _upperLeftBuilder.Append(wrappedTargetX);
             _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(position.y);
             _upperLeftBuilder.Append(',');
-            _upperLeftBuilder.Append(position.z);
+            _upperLeftBuilder.Append(wrappedTargetZ);
             _upperLeftBuilder.Append(']');
         }
 
         if (playerController != null)
         {
             Vector3 playerPosition = playerController.transform.position;
+            float wrappedPlayerX = WrapWorldCoordinate(playerPosition.x);
+            float wrappedPlayerZ = WrapWorldCoordinate(playerPosition.z);
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.Append("Position: ");
-            _upperLeftBuilder.Append(playerPosition.x.ToString("F1"));
+            _upperLeftBuilder.Append(wrappedPlayerX.ToString("F1"));
             _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(playerPosition.y.ToString("F1"));
             _upperLeftBuilder.Append(',');
-            _upperLeftBuilder.Append(playerPosition.z.ToString("F1"));
+            _upperLeftBuilder.Append(wrappedPlayerZ.ToString("F1"));
             _upperLeftBuilder.Append(" (facing: ");
             _upperLeftBuilder.Append(GetFacingLabel(playerController.GetInteractionRay().direction));
             _upperLeftBuilder.Append(')');
@@ -158,32 +162,32 @@ public sealed class WorldDebugOverlay : MonoBehaviour
                     _upperLeftBuilder.Append(biome);
                 }
 
-                if (worldRuntime.TryGetContinentalnessAt(worldX, worldZ, out float continentalness))
+                if (worldRuntime.TryGetGndAt(worldX, worldZ, out float gnd))
                 {
                     _upperLeftBuilder.AppendLine();
-                    _upperLeftBuilder.Append("Cont: ");
-                    _upperLeftBuilder.Append(continentalness.ToString("F3"));
+                    _upperLeftBuilder.Append("Gnd: ");
+                    _upperLeftBuilder.Append(gnd.ToString("F3"));
                 }
 
-                if (worldRuntime.TryGetErosionAt(worldX, worldZ, out float erosion))
+                if (worldRuntime.TryGetReliefAt(worldX, worldZ, out float relief))
                 {
                     _upperLeftBuilder.AppendLine();
-                    _upperLeftBuilder.Append("Eros: ");
-                    _upperLeftBuilder.Append(erosion.ToString("F3"));
+                    _upperLeftBuilder.Append("Relief: ");
+                    _upperLeftBuilder.Append(relief.ToString("F3"));
                 }
 
-                if (worldRuntime.TryGetWeirdnessAt(worldX, worldZ, out float weirdness))
+                if (worldRuntime.TryGetVeinAt(worldX, worldZ, out float vein))
                 {
                     _upperLeftBuilder.AppendLine();
-                    _upperLeftBuilder.Append("Weird: ");
-                    _upperLeftBuilder.Append(weirdness.ToString("F3"));
+                    _upperLeftBuilder.Append("Vein: ");
+                    _upperLeftBuilder.Append(vein.ToString("F3"));
                 }
 
-                if (worldRuntime.TryGetPeaksAndValleysAt(worldX, worldZ, out float peaksAndValleys))
+                if (worldRuntime.TryGetVeinFoldAt(worldX, worldZ, out float veinFold))
                 {
                     _upperLeftBuilder.AppendLine();
-                    _upperLeftBuilder.Append("PV: ");
-                    _upperLeftBuilder.Append(peaksAndValleys.ToString("F3"));
+                    _upperLeftBuilder.Append("VeinFold: ");
+                    _upperLeftBuilder.Append(veinFold.ToString("F3"));
                 }
 
                 if (worldRuntime.TryGetTemperatureAt(worldX, worldZ, out float temperature))
@@ -193,11 +197,11 @@ public sealed class WorldDebugOverlay : MonoBehaviour
                     _upperLeftBuilder.Append(temperature.ToString("F3"));
                 }
 
-                if (worldRuntime.TryGetHumidityAt(worldX, worldZ, out float humidity))
+                if (worldRuntime.TryGetPrecipitationAt(worldX, worldZ, out float precipitation))
                 {
                     _upperLeftBuilder.AppendLine();
-                    _upperLeftBuilder.Append("Hum: ");
-                    _upperLeftBuilder.Append(humidity.ToString("F3"));
+                    _upperLeftBuilder.Append("Prec: ");
+                    _upperLeftBuilder.Append(precipitation.ToString("F3"));
                 }
             }
         }
@@ -348,5 +352,15 @@ public sealed class WorldDebugOverlay : MonoBehaviour
         }
 
         return flatDirection.z >= 0f ? "North" : "South";
+    }
+
+    private static int WrapWorldCoordinate(int coordinate)
+    {
+        return coordinate & TerrainData.WorldSizeXZMask;
+    }
+
+    private static float WrapWorldCoordinate(float coordinate)
+    {
+        return Mathf.Repeat(coordinate, TerrainData.WorldSizeXZ);
     }
 }
