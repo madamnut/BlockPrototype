@@ -65,6 +65,7 @@ public sealed class ChunkView
     private readonly Stack<ChunkColumnInstance> _chunkColumnPool = new();
     private readonly CombinedMeshBuffers _combinedMeshBuffers = new();
     private Transform _worldRoot;
+    private Vector2Int _currentCenterChunk;
 
     public ChunkView(Material worldMaterial, Material fluidMaterial, Material foliageMaterial, GameObject chunkColumnPrefab)
     {
@@ -81,7 +82,16 @@ public sealed class ChunkView
 
     public bool ContainsChunkColumn(Vector2Int chunkCoords)
     {
-        return _chunkColumnInstances.ContainsKey(chunkCoords);
+        return _chunkColumnInstances.ContainsKey(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y));
+    }
+
+    public void SetVisibleChunkCenter(Vector2Int centerChunk)
+    {
+        _currentCenterChunk = centerChunk;
+        foreach (KeyValuePair<Vector2Int, ChunkColumnInstance> pair in _chunkColumnInstances)
+        {
+            UpdateChunkColumnTransform(pair.Key, pair.Value);
+        }
     }
 
     public void PrewarmChunkColumnPool(int count)
@@ -102,6 +112,7 @@ public sealed class ChunkView
 
     public void ReleaseChunkColumn(Vector2Int chunkCoords)
     {
+        chunkCoords = TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y);
         if (!_chunkColumnInstances.TryGetValue(chunkCoords, out ChunkColumnInstance column))
         {
             return;
@@ -138,6 +149,7 @@ public sealed class ChunkView
         TerrainData terrain,
         BlockDatabase blockDatabase)
     {
+        chunkCoords = TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y);
         ChunkColumnInstance column = GetOrCreateChunkColumnInstance(chunkCoords.x, chunkCoords.y);
         if (column == null)
         {
@@ -177,7 +189,7 @@ public sealed class ChunkView
 
     public void RefreshLoadedSubChunk(int chunkX, int subChunkY, int chunkZ, TerrainData terrain, BlockDatabase blockDatabase)
     {
-        Vector2Int chunkCoords = new(chunkX, chunkZ);
+        Vector2Int chunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
         if (!_chunkColumnInstances.TryGetValue(chunkCoords, out ChunkColumnInstance column))
         {
             return;
@@ -222,9 +234,10 @@ public sealed class ChunkView
 
     private ChunkColumnInstance GetOrCreateChunkColumnInstance(int chunkX, int chunkZ)
     {
-        Vector2Int chunkCoords = new(chunkX, chunkZ);
+        Vector2Int chunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
         if (_chunkColumnInstances.TryGetValue(chunkCoords, out ChunkColumnInstance column))
         {
+            UpdateChunkColumnTransform(chunkCoords, column);
             return column;
         }
 
@@ -235,8 +248,7 @@ public sealed class ChunkView
         }
 
         column.Root.transform.SetParent(_worldRoot, false);
-        column.Root.transform.localPosition = new Vector3(chunkX * TerrainData.ChunkSize, 0f, chunkZ * TerrainData.ChunkSize);
-        column.Root.name = $"ChunkColumn_{chunkX}_{chunkZ}";
+        UpdateChunkColumnTransform(chunkCoords, column);
         column.Root.SetActive(false);
 
         for (int subChunkY = 0; subChunkY < column.SubChunks.Length; subChunkY++)
@@ -248,6 +260,14 @@ public sealed class ChunkView
 
         _chunkColumnInstances.Add(chunkCoords, column);
         return column;
+    }
+
+    private void UpdateChunkColumnTransform(Vector2Int wrappedChunkCoords, ChunkColumnInstance column)
+    {
+        int displayChunkX = TerrainData.GetDisplayChunkCoord(wrappedChunkCoords.x, _currentCenterChunk.x);
+        int displayChunkZ = TerrainData.GetDisplayChunkCoord(wrappedChunkCoords.y, _currentCenterChunk.y);
+        column.Root.transform.localPosition = new Vector3(displayChunkX * TerrainData.ChunkSize, 0f, displayChunkZ * TerrainData.ChunkSize);
+        column.Root.name = $"ChunkColumn_{wrappedChunkCoords.x}_{wrappedChunkCoords.y}";
     }
 
     private ChunkColumnInstance CreateChunkColumnInstance()

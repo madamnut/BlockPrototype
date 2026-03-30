@@ -271,6 +271,10 @@ public sealed class WorldInteraction
             return;
         }
 
+        Vector2Int wrappedChunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
+        chunkX = wrappedChunkCoords.x;
+        chunkZ = wrappedChunkCoords.y;
+
         if (_canRefreshChunkColumn == null || !_canRefreshChunkColumn(chunkX, chunkZ))
         {
             return;

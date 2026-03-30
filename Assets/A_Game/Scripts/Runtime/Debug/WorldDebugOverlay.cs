@@ -118,6 +118,8 @@ public sealed class WorldDebugOverlay : MonoBehaviour
         else
         {
             Vector3Int position = worldRuntime.SelectedBlockPosition;
+            int wrappedX = TerrainData.WrapWorldCoord(position.x);
+            int wrappedZ = TerrainData.WrapWorldCoord(position.z);
             ushort contentId = worldRuntime.SelectedContentId;
 
             _upperLeftBuilder.Append("Target: ");
@@ -125,32 +127,34 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             _upperLeftBuilder.Append('(');
             _upperLeftBuilder.Append(worldRuntime.SelectedContentName);
             _upperLeftBuilder.Append(") [");
-            _upperLeftBuilder.Append(position.x);
+            _upperLeftBuilder.Append(wrappedX);
             _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(position.y);
             _upperLeftBuilder.Append(',');
-            _upperLeftBuilder.Append(position.z);
+            _upperLeftBuilder.Append(wrappedZ);
             _upperLeftBuilder.Append(']');
         }
 
         if (playerController != null)
         {
             Vector3 playerPosition = playerController.transform.position;
+            float wrappedPlayerX = TerrainData.WrapWorldCoord(playerPosition.x);
+            float wrappedPlayerZ = TerrainData.WrapWorldCoord(playerPosition.z);
             _upperLeftBuilder.AppendLine();
             _upperLeftBuilder.Append("Position: ");
-            _upperLeftBuilder.Append(playerPosition.x.ToString("F1"));
+            _upperLeftBuilder.Append(wrappedPlayerX.ToString("F1"));
             _upperLeftBuilder.Append(',');
             _upperLeftBuilder.Append(playerPosition.y.ToString("F1"));
             _upperLeftBuilder.Append(',');
-            _upperLeftBuilder.Append(playerPosition.z.ToString("F1"));
+            _upperLeftBuilder.Append(wrappedPlayerZ.ToString("F1"));
             _upperLeftBuilder.Append(" (facing: ");
             _upperLeftBuilder.Append(GetFacingLabel(playerController.GetInteractionRay().direction));
             _upperLeftBuilder.Append(')');
 
             if (worldRuntime != null)
             {
-                int worldX = Mathf.FloorToInt(playerPosition.x);
-                int worldZ = Mathf.FloorToInt(playerPosition.z);
+                int worldX = TerrainData.WrapWorldCoord(Mathf.FloorToInt(playerPosition.x));
+                int worldZ = TerrainData.WrapWorldCoord(Mathf.FloorToInt(playerPosition.z));
                 if (worldRuntime.TryGetContinentalnessAt(worldX, worldZ, out float continentalness))
                 {
                     _upperLeftBuilder.AppendLine();

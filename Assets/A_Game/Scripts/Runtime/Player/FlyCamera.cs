@@ -286,7 +286,8 @@ public sealed class FlyCamera : MonoBehaviour
         TerrainData terrain = _worldRuntime != null ? _worldRuntime.Terrain : null;
         if (_currentMovementMode == MovementMode.Fly || terrain == null)
         {
-            playerRoot.position += displacement;
+            Vector3 position = playerRoot.position + displacement;
+            playerRoot.position = WrapPlayerPosition(position);
             return;
         }
 
@@ -298,7 +299,7 @@ public sealed class FlyCamera : MonoBehaviour
             GetScaledCollisionHeight(),
             collisionSkinWidth);
 
-        playerRoot.position = result.position;
+        playerRoot.position = WrapPlayerPosition(result.position);
         if (result.grounded && _verticalVelocity < 0f)
         {
             _verticalVelocity = -2f;
@@ -308,6 +309,13 @@ public sealed class FlyCamera : MonoBehaviour
         {
             _verticalVelocity = 0f;
         }
+    }
+
+    private static Vector3 WrapPlayerPosition(Vector3 position)
+    {
+        position.x = TerrainData.WrapWorldCoord(position.x);
+        position.z = TerrainData.WrapWorldCoord(position.z);
+        return position;
     }
 
     private bool CheckGrounded()

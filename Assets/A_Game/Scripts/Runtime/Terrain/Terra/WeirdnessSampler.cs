@@ -1,14 +1,16 @@
 public sealed class WeirdnessSampler
 {
-    private readonly VanillaWeirdnessNoise _noise;
+    private readonly SimplexNoiseSampler _simplexNoise;
 
-    public WeirdnessSampler(int seed, WeirdnessSettingsAsset settings)
+    public WeirdnessSampler(int seed, SimplexNoiseSettingsAsset settings)
     {
-        _noise = new VanillaWeirdnessNoise(seed, settings);
+        _simplexNoise = new SimplexNoiseSampler(
+            seed,
+            settings ?? throw new System.ArgumentNullException(nameof(settings), "WeirdnessSampler requires a simplex settings asset."));
     }
 
     public float Sample(int worldX, int worldZ)
     {
-        return _noise.Sample(worldX, worldZ);
+        return _simplexNoise.Sample(worldX, worldZ);
     }
 }

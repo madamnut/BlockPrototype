@@ -2,19 +2,17 @@ using UnityEngine;
 
 public sealed class ContinentalnessSampler
 {
-    private readonly ContinentalnessSettingsAsset _settings;
-    private readonly VanillaContinentalnessNoise _vanillaContinents;
+    private readonly SimplexNoiseSampler _simplexNoise;
 
-    public ContinentalnessSampler(int seed, ContinentalnessSettingsAsset settings)
+    public ContinentalnessSampler(int seed, SimplexNoiseSettingsAsset settings)
     {
-        _settings = settings != null
-            ? settings
-            : throw new System.ArgumentNullException(nameof(settings), "ContinentalnessSampler requires a continentalness settings asset.");
-        _vanillaContinents = new VanillaContinentalnessNoise(seed, _settings);
+        _simplexNoise = new SimplexNoiseSampler(
+            seed,
+            settings ?? throw new System.ArgumentNullException(nameof(settings), "ContinentalnessSampler requires a simplex settings asset."));
     }
 
     public float Sample(int worldX, int worldZ)
     {
-        return _vanillaContinents.Sample(worldX, worldZ);
+        return _simplexNoise.Sample(worldX, worldZ);
     }
 }

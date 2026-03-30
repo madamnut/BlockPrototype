@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f6daba3b2c542499f980bfecaf7db89, type: 3}
   m_Name: ErosionSimplexSettings
   m_EditorClassIdentifier: 
-  frequency: 0.0014
+  frequency: 0.0003
   octaves: 5
   lacunarity: 2
   persistence: 0.5
-  amplitude: 1
+  amplitude: 1.3
   seedOffset: 202
   coordinateOffset: {x: 0, y: 0}
   bias: 0

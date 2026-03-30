@@ -16,20 +16,29 @@ public sealed class ChunkGenerator
     private readonly ContinentalnessSampler _continentalnessSampler;
     private readonly ErosionSampler _erosionSampler;
     private readonly WeirdnessSampler _weirdnessSampler;
-    private readonly VanillaJaggedNoise _jaggedNoise;
-    private readonly VanillaBlendedTerrainNoise _terrainNoise;
+    private readonly SimplexNoiseSampler _jaggedNoise;
+    private readonly SimplexNoise3DSampler _terrainNoise;
     private readonly JsonSplineMapper _offsetMapper;
     private readonly JsonSplineMapper _factorMapper;
     private readonly JsonSplineMapper _jaggednessMapper;
 
-    public ChunkGenerator(int seed, int seaLevel, ContinentalnessSampler continentalnessSampler, ErosionSampler erosionSampler, WeirdnessSampler weirdnessSampler, JsonSplineMapper offsetMapper, JsonSplineMapper factorMapper, JsonSplineMapper jaggednessMapper)
+    public ChunkGenerator(
+        int seaLevel,
+        ContinentalnessSampler continentalnessSampler,
+        ErosionSampler erosionSampler,
+        WeirdnessSampler weirdnessSampler,
+        SimplexNoiseSampler jaggedNoiseSampler,
+        SimplexNoise3DSampler terrainNoiseSampler,
+        JsonSplineMapper offsetMapper,
+        JsonSplineMapper factorMapper,
+        JsonSplineMapper jaggednessMapper)
     {
         _seaLevel = Mathf.Clamp(seaLevel, 0, TerrainData.WorldHeight - 1);
         _continentalnessSampler = continentalnessSampler ?? throw new System.ArgumentNullException(nameof(continentalnessSampler));
         _erosionSampler = erosionSampler ?? throw new System.ArgumentNullException(nameof(erosionSampler));
         _weirdnessSampler = weirdnessSampler ?? throw new System.ArgumentNullException(nameof(weirdnessSampler));
-        _jaggedNoise = new VanillaJaggedNoise(seed);
-        _terrainNoise = new VanillaBlendedTerrainNoise(seed);
+        _jaggedNoise = jaggedNoiseSampler ?? throw new System.ArgumentNullException(nameof(jaggedNoiseSampler));
+        _terrainNoise = terrainNoiseSampler ?? throw new System.ArgumentNullException(nameof(terrainNoiseSampler));
         _offsetMapper = offsetMapper ?? throw new System.ArgumentNullException(nameof(offsetMapper));
         _factorMapper = factorMapper ?? throw new System.ArgumentNullException(nameof(factorMapper));
         _jaggednessMapper = jaggednessMapper ?? throw new System.ArgumentNullException(nameof(jaggednessMapper));

@@ -1,14 +1,16 @@
 public sealed class ErosionSampler
 {
-    private readonly VanillaErosionNoise _noise;
+    private readonly SimplexNoiseSampler _simplexNoise;
 
-    public ErosionSampler(int seed, ErosionSettingsAsset settings)
+    public ErosionSampler(int seed, SimplexNoiseSettingsAsset settings)
     {
-        _noise = new VanillaErosionNoise(seed, settings);
+        _simplexNoise = new SimplexNoiseSampler(
+            seed,
+            settings ?? throw new System.ArgumentNullException(nameof(settings), "ErosionSampler requires a simplex settings asset."));
     }
 
     public float Sample(int worldX, int worldZ)
     {
-        return _noise.Sample(worldX, worldZ);
+        return _simplexNoise.Sample(worldX, worldZ);
     }
 }

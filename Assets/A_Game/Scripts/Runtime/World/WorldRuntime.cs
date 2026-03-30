@@ -159,7 +159,7 @@ public sealed class WorldRuntime : MonoBehaviour
             () => _resolvedInteractionCamera,
             (chunkX, chunkZ) =>
             {
-                Vector2Int chunkCoords = new(chunkX, chunkZ);
+                Vector2Int chunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
                 return _worldStreaming != null &&
                        _worldStreaming.IsChunkVisible(chunkCoords) &&
                        _chunkView != null &&
@@ -245,6 +245,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private void UpdateVisibleChunks(bool force = false)
     {
         Vector2Int centerChunk = GetCenterChunkCoordinates();
+        _chunkView?.SetVisibleChunkCenter(centerChunk);
         _worldStreaming?.UpdateVisibleChunks(
             centerChunk,
             force,
@@ -286,7 +287,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void ScheduleChunkColumnMesh(int chunkX, int chunkZ, int usedSubChunkCount)
     {
-        Vector2Int chunkCoords = new(chunkX, chunkZ);
+        Vector2Int chunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
         if (_pendingChunkColumnMeshes.ContainsKey(chunkCoords))
         {
             return;
@@ -330,6 +331,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void ApplyPendingChunkColumnMesh(Vector2Int chunkCoords, VoxelMesher.PendingChunkColumnMesh pendingColumn)
     {
+        chunkCoords = TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y);
         if (_chunkView == null)
         {
             return;
@@ -349,6 +351,7 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void ReleaseChunkColumn(Vector2Int chunkCoords)
     {
+        chunkCoords = TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y);
         if (_pendingChunkColumnMeshes.TryGetValue(chunkCoords, out VoxelMesher.PendingChunkColumnMesh pendingColumn))
         {
             pendingColumn.Dispose();
@@ -370,14 +373,14 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void RefreshLoadedSubChunk(int chunkX, int subChunkY, int chunkZ)
     {
-        Vector2Int chunkCoords = new(chunkX, chunkZ);
+        Vector2Int chunkCoords = TerrainData.WrapChunkCoords(chunkX, chunkZ);
         if (_pendingChunkColumnMeshes.TryGetValue(chunkCoords, out VoxelMesher.PendingChunkColumnMesh pendingColumn))
         {
             pendingColumn.Dispose();
             _pendingChunkColumnMeshes.Remove(chunkCoords);
         }
 
-        _chunkView?.RefreshLoadedSubChunk(chunkX, subChunkY, chunkZ, _terrain, blockDatabase);
+        _chunkView?.RefreshLoadedSubChunk(chunkCoords.x, subChunkY, chunkCoords.y, _terrain, blockDatabase);
     }
 
     private Vector2Int GetCenterChunkCoordinates()
@@ -397,9 +400,11 @@ public sealed class WorldRuntime : MonoBehaviour
             focusPosition = _worldRoot.InverseTransformPoint(focusPosition);
         }
 
+        int wrappedWorldX = TerrainData.WrapWorldCoord(Mathf.FloorToInt(focusPosition.x));
+        int wrappedWorldZ = TerrainData.WrapWorldCoord(Mathf.FloorToInt(focusPosition.z));
         return new Vector2Int(
-            FloorDiv(Mathf.FloorToInt(focusPosition.x), TerrainData.ChunkSize),
-            FloorDiv(Mathf.FloorToInt(focusPosition.z), TerrainData.ChunkSize));
+            FloorDiv(wrappedWorldX, TerrainData.ChunkSize),
+            FloorDiv(wrappedWorldZ, TerrainData.ChunkSize));
     }
 
     private void ResolveInteractionCamera()
@@ -457,10 +462,10 @@ public sealed class WorldRuntime : MonoBehaviour
     {
         chunkCoords.Sort((a, b) =>
         {
-            int aDx = a.x - centerChunk.x;
-            int aDz = a.y - centerChunk.y;
-            int bDx = b.x - centerChunk.x;
-            int bDz = b.y - centerChunk.y;
+            int aDx = TerrainData.GetDisplayChunkCoord(a.x, centerChunk.x) - centerChunk.x;
+            int aDz = TerrainData.GetDisplayChunkCoord(a.y, centerChunk.y) - centerChunk.y;
+            int bDx = TerrainData.GetDisplayChunkCoord(b.x, centerChunk.x) - centerChunk.x;
+            int bDz = TerrainData.GetDisplayChunkCoord(b.y, centerChunk.y) - centerChunk.y;
 
             int aDistance = (aDx * aDx) + (aDz * aDz);
             int bDistance = (bDx * bDx) + (bDz * bDz);
@@ -534,21 +539,33 @@ public sealed class WorldRuntime : MonoBehaviour
         }
         else
         {
-            if (worldGenPack.ContinentalnessSettings == null)
+            if (worldGenPack.ContinentalnessSimplexSettings == null)
             {
                 Debug.LogError("WorldRuntime WorldGen Pack is missing a continentalness settings asset.", this);
                 isValid = false;
             }
 
-            if (worldGenPack.WeirdnessSettings == null)
+            if (worldGenPack.WeirdnessSimplexSettings == null)
             {
                 Debug.LogError("WorldRuntime WorldGen Pack is missing a weirdness settings asset.", this);
                 isValid = false;
             }
 
-            if (worldGenPack.ErosionSettings == null)
+            if (worldGenPack.ErosionSimplexSettings == null)
             {
                 Debug.LogError("WorldRuntime WorldGen Pack is missing an erosion settings asset.", this);
+                isValid = false;
+            }
+
+            if (worldGenPack.JaggedSimplexSettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a jagged simplex settings asset.", this);
+                isValid = false;
+            }
+
+            if (worldGenPack.Terrain3DSimplexSettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a terrain 3D simplex settings asset.", this);
                 isValid = false;
             }
 

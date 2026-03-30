@@ -44,7 +44,7 @@ public sealed class WorldStreaming
 
     public bool IsChunkVisible(Vector2Int chunkCoords)
     {
-        return _visibleChunkColumns.Contains(chunkCoords);
+        return _visibleChunkColumns.Contains(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y));
     }
 
     public void UpdateVisibleChunks(
@@ -70,7 +70,7 @@ public sealed class WorldStreaming
         {
             for (int offsetX = -radius; offsetX <= radius; offsetX++)
             {
-                _targetVisibleChunks.Add(new Vector2Int(centerChunk.x + offsetX, centerChunk.y + offsetZ));
+                _targetVisibleChunks.Add(TerrainData.WrapChunkCoords(centerChunk.x + offsetX, centerChunk.y + offsetZ));
             }
         }
 
@@ -79,7 +79,7 @@ public sealed class WorldStreaming
         {
             for (int offsetX = -generationRadius; offsetX <= generationRadius; offsetX++)
             {
-                _targetGenerationChunks.Add(new Vector2Int(centerChunk.x + offsetX, centerChunk.y + offsetZ));
+                _targetGenerationChunks.Add(TerrainData.WrapChunkCoords(centerChunk.x + offsetX, centerChunk.y + offsetZ));
             }
         }
 
@@ -210,14 +210,15 @@ public sealed class WorldStreaming
     private void QueueChunkAndNeighborsForRefresh(Vector2Int chunkCoords)
     {
         QueueChunkColumnRefresh(chunkCoords);
-        QueueChunkColumnRefresh(new Vector2Int(chunkCoords.x - 1, chunkCoords.y));
-        QueueChunkColumnRefresh(new Vector2Int(chunkCoords.x + 1, chunkCoords.y));
-        QueueChunkColumnRefresh(new Vector2Int(chunkCoords.x, chunkCoords.y - 1));
-        QueueChunkColumnRefresh(new Vector2Int(chunkCoords.x, chunkCoords.y + 1));
+        QueueChunkColumnRefresh(TerrainData.WrapChunkCoords(chunkCoords.x - 1, chunkCoords.y));
+        QueueChunkColumnRefresh(TerrainData.WrapChunkCoords(chunkCoords.x + 1, chunkCoords.y));
+        QueueChunkColumnRefresh(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y - 1));
+        QueueChunkColumnRefresh(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y + 1));
     }
 
     private void QueueChunkColumnRefresh(Vector2Int chunkCoords)
     {
+        chunkCoords = TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y);
         if (!_visibleChunkColumns.Contains(chunkCoords))
         {
             return;
@@ -336,10 +337,10 @@ public sealed class WorldStreaming
 
     private static int CompareChunkPriority(Vector2Int a, Vector2Int b, Vector2Int centerChunk)
     {
-        int aDx = a.x - centerChunk.x;
-        int aDz = a.y - centerChunk.y;
-        int bDx = b.x - centerChunk.x;
-        int bDz = b.y - centerChunk.y;
+        int aDx = TerrainData.GetDisplayChunkCoord(a.x, centerChunk.x) - centerChunk.x;
+        int aDz = TerrainData.GetDisplayChunkCoord(a.y, centerChunk.y) - centerChunk.y;
+        int bDx = TerrainData.GetDisplayChunkCoord(b.x, centerChunk.x) - centerChunk.x;
+        int bDz = TerrainData.GetDisplayChunkCoord(b.y, centerChunk.y) - centerChunk.y;
 
         int aDistance = (aDx * aDx) + (aDz * aDz);
         int bDistance = (bDx * bDx) + (bDz * bDz);

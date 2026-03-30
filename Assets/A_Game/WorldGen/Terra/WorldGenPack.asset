@@ -13,9 +13,11 @@ MonoBehaviour:
   m_Name: WorldGenPack
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenPackAsset
   seaLevel: 127
-  continentalnessSettings: {fileID: 11400000, guid: d9bfac056cb273b48aca8e71082e6a03, type: 2}
-  erosionSettings: {fileID: 11400000, guid: 8d6c546be5984d40a33434bfabf7ec6d, type: 2}
-  weirdnessSettings: {fileID: 11400000, guid: 529fe89f1f718164cbcfbc6bbbf7f838, type: 2}
+  continentalnessSimplexSettings: {fileID: 11400000, guid: e78b6b0bf1d141078ee302374898f53b, type: 2}
+  erosionSimplexSettings: {fileID: 11400000, guid: f97b8c33d79c4798bbbe8a526eec8c5d, type: 2}
+  weirdnessSimplexSettings: {fileID: 11400000, guid: 1d34c8df8a50494b9ea79e3019bbedb4, type: 2}
+  jaggedSimplexSettings: {fileID: 11400000, guid: 5f5fd20ff58048b4a7db85fa477e9b70, type: 2}
+  terrain3DSimplexSettings: {fileID: 11400000, guid: 184751f505f2440baf163dd77c659c7d, type: 2}
   offsetSplineGraph: {fileID: 11400000, guid: e9068f8ee8db416d8a729e3d5bd8b6d3, type: 2}
   factorSplineGraph: {fileID: 11400000, guid: 6af753de72404893ba79f6a451d15a01, type: 2}
   jaggednessSplineGraph: {fileID: 11400000, guid: c5d617f8891c48448373de4f02067f59, type: 2}

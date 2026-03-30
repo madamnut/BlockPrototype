@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f6daba3b2c542499f980bfecaf7db89, type: 3}
+  m_Script: {fileID: 11500000, guid: c2a2908b94844aadb06eb695afd3fc58, type: 3}
   m_Name: WeirdnessSimplexSettings
   m_EditorClassIdentifier: 
   frequency: 0.0012

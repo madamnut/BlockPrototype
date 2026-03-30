@@ -118,10 +118,50 @@ public sealed class TerrainData : IDisposable
     public const int MinecraftMaxYExclusive = MinecraftMinY + MinecraftHeight;
     public const int SubChunkCountY = WorldHeight / SubChunkSize;
     public const int DefaultSeaLevel = 63 - MinecraftMinY;
+    public const int WorldSizeXZ = 65536;
+    public const int WorldChunkCountXZ = WorldSizeXZ / ChunkSize;
+    public const int HalfWorldChunkCountXZ = WorldChunkCountXZ / 2;
 
     public static int ToMinecraftY(int terraY)
     {
         return terraY + MinecraftMinY;
+    }
+
+    public static int WrapWorldCoord(int worldCoord)
+    {
+        return Mod(worldCoord, WorldSizeXZ);
+    }
+
+    public static float WrapWorldCoord(float worldCoord)
+    {
+        float result = worldCoord % WorldSizeXZ;
+        return result < 0f ? result + WorldSizeXZ : result;
+    }
+
+    public static int WrapChunkCoord(int chunkCoord)
+    {
+        return Mod(chunkCoord, WorldChunkCountXZ);
+    }
+
+    public static Vector2Int WrapChunkCoords(int chunkX, int chunkZ)
+    {
+        return new Vector2Int(WrapChunkCoord(chunkX), WrapChunkCoord(chunkZ));
+    }
+
+    public static int GetDisplayChunkCoord(int wrappedChunkCoord, int referenceChunkCoord)
+    {
+        int referenceWrapped = WrapChunkCoord(referenceChunkCoord);
+        int delta = wrappedChunkCoord - referenceWrapped;
+        if (delta > HalfWorldChunkCountXZ)
+        {
+            delta -= WorldChunkCountXZ;
+        }
+        else if (delta < -HalfWorldChunkCountXZ)
+        {
+            delta += WorldChunkCountXZ;
+        }
+
+        return referenceChunkCoord + delta;
     }
 
     private readonly int _seed;
@@ -142,44 +182,47 @@ public sealed class TerrainData : IDisposable
             throw new ArgumentNullException(nameof(worldGenPack), "TerrainData requires a WorldGenPackAsset.");
         }
 
-        _continentalnessSampler = new ContinentalnessSampler(_seed, worldGenPack.ContinentalnessSettings);
-        _erosionSampler = new ErosionSampler(_seed, worldGenPack.ErosionSettings);
-        _weirdnessSampler = new WeirdnessSampler(_seed, worldGenPack.WeirdnessSettings);
+        _continentalnessSampler = new ContinentalnessSampler(_seed, worldGenPack.ContinentalnessSimplexSettings);
+        _erosionSampler = new ErosionSampler(_seed, worldGenPack.ErosionSimplexSettings);
+        _weirdnessSampler = new WeirdnessSampler(_seed, worldGenPack.WeirdnessSimplexSettings);
+        SimplexNoiseSampler jaggedNoiseSampler = new(_seed, worldGenPack.JaggedSimplexSettings);
+        SimplexNoise3DSampler terrainNoiseSampler = new(_seed, worldGenPack.Terrain3DSimplexSettings);
         JsonSplineMapper offsetMapper = new(worldGenPack.OffsetSplineGraph != null ? worldGenPack.OffsetSplineGraph.RuntimeJson : null);
         JsonSplineMapper factorMapper = new(worldGenPack.FactorSplineGraph != null ? worldGenPack.FactorSplineGraph.RuntimeJson : null);
         JsonSplineMapper jaggednessMapper = new(worldGenPack.JaggednessSplineGraph != null ? worldGenPack.JaggednessSplineGraph.RuntimeJson : null);
-        _chunkGenerator = new ChunkGenerator(_seed, worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, offsetMapper, factorMapper, jaggednessMapper);
+        _chunkGenerator = new ChunkGenerator(worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, jaggedNoiseSampler, terrainNoiseSampler, offsetMapper, factorMapper, jaggednessMapper);
     }
 
     public int PendingChunkColumnCount => _pendingChunkColumns.Count;
 
     public float SampleContinentalness(int worldX, int worldZ)
     {
-        return _continentalnessSampler.Sample(worldX, worldZ);
+        return _continentalnessSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
     }
 
     public float SampleWeirdness(int worldX, int worldZ)
     {
-        return _weirdnessSampler.Sample(worldX, worldZ);
+        return _weirdnessSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
     }
 
     public float SampleErosion(int worldX, int worldZ)
     {
-        return _erosionSampler.Sample(worldX, worldZ);
+        return _erosionSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
     }
 
     public float SamplePeaksAndValleys(int worldX, int worldZ)
     {
-        return PeaksAndValleys.Fold(_weirdnessSampler.Sample(worldX, worldZ));
+        return PeaksAndValleys.Fold(_weirdnessSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ)));
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)
     {
+        Vector2Int wrappedChunkCoords = WrapChunkCoords(chunkX, chunkZ);
         double startTime = GetCurrentTimeSeconds();
-        GenerateChunkColumn(chunkX, chunkZ, out _);
+        GenerateChunkColumn(wrappedChunkCoords.x, wrappedChunkCoords.y, out _);
         double totalMilliseconds = (GetCurrentTimeSeconds() - startTime) * 1000d;
         return new ChunkColumnGenerationProfile(
-            new Vector2Int(chunkX, chunkZ),
+            wrappedChunkCoords,
             0d,
             0d,
             0d,
@@ -198,11 +241,14 @@ public sealed class TerrainData : IDisposable
 
     public bool RequestChunkColumn(int chunkX, int chunkZ)
     {
-        Vector2Int key = new(chunkX, chunkZ);
+        Vector2Int key = WrapChunkCoords(chunkX, chunkZ);
         if (_chunkColumns.ContainsKey(key) || _pendingChunkColumns.ContainsKey(key))
         {
             return false;
         }
+
+        chunkX = key.x;
+        chunkZ = key.y;
 
         CancellationToken cancellationToken = _generationCancellation.Token;
         Task<GeneratedChunkColumnResult> generationTask = Task.Run(() =>
@@ -278,12 +324,12 @@ public sealed class TerrainData : IDisposable
 
     public bool IsChunkColumnReady(int chunkX, int chunkZ)
     {
-        return _chunkColumns.ContainsKey(new Vector2Int(chunkX, chunkZ));
+        return _chunkColumns.ContainsKey(WrapChunkCoords(chunkX, chunkZ));
     }
 
     public bool TryGetUsedSubChunkCount(int chunkX, int chunkZ, out int usedSubChunkCount)
     {
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        if (!_chunkColumns.TryGetValue(WrapChunkCoords(chunkX, chunkZ), out ChunkColumnData chunk))
         {
             usedSubChunkCount = 0;
             return false;
@@ -295,7 +341,7 @@ public sealed class TerrainData : IDisposable
 
     public int GetUsedSubChunkCount(int chunkX, int chunkZ)
     {
-        return _chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk)
+        return _chunkColumns.TryGetValue(WrapChunkCoords(chunkX, chunkZ), out ChunkColumnData chunk)
             ? GetUsedSubChunkCount(chunk)
             : 0;
     }
@@ -350,15 +396,17 @@ public sealed class TerrainData : IDisposable
 
     public int GetColumnHeight(int worldX, int worldZ)
     {
-        int chunkX = FloorDiv(worldX, ChunkSize);
-        int chunkZ = FloorDiv(worldZ, ChunkSize);
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        int chunkX = FloorDiv(wrappedWorldX, ChunkSize);
+        int chunkZ = FloorDiv(wrappedWorldZ, ChunkSize);
+        if (!_chunkColumns.TryGetValue(WrapChunkCoords(chunkX, chunkZ), out ChunkColumnData chunk))
         {
             return -1;
         }
 
-        int localX = Mod(worldX, ChunkSize);
-        int localZ = Mod(worldZ, ChunkSize);
+        int localX = Mod(wrappedWorldX, ChunkSize);
+        int localZ = Mod(wrappedWorldZ, ChunkSize);
         return chunk.columnHeights[(localZ * ChunkSize) + localX];
     }
 
@@ -369,9 +417,11 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(worldX, ChunkSize), FloorDiv(worldZ, ChunkSize));
-        int localX = Mod(worldX, ChunkSize);
-        int localZ = Mod(worldZ, ChunkSize);
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        int localX = Mod(wrappedWorldX, ChunkSize);
+        int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
         int columnIndex = (localZ * ChunkSize) + localX;
         int currentColumnHeight = chunk.columnHeights[columnIndex];
@@ -436,9 +486,11 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(worldX, ChunkSize), FloorDiv(worldZ, ChunkSize));
-        int localX = Mod(worldX, ChunkSize);
-        int localZ = Mod(worldZ, ChunkSize);
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        int localX = Mod(wrappedWorldX, ChunkSize);
+        int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
 
         if (chunk.blocks[index] != BlockType.Air && fluid.Exists)
@@ -484,9 +536,11 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(worldX, ChunkSize), FloorDiv(worldZ, ChunkSize));
-        int localX = Mod(worldX, ChunkSize);
-        int localZ = Mod(worldZ, ChunkSize);
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        int localX = Mod(wrappedWorldX, ChunkSize);
+        int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
         if (chunk.foliageIds[index] == foliageId)
         {
@@ -525,7 +579,7 @@ public sealed class TerrainData : IDisposable
 
     private ChunkColumnData EnsureChunkColumnReady(int chunkX, int chunkZ)
     {
-        Vector2Int key = new(chunkX, chunkZ);
+        Vector2Int key = WrapChunkCoords(chunkX, chunkZ);
         if (_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
         {
             return chunk;
@@ -537,13 +591,15 @@ public sealed class TerrainData : IDisposable
             _pendingChunkKeys.Remove(key);
         }
 
-        chunk = GenerateChunkColumn(chunkX, chunkZ, out _);
+        chunk = GenerateChunkColumn(key.x, key.y, out _);
         _chunkColumns[key] = chunk;
         return chunk;
     }
 
     private ChunkColumnData GenerateChunkColumn(int chunkX, int chunkZ, out int[] columnHeights)
     {
+        chunkX = WrapChunkCoord(chunkX);
+        chunkZ = WrapChunkCoord(chunkZ);
         int voxelCount = ChunkSize * WorldHeight * ChunkSize;
         BlockType[] blocks = new BlockType[voxelCount];
         VoxelFluid[] fluids = new VoxelFluid[voxelCount];
@@ -576,7 +632,7 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out ChunkColumnData chunk))
+        if (!_chunkColumns.TryGetValue(WrapChunkCoords(chunkX, chunkZ), out ChunkColumnData chunk))
         {
             return false;
         }
@@ -594,15 +650,17 @@ public sealed class TerrainData : IDisposable
             return false;
         }
 
-        int chunkX = FloorDiv(worldX, ChunkSize);
-        int chunkZ = FloorDiv(worldZ, ChunkSize);
-        if (!_chunkColumns.TryGetValue(new Vector2Int(chunkX, chunkZ), out chunk))
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        int chunkX = FloorDiv(wrappedWorldX, ChunkSize);
+        int chunkZ = FloorDiv(wrappedWorldZ, ChunkSize);
+        if (!_chunkColumns.TryGetValue(WrapChunkCoords(chunkX, chunkZ), out chunk))
         {
             return false;
         }
 
-        int localX = Mod(worldX, ChunkSize);
-        int localZ = Mod(worldZ, ChunkSize);
+        int localX = Mod(wrappedWorldX, ChunkSize);
+        int localZ = Mod(wrappedWorldZ, ChunkSize);
         index = GetIndex(localX, worldY, localZ);
         return true;
     }
