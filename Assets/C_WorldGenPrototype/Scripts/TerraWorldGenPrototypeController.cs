@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Stopwatch = System.Diagnostics.Stopwatch;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,56 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         Erosion = 1,
         Weirdness = 2,
         PeaksAndValleys = 3,
+        ContinentalnessSimplex = 4,
+        ErosionSimplex = 5,
+        WeirdnessSimplex = 6,
+        PeaksAndValleysSimplex = 7,
+    }
+
+    private readonly struct PreviewStats
+    {
+        public PreviewStats(float min, float max, float average)
+        {
+            Min = min;
+            Max = max;
+            Average = average;
+        }
+
+        public float Min { get; }
+        public float Max { get; }
+        public float Average { get; }
+    }
+
+    private readonly struct VanillaPreviewSamplers
+    {
+        public VanillaPreviewSamplers(int seed, WorldGenPackAsset pack)
+        {
+            Continentalness = new ContinentalnessSampler(seed, pack.ContinentalnessSettings);
+            Erosion = new ErosionSampler(seed, pack.ErosionSettings);
+            Weirdness = new WeirdnessSampler(seed, pack.WeirdnessSettings);
+        }
+
+        public ContinentalnessSampler Continentalness { get; }
+        public ErosionSampler Erosion { get; }
+        public WeirdnessSampler Weirdness { get; }
+    }
+
+    private readonly struct SimplexPreviewSamplers
+    {
+        public SimplexPreviewSamplers(
+            int seed,
+            PrototypeSimplexNoiseSettingsAsset continentalnessSettings,
+            PrototypeSimplexNoiseSettingsAsset erosionSettings,
+            PrototypeSimplexNoiseSettingsAsset weirdnessSettings)
+        {
+            Continentalness = new PrototypeSimplexNoiseSampler(seed, continentalnessSettings);
+            Erosion = new PrototypeSimplexNoiseSampler(seed, erosionSettings);
+            Weirdness = new PrototypeSimplexNoiseSampler(seed, weirdnessSettings);
+        }
+
+        public PrototypeSimplexNoiseSampler Continentalness { get; }
+        public PrototypeSimplexNoiseSampler Erosion { get; }
+        public PrototypeSimplexNoiseSampler Weirdness { get; }
     }
 
     private static readonly Color32 AbyssColor = new(8, 24, 56, 255);
@@ -43,6 +94,11 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
     [Header("WorldGen")]
     [SerializeField] private WorldGenPackAsset terraWorldGenPack;
 
+    [Header("Simplex Test")]
+    [SerializeField] private PrototypeSimplexNoiseSettingsAsset continentalnessSimplexSettings;
+    [SerializeField] private PrototypeSimplexNoiseSettingsAsset erosionSimplexSettings;
+    [SerializeField] private PrototypeSimplexNoiseSettingsAsset weirdnessSimplexSettings;
+
     [Header("UI")]
     [SerializeField] private TMP_InputField seedInput;
     [SerializeField] private Button generateButton;
@@ -51,6 +107,10 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
     [SerializeField] private Button erosionButton;
     [SerializeField] private Button weirdnessButton;
     [SerializeField] private Button peaksAndValleysButton;
+    [SerializeField] private Button continentalnessSimplexButton;
+    [SerializeField] private Button erosionSimplexButton;
+    [SerializeField] private Button weirdnessSimplexButton;
+    [SerializeField] private Button peaksAndValleysSimplexButton;
     [SerializeField] private Button gridButton;
     [SerializeField] private RawImage outputImage;
     [SerializeField] private RawImage gridOverlayImage;
@@ -58,6 +118,7 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
     private Texture2D _previewTexture;
     private Texture2D _gridTexture;
     private Color32[] _previewPixels;
+    private float[] _previewSamples;
     private bool _gridVisible = true;
     private PreviewMode _selectedMode = PreviewMode.Continentalness;
 
@@ -76,6 +137,10 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         erosionButton.onClick.AddListener(SelectErosionMode);
         weirdnessButton.onClick.AddListener(SelectWeirdnessMode);
         peaksAndValleysButton.onClick.AddListener(SelectPeaksAndValleysMode);
+        continentalnessSimplexButton.onClick.AddListener(SelectContinentalnessSimplexMode);
+        erosionSimplexButton.onClick.AddListener(SelectErosionSimplexMode);
+        weirdnessSimplexButton.onClick.AddListener(SelectWeirdnessSimplexMode);
+        peaksAndValleysSimplexButton.onClick.AddListener(SelectPeaksAndValleysSimplexMode);
         gridButton.onClick.AddListener(ToggleGrid);
 
         EnsurePreviewTexture();
@@ -92,6 +157,10 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         erosionButton?.onClick.RemoveListener(SelectErosionMode);
         weirdnessButton?.onClick.RemoveListener(SelectWeirdnessMode);
         peaksAndValleysButton?.onClick.RemoveListener(SelectPeaksAndValleysMode);
+        continentalnessSimplexButton?.onClick.RemoveListener(SelectContinentalnessSimplexMode);
+        erosionSimplexButton?.onClick.RemoveListener(SelectErosionSimplexMode);
+        weirdnessSimplexButton?.onClick.RemoveListener(SelectWeirdnessSimplexMode);
+        peaksAndValleysSimplexButton?.onClick.RemoveListener(SelectPeaksAndValleysSimplexMode);
         gridButton?.onClick.RemoveListener(ToggleGrid);
 
         if (_previewTexture != null)
@@ -135,13 +204,29 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
             }
         }
 
+        if (continentalnessSimplexSettings == null || erosionSimplexSettings == null || weirdnessSimplexSettings == null)
+        {
+            Debug.LogError("TerraWorldGenPrototypeController requires simplex test settings assets for continentalness, erosion, and weirdness.", this);
+            isValid = false;
+        }
+
         if (seedInput == null)
         {
             Debug.LogError("TerraWorldGenPrototypeController requires a seed TMP_InputField.", this);
             isValid = false;
         }
 
-        if (generateButton == null || randomGenButton == null || rawContButton == null || erosionButton == null || weirdnessButton == null || peaksAndValleysButton == null || gridButton == null)
+        if (generateButton == null ||
+            randomGenButton == null ||
+            rawContButton == null ||
+            erosionButton == null ||
+            weirdnessButton == null ||
+            peaksAndValleysButton == null ||
+            continentalnessSimplexButton == null ||
+            erosionSimplexButton == null ||
+            weirdnessSimplexButton == null ||
+            peaksAndValleysSimplexButton == null ||
+            gridButton == null)
         {
             Debug.LogError("TerraWorldGenPrototypeController is missing one or more button references.", this);
             isValid = false;
@@ -158,32 +243,70 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
 
     private void ResolveOptionalReferences()
     {
-        if (erosionButton == null || weirdnessButton == null || peaksAndValleysButton == null)
+        if (erosionButton != null &&
+            weirdnessButton != null &&
+            peaksAndValleysButton != null &&
+            continentalnessSimplexButton != null &&
+            erosionSimplexButton != null &&
+            weirdnessSimplexButton != null &&
+            peaksAndValleysSimplexButton != null)
         {
-            foreach (Button button in GetComponentsInChildren<Button>(true))
+            return;
+        }
+
+        foreach (Button button in GetComponentsInChildren<Button>(true))
+        {
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
             {
-                TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
-                if (label == null)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                if (erosionButton == null && string.Equals(label.text, "Erosion", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    erosionButton = button;
-                    continue;
-                }
+            string buttonLabel = label.text?.Trim();
+            if (string.IsNullOrEmpty(buttonLabel))
+            {
+                continue;
+            }
 
-                if (weirdnessButton == null && string.Equals(label.text, "Weirdness", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    weirdnessButton = button;
-                    continue;
-                }
+            if (erosionButton == null && string.Equals(buttonLabel, "Erosion", StringComparison.OrdinalIgnoreCase))
+            {
+                erosionButton = button;
+                continue;
+            }
 
-                if (peaksAndValleysButton == null && string.Equals(label.text, "PV", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    peaksAndValleysButton = button;
-                }
+            if (weirdnessButton == null && string.Equals(buttonLabel, "Weirdness", StringComparison.OrdinalIgnoreCase))
+            {
+                weirdnessButton = button;
+                continue;
+            }
+
+            if (peaksAndValleysButton == null && string.Equals(buttonLabel, "PV", StringComparison.OrdinalIgnoreCase))
+            {
+                peaksAndValleysButton = button;
+                continue;
+            }
+
+            if (continentalnessSimplexButton == null && string.Equals(buttonLabel, "ContSimp", StringComparison.OrdinalIgnoreCase))
+            {
+                continentalnessSimplexButton = button;
+                continue;
+            }
+
+            if (erosionSimplexButton == null && string.Equals(buttonLabel, "ErosionSimp", StringComparison.OrdinalIgnoreCase))
+            {
+                erosionSimplexButton = button;
+                continue;
+            }
+
+            if (weirdnessSimplexButton == null && string.Equals(buttonLabel, "WeirdnessSimp", StringComparison.OrdinalIgnoreCase))
+            {
+                weirdnessSimplexButton = button;
+                continue;
+            }
+
+            if (peaksAndValleysSimplexButton == null && string.Equals(buttonLabel, "PVSimp", StringComparison.OrdinalIgnoreCase))
+            {
+                peaksAndValleysSimplexButton = button;
             }
         }
     }
@@ -195,12 +318,17 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
             return;
         }
 
-        ContinentalnessSampler continentalnessSampler = new(seed, terraWorldGenPack.ContinentalnessSettings);
-        ErosionSampler erosionSampler = new(seed, terraWorldGenPack.ErosionSettings);
-        WeirdnessSampler weirdnessSampler = new(seed, terraWorldGenPack.WeirdnessSettings);
         EnsurePreviewTexture();
 
+        VanillaPreviewSamplers vanillaSamplers = new(seed, terraWorldGenPack);
+        SimplexPreviewSamplers simplexSamplers = new(
+            seed,
+            continentalnessSimplexSettings,
+            erosionSimplexSettings,
+            weirdnessSimplexSettings);
+
         int halfExtent = TextureResolution / 2;
+        Stopwatch stopwatch = Stopwatch.StartNew();
         Parallel.For(0, TextureResolution, z =>
         {
             int worldZ = z - halfExtent;
@@ -208,19 +336,22 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
             for (int x = 0; x < TextureResolution; x++)
             {
                 int worldX = x - halfExtent;
-                _previewPixels[rowStart + x] = EvaluatePreviewColor(
-                    _selectedMode,
-                    continentalnessSampler,
-                    erosionSampler,
-                    weirdnessSampler,
-                    worldX,
-                    worldZ);
+                int index = rowStart + x;
+                float sample = EvaluatePreviewSample(_selectedMode, vanillaSamplers, simplexSamplers, worldX, worldZ);
+                _previewSamples[index] = sample;
+                _previewPixels[index] = EvaluatePreviewColor(_selectedMode, sample);
             }
         });
 
+        PreviewStats stats = ComputePreviewStats(_previewSamples);
         _previewTexture.SetPixelData(_previewPixels, 0);
         _previewTexture.Apply(false, false);
+        stopwatch.Stop();
+
         outputImage.texture = _previewTexture;
+        Debug.Log(
+            $"[TerraWorldGenPrototype] Mode={GetPreviewModeLabel(_selectedMode)} Min={stats.Min:F5} Max={stats.Max:F5} Avg={stats.Average:F5} Time={stopwatch.Elapsed.TotalMilliseconds:F2} ms Samples={TextureResolution}x{TextureResolution}",
+            this);
     }
 
     private void FillRandomSeed()
@@ -259,6 +390,30 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         ApplyModeVisuals();
     }
 
+    private void SelectContinentalnessSimplexMode()
+    {
+        _selectedMode = PreviewMode.ContinentalnessSimplex;
+        ApplyModeVisuals();
+    }
+
+    private void SelectErosionSimplexMode()
+    {
+        _selectedMode = PreviewMode.ErosionSimplex;
+        ApplyModeVisuals();
+    }
+
+    private void SelectWeirdnessSimplexMode()
+    {
+        _selectedMode = PreviewMode.WeirdnessSimplex;
+        ApplyModeVisuals();
+    }
+
+    private void SelectPeaksAndValleysSimplexMode()
+    {
+        _selectedMode = PreviewMode.PeaksAndValleysSimplex;
+        ApplyModeVisuals();
+    }
+
     private void ApplyGridVisibility()
     {
         if (gridOverlayImage != null)
@@ -280,6 +435,7 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         }
 
         _previewPixels ??= new Color32[TextureResolution * TextureResolution];
+        _previewSamples ??= new float[TextureResolution * TextureResolution];
         outputImage.texture = _previewTexture;
     }
 
@@ -342,6 +498,10 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         ApplyButtonHighlight(erosionButton, _selectedMode == PreviewMode.Erosion);
         ApplyButtonHighlight(weirdnessButton, _selectedMode == PreviewMode.Weirdness);
         ApplyButtonHighlight(peaksAndValleysButton, _selectedMode == PreviewMode.PeaksAndValleys);
+        ApplyButtonHighlight(continentalnessSimplexButton, _selectedMode == PreviewMode.ContinentalnessSimplex);
+        ApplyButtonHighlight(erosionSimplexButton, _selectedMode == PreviewMode.ErosionSimplex);
+        ApplyButtonHighlight(weirdnessSimplexButton, _selectedMode == PreviewMode.WeirdnessSimplex);
+        ApplyButtonHighlight(peaksAndValleysSimplexButton, _selectedMode == PreviewMode.PeaksAndValleysSimplex);
     }
 
     private static void ApplyButtonHighlight(Button button, bool selected)
@@ -359,21 +519,77 @@ public sealed class TerraWorldGenPrototypeController : MonoBehaviour
         button.colors = colors;
     }
 
-    private static Color32 EvaluatePreviewColor(
+    private static float EvaluatePreviewSample(
         PreviewMode mode,
-        ContinentalnessSampler continentalnessSampler,
-        ErosionSampler erosionSampler,
-        WeirdnessSampler weirdnessSampler,
+        in VanillaPreviewSamplers vanillaSamplers,
+        in SimplexPreviewSamplers simplexSamplers,
         int worldX,
         int worldZ)
     {
         return mode switch
         {
-            PreviewMode.Continentalness => EvaluateContinentalnessColor(continentalnessSampler.Sample(worldX, worldZ)),
-            PreviewMode.Erosion => EvaluateErosionColor(erosionSampler.Sample(worldX, worldZ)),
-            PreviewMode.Weirdness => EvaluateWeirdnessColor(weirdnessSampler.Sample(worldX, worldZ)),
-            PreviewMode.PeaksAndValleys => EvaluatePeaksAndValleysColor(PeaksAndValleys.Fold(weirdnessSampler.Sample(worldX, worldZ))),
+            PreviewMode.Continentalness => vanillaSamplers.Continentalness.Sample(worldX, worldZ),
+            PreviewMode.Erosion => vanillaSamplers.Erosion.Sample(worldX, worldZ),
+            PreviewMode.Weirdness => vanillaSamplers.Weirdness.Sample(worldX, worldZ),
+            PreviewMode.PeaksAndValleys => PeaksAndValleys.Fold(vanillaSamplers.Weirdness.Sample(worldX, worldZ)),
+            PreviewMode.ContinentalnessSimplex => simplexSamplers.Continentalness.Sample(worldX, worldZ),
+            PreviewMode.ErosionSimplex => simplexSamplers.Erosion.Sample(worldX, worldZ),
+            PreviewMode.WeirdnessSimplex => simplexSamplers.Weirdness.Sample(worldX, worldZ),
+            PreviewMode.PeaksAndValleysSimplex => PeaksAndValleys.Fold(simplexSamplers.Weirdness.Sample(worldX, worldZ)),
+            _ => 0f,
+        };
+    }
+
+    private static Color32 EvaluatePreviewColor(PreviewMode mode, float sample)
+    {
+        return mode switch
+        {
+            PreviewMode.Continentalness or PreviewMode.ContinentalnessSimplex => EvaluateContinentalnessColor(sample),
+            PreviewMode.Erosion or PreviewMode.ErosionSimplex => EvaluateErosionColor(sample),
+            PreviewMode.Weirdness or PreviewMode.WeirdnessSimplex => EvaluateWeirdnessColor(sample),
+            PreviewMode.PeaksAndValleys or PreviewMode.PeaksAndValleysSimplex => EvaluatePeaksAndValleysColor(sample),
             _ => GridClearColor,
+        };
+    }
+
+    private static PreviewStats ComputePreviewStats(float[] samples)
+    {
+        float min = float.PositiveInfinity;
+        float max = float.NegativeInfinity;
+        double sum = 0d;
+
+        for (int i = 0; i < samples.Length; i++)
+        {
+            float sample = samples[i];
+            if (sample < min)
+            {
+                min = sample;
+            }
+
+            if (sample > max)
+            {
+                max = sample;
+            }
+
+            sum += sample;
+        }
+
+        return new PreviewStats(min, max, (float)(sum / samples.Length));
+    }
+
+    private static string GetPreviewModeLabel(PreviewMode mode)
+    {
+        return mode switch
+        {
+            PreviewMode.Continentalness => "Cont",
+            PreviewMode.Erosion => "Erosion",
+            PreviewMode.Weirdness => "Weirdness",
+            PreviewMode.PeaksAndValleys => "PV",
+            PreviewMode.ContinentalnessSimplex => "ContSimp",
+            PreviewMode.ErosionSimplex => "ErosionSimp",
+            PreviewMode.WeirdnessSimplex => "WeirdnessSimp",
+            PreviewMode.PeaksAndValleysSimplex => "PVSimp",
+            _ => "Unknown",
         };
     }
 

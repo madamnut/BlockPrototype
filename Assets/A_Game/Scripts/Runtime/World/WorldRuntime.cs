@@ -36,16 +36,6 @@ public sealed class WorldRuntime : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private Color chunkBoundaryColor = new(0.2f, 0.9f, 1f, 0.16f);
 
-    [Header("Fluid Reflection")]
-    [SerializeField] private bool enablePlanarReflection = true;
-    [SerializeField, Range(0.25f, 1f)] private float planarReflectionRenderScale = 0.5f;
-    [SerializeField] private LayerMask planarReflectionCullingMask = ~0;
-    [SerializeField, Min(0f)] private float planarReflectionClipPlaneOffset = 0.05f;
-    [SerializeField] private bool planarReflectionRenderShadows = false;
-    [SerializeField] private bool planarReflectionAllowHdr = false;
-    [SerializeField, Min(10f)] private float planarReflectionFarClip = 180f;
-    [SerializeField, Min(1)] private int planarReflectionUpdateInterval = 2;
-
     private readonly List<Vector2Int> _pendingMeshKeyBuffer = new(64);
     private readonly Dictionary<Vector2Int, VoxelMesher.PendingChunkColumnMesh> _pendingChunkColumnMeshes = new();
 
@@ -57,11 +47,9 @@ public sealed class WorldRuntime : MonoBehaviour
     private ChunkView _chunkView;
     private WorldDebug _worldDebug;
     private WorldInteraction _worldInteraction;
-    private WaterReflection _waterReflection;
     private WorldStreaming _worldStreaming;
     private NativeArray<ushort> _faceTextureLookup;
     private TerrainGenerationSettings terrainSettings;
-    private bool _visibleFluidRendererCacheDirty = true;
 
     public bool HasSelectedBlock => _worldInteraction != null && _worldInteraction.HasSelection;
     public bool HasSelection => _worldInteraction != null && _worldInteraction.HasSelection;
@@ -140,17 +128,6 @@ public sealed class WorldRuntime : MonoBehaviour
         EnsureTerrainSettingsInitialized();
     }
 
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
-    }
-
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
-        _waterReflection?.ReleaseResources();
-    }
-
     private void Awake()
     {
         EnsureTerrainSettingsInitialized();
@@ -169,9 +146,6 @@ public sealed class WorldRuntime : MonoBehaviour
         EnsureFoliageMaterial();
         BuildFaceTextureLookup();
         _worldStreaming = new WorldStreaming();
-        _waterReflection = new WaterReflection(transform, fluidMaterial);
-        ConfigureWaterReflection();
-        _waterReflection.ApplyFallback();
         _chunkView = new ChunkView(worldMaterial, fluidMaterial, foliageMaterial, chunkColumnPrefab);
         BuildWorld();
         _worldDebug = new WorldDebug(transform, worldMaterial, selectionColor, chunkBoundaryColor);
@@ -209,7 +183,6 @@ public sealed class WorldRuntime : MonoBehaviour
         CompleteChunkGenerationJobs();
         ProcessChunkRefreshQueue();
         CompletePendingChunkMeshJobs();
-        RefreshVisibleFluidRendererCacheIfNeeded();
         _worldDebug?.HandleDebugInput(_playerController, _worldStreaming != null && _worldStreaming.HasCenterChunk, _worldStreaming != null ? _worldStreaming.CurrentCenterChunk : default);
         _worldInteraction?.HandlePlacementInput();
         _worldInteraction?.UpdateSelection();
@@ -220,7 +193,6 @@ public sealed class WorldRuntime : MonoBehaviour
     {
         EnsureTerrainSettingsInitialized();
         EnsureRenderSizeIsOdd();
-        ConfigureWaterReflection();
     }
 
     private void OnDestroy()
@@ -236,8 +208,6 @@ public sealed class WorldRuntime : MonoBehaviour
         _worldDebug?.Dispose();
         _worldDebug = null;
         _worldInteraction = null;
-        _waterReflection?.ReleaseResources();
-        _waterReflection = null;
         _chunkView = null;
         _worldStreaming = null;
 
@@ -269,8 +239,6 @@ public sealed class WorldRuntime : MonoBehaviour
         _chunkView?.PrewarmChunkColumnPool((renderSizeInChunks * renderSizeInChunks) + (4 * renderSizeInChunks));
 
         _worldStreaming?.Reset();
-        _waterReflection?.ResetVisibleFluidRenderers();
-        _visibleFluidRendererCacheDirty = true;
         UpdateVisibleChunks(force: true);
     }
 
@@ -377,7 +345,6 @@ public sealed class WorldRuntime : MonoBehaviour
             pendingColumn,
             _terrain,
             blockDatabase);
-        MarkVisibleFluidRendererCacheDirty();
     }
 
     private void ReleaseChunkColumn(Vector2Int chunkCoords)
@@ -389,7 +356,6 @@ public sealed class WorldRuntime : MonoBehaviour
         }
 
         _chunkView?.ReleaseChunkColumn(chunkCoords);
-        MarkVisibleFluidRendererCacheDirty();
     }
 
     private void DisposePendingChunkMeshJobs()
@@ -412,7 +378,6 @@ public sealed class WorldRuntime : MonoBehaviour
         }
 
         _chunkView?.RefreshLoadedSubChunk(chunkX, subChunkY, chunkZ, _terrain, blockDatabase);
-        MarkVisibleFluidRendererCacheDirty();
     }
 
     private Vector2Int GetCenterChunkCoordinates()
@@ -457,57 +422,6 @@ public sealed class WorldRuntime : MonoBehaviour
         {
             _playerController = FindAnyObjectByType<FlyCamera>();
         }
-    }
-
-    private void ConfigureWaterReflection()
-    {
-        if (_waterReflection == null)
-        {
-            return;
-        }
-
-        _waterReflection.UpdateSettings(
-            enablePlanarReflection,
-            planarReflectionRenderScale,
-            planarReflectionCullingMask,
-            planarReflectionClipPlaneOffset,
-            planarReflectionRenderShadows,
-            planarReflectionAllowHdr,
-            planarReflectionFarClip,
-            planarReflectionUpdateInterval);
-    }
-
-    private void HandleBeginCameraRendering(ScriptableRenderContext context, Camera camera)
-    {
-        if (_terrain == null || _waterReflection == null)
-        {
-            return;
-        }
-
-        RefreshVisibleFluidRendererCacheIfNeeded();
-        ResolveInteractionCamera();
-        _waterReflection.TryRender(
-            camera,
-            _resolvedInteractionCamera,
-            transform.position.y,
-            () => _worldDebug != null ? _worldDebug.HideForReflection() : default,
-            visibility => _worldDebug?.RestoreAfterReflection(visibility));
-    }
-
-    private void MarkVisibleFluidRendererCacheDirty()
-    {
-        _visibleFluidRendererCacheDirty = true;
-    }
-
-    private void RefreshVisibleFluidRendererCacheIfNeeded()
-    {
-        if (!_visibleFluidRendererCacheDirty || _waterReflection == null)
-        {
-            return;
-        }
-
-        _chunkView?.PopulateVisibleFluidRenderers(_waterReflection);
-        _visibleFluidRendererCacheDirty = false;
     }
 
     private void BuildFaceTextureLookup()
