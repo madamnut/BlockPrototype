@@ -31,6 +31,29 @@ public static class VoxelFoliageMesher
 
     [System.ThreadStatic] private static MeshBuildBuffers s_buffers;
 
+    public static bool AppendSubChunkGeometry(
+        List<Vector3> vertices,
+        List<int> indices,
+        List<Vector2> uvs,
+        List<Vector3> normals,
+        List<Color32> colors,
+        TerrainData terrain,
+        BlockDatabase blockDatabase,
+        int chunkX,
+        int subChunkY,
+        int chunkZ)
+    {
+        if (terrain == null || blockDatabase == null)
+        {
+            return false;
+        }
+
+        MeshBuildBuffers buffers = GetBuffers();
+        buffers.Clear();
+        BuildSubChunkGeometry(buffers, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        return AppendBuiltGeometry(buffers, vertices, indices, uvs, normals, colors);
+    }
+
     public static bool RebuildSubChunkMesh(Mesh mesh, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (mesh == null || terrain == null || blockDatabase == null)
@@ -40,7 +63,28 @@ public static class VoxelFoliageMesher
 
         MeshBuildBuffers buffers = GetBuffers();
         buffers.Clear();
+        BuildSubChunkGeometry(buffers, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
 
+        mesh.Clear();
+        if (buffers.vertices.Count == 0)
+        {
+            return false;
+        }
+
+        mesh.name = $"FoliageSubChunk_{chunkX}_{subChunkY}_{chunkZ}";
+        mesh.indexFormat = IndexFormat.UInt32;
+        mesh.SetVertices(buffers.vertices);
+        mesh.SetTriangles(buffers.indices, 0, true);
+        mesh.SetUVs(0, buffers.uvs);
+        mesh.SetNormals(buffers.normals);
+        mesh.SetColors(buffers.colors);
+        mesh.RecalculateBounds();
+        mesh.UploadMeshData(false);
+        return true;
+    }
+
+    private static void BuildSubChunkGeometry(MeshBuildBuffers buffers, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    {
         int startX = chunkX * TerrainData.ChunkSize;
         int startY = subChunkY * TerrainData.SubChunkSize;
         int startZ = chunkZ * TerrainData.ChunkSize;
@@ -73,22 +117,32 @@ public static class VoxelFoliageMesher
                 }
             }
         }
+    }
 
-        mesh.Clear();
+    private static bool AppendBuiltGeometry(
+        MeshBuildBuffers buffers,
+        List<Vector3> vertices,
+        List<int> indices,
+        List<Vector2> uvs,
+        List<Vector3> normals,
+        List<Color32> colors)
+    {
         if (buffers.vertices.Count == 0)
         {
             return false;
         }
 
-        mesh.name = $"FoliageSubChunk_{chunkX}_{subChunkY}_{chunkZ}";
-        mesh.indexFormat = IndexFormat.UInt32;
-        mesh.SetVertices(buffers.vertices);
-        mesh.SetTriangles(buffers.indices, 0, true);
-        mesh.SetUVs(0, buffers.uvs);
-        mesh.SetNormals(buffers.normals);
-        mesh.SetColors(buffers.colors);
-        mesh.RecalculateBounds();
-        mesh.UploadMeshData(false);
+        int vertexOffset = vertices.Count;
+        vertices.AddRange(buffers.vertices);
+        uvs.AddRange(buffers.uvs);
+        normals.AddRange(buffers.normals);
+        colors.AddRange(buffers.colors);
+
+        for (int i = 0; i < buffers.indices.Count; i++)
+        {
+            indices.Add(buffers.indices[i] + vertexOffset);
+        }
+
         return true;
     }
 

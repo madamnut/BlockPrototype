@@ -100,6 +100,74 @@ public sealed class SimplexNoise3DSampler
         return (float)((normalized * _settings.Amplitude) + _settings.Bias);
     }
 
+    public void SampleColumn(int worldX, int startWorldY, int worldZ, int yStep, float[] destination, int sampleCount)
+    {
+        if (destination == null)
+        {
+            throw new ArgumentNullException(nameof(destination));
+        }
+
+        if (sampleCount < 0 || sampleCount > destination.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleCount));
+        }
+
+        Array.Clear(destination, 0, sampleCount);
+
+        Vector3 coordinateOffset = _settings.CoordinateOffset;
+        int wrappedWorldX = TerrainData.WrapWorldCoord(worldX);
+        int wrappedWorldZ = TerrainData.WrapWorldCoord(worldZ);
+        double angleX = ((wrappedWorldX + coordinateOffset.x) / TerrainData.WorldSizeXZ) * Tau;
+        double angleZ = ((wrappedWorldZ + coordinateOffset.z) / TerrainData.WorldSizeXZ) * Tau;
+        double cosX = Math.Cos(angleX);
+        double sinX = Math.Sin(angleX);
+        double cosZ = Math.Cos(angleZ);
+        double sinZ = Math.Sin(angleZ);
+
+        double amplitude = 1d;
+        double amplitudeSum = 0d;
+        double frequency = 1d;
+
+        for (int octave = 0; octave < _settings.Octaves; octave++)
+        {
+            double octaveFrequency = _settings.Frequency * frequency;
+            double radius = GetTorusRadius(octaveFrequency);
+            double baseX = cosX * radius;
+            double baseY = sinX * radius;
+            double baseZ = cosZ * radius;
+            double baseW = sinZ * radius;
+            double yOffset = (startWorldY + coordinateOffset.y) * octaveFrequency;
+            double yDelta = yStep * octaveFrequency;
+            double sampleX = baseX + (yOffset * YOffsetA);
+            double sampleY = baseY + (yOffset * YOffsetB);
+            double sampleZ = baseZ + (yOffset * YOffsetC);
+            double sampleW = baseW + (yOffset * YOffsetD);
+            double stepX = yDelta * YOffsetA;
+            double stepY = yDelta * YOffsetB;
+            double stepZ = yDelta * YOffsetC;
+            double stepW = yDelta * YOffsetD;
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                destination[i] += (float)(_noise.Sample(sampleX, sampleY, sampleZ, sampleW) * amplitude);
+                sampleX += stepX;
+                sampleY += stepY;
+                sampleZ += stepZ;
+                sampleW += stepW;
+            }
+
+            amplitudeSum += amplitude;
+            frequency *= _settings.Lacunarity;
+            amplitude *= _settings.Persistence;
+        }
+
+        float normalization = amplitudeSum > 0d ? (float)(1d / amplitudeSum) : 0f;
+        for (int i = 0; i < sampleCount; i++)
+        {
+            destination[i] = (destination[i] * normalization * _settings.Amplitude) + _settings.Bias;
+        }
+    }
+
     private static double GetTorusRadius(double sampleFrequency)
     {
         return (TerrainData.WorldSizeXZ * sampleFrequency) / Tau;

@@ -17,7 +17,10 @@ public sealed class WorldRuntime : MonoBehaviour
 
     [Header("Terrain")]
     [FormerlySerializedAs("worldSizeInChunks")]
-    [SerializeField, Min(1)] private int renderSizeInChunks = 9;
+    [FormerlySerializedAs("renderSizeInChunks")]
+    [FormerlySerializedAs("renderRadiusInChunks")]
+    [SerializeField, Min(1), Tooltip("Visible chunk diameter for the circular loading range. Odd values only.")]
+    private int renderDiameterInChunks = 9;
     [SerializeField, Min(0)] private int generationPaddingInChunks = 1;
     [SerializeField] private int seed = 24680;
     [FormerlySerializedAs("terraWorldGenPack")]
@@ -28,6 +31,7 @@ public sealed class WorldRuntime : MonoBehaviour
     [SerializeField, Min(1)] private int chunkColumnsMeshedPerFrame = 2;
     [SerializeField, Min(1)] private int chunkGenerationRequestsPerFrame = 32;
     [SerializeField, Min(1)] private int maxPendingChunkGenerations = 128;
+    [SerializeField, Min(1)] private int terrainChunkEvictionsPerFrame = 32;
 
     [Header("Interaction")]
     [SerializeField, Min(0.5f)] private float interactionDistance = 8f;
@@ -58,7 +62,8 @@ public sealed class WorldRuntime : MonoBehaviour
     public bool SelectedIsFoliage => _worldInteraction != null && _worldInteraction.SelectedIsFoliage;
     public string SelectedContentName => _worldInteraction != null ? _worldInteraction.SelectedContentName : "None";
     public BlockType SelectedBlockType => _worldInteraction != null ? _worldInteraction.GetSelectedBlockType() : BlockType.Air;
-    public int RenderSizeInChunks => renderSizeInChunks;
+    public int RenderDiameterInChunks => renderDiameterInChunks;
+    public int RenderRadiusInChunks => renderDiameterInChunks / 2;
     public TerrainData Terrain => _terrain;
 
     public bool TryGetSelectedContinentalness(out float continentalness)
@@ -160,14 +165,14 @@ public sealed class WorldRuntime : MonoBehaviour
 
     private void Reset()
     {
-        EnsureRenderSizeIsOdd();
+        EnsureRenderDiameterInitialized();
         EnsureTerrainSettingsInitialized();
     }
 
     private void Awake()
     {
         EnsureTerrainSettingsInitialized();
-        EnsureRenderSizeIsOdd();
+        EnsureRenderDiameterInitialized();
 
         if (!ValidateSceneReferences())
         {
@@ -215,6 +220,7 @@ public sealed class WorldRuntime : MonoBehaviour
         ResolveInteractionCamera();
         ResolvePlayerController();
         UpdateVisibleChunks();
+        EvictFarTerrainChunks();
         ProcessChunkGenerationRequests();
         CompleteChunkGenerationJobs();
         ProcessChunkRefreshQueue();
@@ -228,7 +234,7 @@ public sealed class WorldRuntime : MonoBehaviour
     private void OnValidate()
     {
         EnsureTerrainSettingsInitialized();
-        EnsureRenderSizeIsOdd();
+        EnsureRenderDiameterInitialized();
     }
 
     private void OnDestroy()
@@ -272,7 +278,7 @@ public sealed class WorldRuntime : MonoBehaviour
         _worldRoot = new GameObject("Voxel World").transform;
         _worldRoot.SetParent(transform, false);
         _chunkView?.SetWorldRoot(_worldRoot);
-        _chunkView?.PrewarmChunkColumnPool((renderSizeInChunks * renderSizeInChunks) + (4 * renderSizeInChunks));
+        _chunkView?.PrewarmChunkColumnPool(GetEstimatedVisibleChunkCapacity());
 
         _worldStreaming?.Reset();
         UpdateVisibleChunks(force: true);
@@ -281,11 +287,12 @@ public sealed class WorldRuntime : MonoBehaviour
     private void UpdateVisibleChunks(bool force = false)
     {
         Vector2Int centerChunk = GetCenterChunkCoordinates();
+        _terrain?.SetGenerationPriorityCenter(centerChunk);
         _chunkView?.SetVisibleChunkCenter(centerChunk);
         _worldStreaming?.UpdateVisibleChunks(
             centerChunk,
             force,
-            renderSizeInChunks,
+            RenderRadiusInChunks,
             generationPaddingInChunks,
             (chunkX, chunkZ) => _terrain.IsChunkColumnReady(chunkX, chunkZ),
             ReleaseChunkColumn);
@@ -309,6 +316,17 @@ public sealed class WorldRuntime : MonoBehaviour
             _terrain.PendingChunkColumnCount,
             (chunkX, chunkZ) => _terrain.IsChunkColumnReady(chunkX, chunkZ),
             (chunkX, chunkZ) => _terrain.RequestChunkColumn(chunkX, chunkZ));
+    }
+
+    private void EvictFarTerrainChunks()
+    {
+        if (_terrain == null || _worldStreaming == null)
+        {
+            return;
+        }
+
+        _terrain.PrunePendingChunkColumns(_worldStreaming.ShouldKeepTerrainChunk);
+        _terrain.EvictChunkColumns(_worldStreaming.ShouldKeepTerrainChunk, terrainChunkEvictionsPerFrame);
     }
 
     private void CompleteChunkGenerationJobs()
@@ -709,16 +727,23 @@ public sealed class WorldRuntime : MonoBehaviour
         terrainSettings = TerrainGenerationSettings.Default;
     }
 
-    private void EnsureRenderSizeIsOdd()
+    private int GetEstimatedVisibleChunkCapacity()
     {
-        if (renderSizeInChunks < 1)
+        int renderRadiusInChunks = RenderRadiusInChunks;
+        int estimatedVisibleChunks = Mathf.CeilToInt(Mathf.PI * ((renderRadiusInChunks + 0.5f) * (renderRadiusInChunks + 0.5f)));
+        return estimatedVisibleChunks + Mathf.Max(8, 8 * Mathf.Max(1, renderRadiusInChunks));
+    }
+
+    private void EnsureRenderDiameterInitialized()
+    {
+        if (renderDiameterInChunks < 1)
         {
-            renderSizeInChunks = 1;
+            renderDiameterInChunks = 1;
         }
 
-        if ((renderSizeInChunks & 1) == 0)
+        if ((renderDiameterInChunks & 1) == 0)
         {
-            renderSizeInChunks += 1;
+            renderDiameterInChunks += 1;
         }
     }
 

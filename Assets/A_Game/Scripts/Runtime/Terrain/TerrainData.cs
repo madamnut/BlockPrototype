@@ -1,8 +1,8 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public sealed class TerrainData : IDisposable
@@ -10,25 +10,40 @@ public sealed class TerrainData : IDisposable
     public readonly struct ChunkColumnGenerationProfile
     {
         public readonly Vector2Int chunkCoords;
-        public readonly double rawSampleMilliseconds;
-        public readonly double remapFilterMilliseconds;
-        public readonly double composeHeightMilliseconds;
-        public readonly double blockFillMilliseconds;
+        public readonly double cornerSampleMilliseconds;
+        public readonly double cellTraversalMilliseconds;
+        public readonly double solidCellFillMilliseconds;
+        public readonly double mixedCellFillMilliseconds;
+        public readonly double surfacePaintMilliseconds;
+        public readonly double waterFillMilliseconds;
+        public readonly int skippedCellCount;
+        public readonly int solidCellCount;
+        public readonly int mixedCellCount;
         public readonly double totalMilliseconds;
 
         public ChunkColumnGenerationProfile(
             Vector2Int chunkCoords,
-            double rawSampleMilliseconds,
-            double remapFilterMilliseconds,
-            double composeHeightMilliseconds,
-            double blockFillMilliseconds,
+            double cornerSampleMilliseconds,
+            double cellTraversalMilliseconds,
+            double solidCellFillMilliseconds,
+            double mixedCellFillMilliseconds,
+            double surfacePaintMilliseconds,
+            double waterFillMilliseconds,
+            int skippedCellCount,
+            int solidCellCount,
+            int mixedCellCount,
             double totalMilliseconds)
         {
             this.chunkCoords = chunkCoords;
-            this.rawSampleMilliseconds = rawSampleMilliseconds;
-            this.remapFilterMilliseconds = remapFilterMilliseconds;
-            this.composeHeightMilliseconds = composeHeightMilliseconds;
-            this.blockFillMilliseconds = blockFillMilliseconds;
+            this.cornerSampleMilliseconds = cornerSampleMilliseconds;
+            this.cellTraversalMilliseconds = cellTraversalMilliseconds;
+            this.solidCellFillMilliseconds = solidCellFillMilliseconds;
+            this.mixedCellFillMilliseconds = mixedCellFillMilliseconds;
+            this.surfacePaintMilliseconds = surfacePaintMilliseconds;
+            this.waterFillMilliseconds = waterFillMilliseconds;
+            this.skippedCellCount = skippedCellCount;
+            this.solidCellCount = solidCellCount;
+            this.mixedCellCount = mixedCellCount;
             this.totalMilliseconds = totalMilliseconds;
         }
     }
@@ -37,22 +52,22 @@ public sealed class TerrainData : IDisposable
     {
         public readonly Vector2Int chunkCoords;
         public readonly double readyTime;
-        public readonly double heightJobMilliseconds;
-        public readonly double blockFillJobMilliseconds;
+        public readonly double generationMilliseconds;
         public readonly double finalizeMilliseconds;
+        public readonly ChunkColumnGenerationProfile generationProfile;
 
         public CompletedChunkColumnInfo(
             Vector2Int chunkCoords,
             double readyTime,
-            double heightJobMilliseconds,
-            double blockFillJobMilliseconds,
-            double finalizeMilliseconds)
+            double generationMilliseconds,
+            double finalizeMilliseconds,
+            ChunkColumnGenerationProfile generationProfile)
         {
             this.chunkCoords = chunkCoords;
             this.readyTime = readyTime;
-            this.heightJobMilliseconds = heightJobMilliseconds;
-            this.blockFillJobMilliseconds = blockFillJobMilliseconds;
+            this.generationMilliseconds = generationMilliseconds;
             this.finalizeMilliseconds = finalizeMilliseconds;
+            this.generationProfile = generationProfile;
         }
     }
 
@@ -88,26 +103,63 @@ public sealed class TerrainData : IDisposable
 
     private sealed class PendingChunkColumnData
     {
-        public PendingChunkColumnData(double requestTime, Task<GeneratedChunkColumnResult> generationTask)
+        public PendingChunkColumnData(double requestTime)
         {
             RequestTime = requestTime;
-            GenerationTask = generationTask;
+            State = PendingChunkColumnState.Queued;
         }
 
         public double RequestTime { get; }
-        public Task<GeneratedChunkColumnResult> GenerationTask { get; }
+        public PendingChunkColumnState State { get; private set; }
+        public GeneratedChunkColumnResult Result { get; private set; }
+        public Exception Fault { get; private set; }
+
+        public bool TryMarkGenerating()
+        {
+            if (State != PendingChunkColumnState.Queued)
+            {
+                return false;
+            }
+
+            State = PendingChunkColumnState.Generating;
+            return true;
+        }
+
+        public void MarkCompleted(GeneratedChunkColumnResult result)
+        {
+            Result = result;
+            Fault = null;
+            State = PendingChunkColumnState.Completed;
+        }
+
+        public void MarkFaulted(Exception fault)
+        {
+            Result = null;
+            Fault = fault;
+            State = PendingChunkColumnState.Faulted;
+        }
     }
 
     private sealed class GeneratedChunkColumnResult
     {
-        public GeneratedChunkColumnResult(ChunkColumnData chunk, double generationMilliseconds)
+        public GeneratedChunkColumnResult(ChunkColumnData chunk, double generationMilliseconds, ChunkColumnGenerationProfile generationProfile)
         {
             Chunk = chunk;
             GenerationMilliseconds = generationMilliseconds;
+            GenerationProfile = generationProfile;
         }
 
         public ChunkColumnData Chunk { get; }
         public double GenerationMilliseconds { get; }
+        public ChunkColumnGenerationProfile GenerationProfile { get; }
+    }
+
+    private enum PendingChunkColumnState : byte
+    {
+        Queued = 0,
+        Generating = 1,
+        Completed = 2,
+        Faulted = 3,
     }
 
     public const int ChunkSize = 16;
@@ -171,10 +223,19 @@ public sealed class TerrainData : IDisposable
     private readonly TemperatureSampler _temperatureSampler;
     private readonly SimplexNoiseSampler _precipitationSampler;
     private readonly ChunkGenerator _chunkGenerator;
+    private readonly object _generationStateLock = new();
+    private readonly ArrayPool<BlockType> _blockArrayPool = ArrayPool<BlockType>.Shared;
+    private readonly ArrayPool<VoxelFluid> _fluidArrayPool = ArrayPool<VoxelFluid>.Shared;
+    private readonly ArrayPool<ushort> _foliageArrayPool = ArrayPool<ushort>.Shared;
+    private readonly ArrayPool<int> _intArrayPool = ArrayPool<int>.Shared;
+    private readonly ArrayPool<byte> _byteArrayPool = ArrayPool<byte>.Shared;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
-    private readonly List<Vector2Int> _pendingChunkKeys = new();
-    private readonly CancellationTokenSource _generationCancellation = new();
+    private readonly List<Vector2Int> _queuedChunkGenerations = new();
+    private readonly Queue<Vector2Int> _completedChunkGenerations = new();
+    private readonly Thread[] _generationWorkers;
+    private Vector2Int _generationPriorityCenterChunk;
+    private bool _generationWorkersStopping;
 
     public TerrainData(int seed, TerrainGenerationSettings settings, WorldGenPackAsset worldGenPack)
     {
@@ -195,9 +256,19 @@ public sealed class TerrainData : IDisposable
         JsonSplineMapper factorMapper = new(worldGenPack.FactorSplineGraph != null ? worldGenPack.FactorSplineGraph.RuntimeJson : null);
         JsonSplineMapper jaggednessMapper = new(worldGenPack.JaggednessSplineGraph != null ? worldGenPack.JaggednessSplineGraph.RuntimeJson : null);
         _chunkGenerator = new ChunkGenerator(worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, jaggedNoiseSampler, terrainNoiseSampler, offsetMapper, factorMapper, jaggednessMapper);
+        _generationWorkers = CreateGenerationWorkers();
     }
 
-    public int PendingChunkColumnCount => _pendingChunkColumns.Count;
+    public int PendingChunkColumnCount
+    {
+        get
+        {
+            lock (_generationStateLock)
+            {
+                return _pendingChunkColumns.Count;
+            }
+        }
+    }
 
     public float SampleContinentalness(int worldX, int worldZ)
     {
@@ -229,6 +300,14 @@ public sealed class TerrainData : IDisposable
         return _precipitationSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
     }
 
+    public void SetGenerationPriorityCenter(Vector2Int centerChunk)
+    {
+        lock (_generationStateLock)
+        {
+            _generationPriorityCenterChunk = TerrainData.WrapChunkCoords(centerChunk.x, centerChunk.y);
+        }
+    }
+
     public BiomeGroupKind SampleBiomeGroup(int worldX, int worldZ)
     {
         int wrappedWorldX = WrapWorldCoord(worldX);
@@ -245,98 +324,142 @@ public sealed class TerrainData : IDisposable
     {
         Vector2Int wrappedChunkCoords = WrapChunkCoords(chunkX, chunkZ);
         double startTime = GetCurrentTimeSeconds();
-        GenerateChunkColumn(wrappedChunkCoords.x, wrappedChunkCoords.y, out _);
+        ChunkColumnData chunk = GenerateChunkColumn(wrappedChunkCoords.x, wrappedChunkCoords.y, out _, out ChunkColumnGenerationProfile profile);
         double totalMilliseconds = (GetCurrentTimeSeconds() - startTime) * 1000d;
+        ReturnChunkColumnData(chunk);
         return new ChunkColumnGenerationProfile(
             wrappedChunkCoords,
-            0d,
-            0d,
-            0d,
-            totalMilliseconds,
+            profile.cornerSampleMilliseconds,
+            profile.cellTraversalMilliseconds,
+            profile.solidCellFillMilliseconds,
+            profile.mixedCellFillMilliseconds,
+            profile.surfacePaintMilliseconds,
+            profile.waterFillMilliseconds,
+            profile.skippedCellCount,
+            profile.solidCellCount,
+            profile.mixedCellCount,
             totalMilliseconds);
     }
 
     public void Dispose()
     {
-        _generationCancellation.Cancel();
+        lock (_generationStateLock)
+        {
+            _generationWorkersStopping = true;
+            Monitor.PulseAll(_generationStateLock);
+        }
+
+        for (int i = 0; i < _generationWorkers.Length; i++)
+        {
+            Thread worker = _generationWorkers[i];
+            if (worker == null)
+            {
+                continue;
+            }
+
+            worker.Join();
+        }
+
+        foreach (ChunkColumnData chunk in _chunkColumns.Values)
+        {
+            ReturnChunkColumnData(chunk);
+        }
+
         _chunkColumns.Clear();
-        _pendingChunkColumns.Clear();
-        _pendingChunkKeys.Clear();
-        _generationCancellation.Dispose();
+        lock (_generationStateLock)
+        {
+            foreach (PendingChunkColumnData pending in _pendingChunkColumns.Values)
+            {
+                if (pending.Result?.Chunk != null)
+                {
+                    ReturnChunkColumnData(pending.Result.Chunk);
+                }
+            }
+
+            _pendingChunkColumns.Clear();
+            _queuedChunkGenerations.Clear();
+            _completedChunkGenerations.Clear();
+        }
     }
 
     public bool RequestChunkColumn(int chunkX, int chunkZ)
     {
         Vector2Int key = WrapChunkCoords(chunkX, chunkZ);
-        if (_chunkColumns.ContainsKey(key) || _pendingChunkColumns.ContainsKey(key))
+        lock (_generationStateLock)
         {
-            return false;
+            if (_chunkColumns.ContainsKey(key) || _pendingChunkColumns.ContainsKey(key) || _generationWorkersStopping)
+            {
+                return false;
+            }
+
+            _pendingChunkColumns.Add(key, new PendingChunkColumnData(GetCurrentTimeSeconds()));
+            _queuedChunkGenerations.Add(key);
+            Monitor.Pulse(_generationStateLock);
+            return true;
         }
-
-        chunkX = key.x;
-        chunkZ = key.y;
-
-        CancellationToken cancellationToken = _generationCancellation.Token;
-        Task<GeneratedChunkColumnResult> generationTask = Task.Run(() =>
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            double generateStart = GetCurrentTimeSeconds();
-            ChunkColumnData chunk = GenerateChunkColumn(chunkX, chunkZ, out _);
-            double generateEnd = GetCurrentTimeSeconds();
-            return new GeneratedChunkColumnResult(chunk, (generateEnd - generateStart) * 1000d);
-        }, cancellationToken);
-
-        _pendingChunkColumns.Add(key, new PendingChunkColumnData(GetCurrentTimeSeconds(), generationTask));
-        _pendingChunkKeys.Add(key);
-        return true;
     }
 
     public int CompletePendingChunkColumns(List<CompletedChunkColumnInfo> completedChunkInfos, int maxCompletions)
     {
-        if (maxCompletions <= 0 || _pendingChunkKeys.Count == 0)
+        if (maxCompletions <= 0)
         {
             return 0;
         }
 
-        int completions = 0;
-        for (int pendingIndex = 0; pendingIndex < _pendingChunkKeys.Count && completions < maxCompletions;)
+        List<(Vector2Int key, PendingChunkColumnData pending)> completedEntries = new(maxCompletions);
+        lock (_generationStateLock)
         {
-            Vector2Int key = _pendingChunkKeys[pendingIndex];
-            if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+            while (_completedChunkGenerations.Count > 0 && completedEntries.Count < maxCompletions)
             {
-                _pendingChunkKeys.RemoveAt(pendingIndex);
+                Vector2Int key = _completedChunkGenerations.Dequeue();
+                if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+                {
+                    continue;
+                }
+
+                if (pending.State != PendingChunkColumnState.Completed && pending.State != PendingChunkColumnState.Faulted)
+                {
+                    continue;
+                }
+
+                _pendingChunkColumns.Remove(key);
+                completedEntries.Add((key, pending));
+            }
+        }
+
+        int completions = 0;
+        for (int i = 0; i < completedEntries.Count; i++)
+        {
+            (Vector2Int key, PendingChunkColumnData pending) = completedEntries[i];
+            if (pending.State == PendingChunkColumnState.Faulted)
+            {
+                if (pending.Fault != null)
+                {
+                    UnityEngine.Debug.LogException(pending.Fault);
+                }
+
                 continue;
             }
 
-            if (!pending.GenerationTask.IsCompleted)
+            if (pending.State != PendingChunkColumnState.Completed || pending.Result == null)
             {
-                pendingIndex++;
-                continue;
-            }
-
-            _pendingChunkKeys.RemoveAt(pendingIndex);
-            _pendingChunkColumns.Remove(key);
-
-            if (pending.GenerationTask.IsCanceled)
-            {
-                continue;
-            }
-
-            if (pending.GenerationTask.IsFaulted)
-            {
-                UnityEngine.Debug.LogException(pending.GenerationTask.Exception);
                 continue;
             }
 
             double completeTime = GetCurrentTimeSeconds();
-            GeneratedChunkColumnResult result = pending.GenerationTask.Result;
+            GeneratedChunkColumnResult result = pending.Result;
+            if (_chunkColumns.TryGetValue(key, out ChunkColumnData previousChunk))
+            {
+                ReturnChunkColumnData(previousChunk);
+            }
+
             _chunkColumns[key] = result.Chunk;
             completedChunkInfos?.Add(new CompletedChunkColumnInfo(
                 key,
                 completeTime - pending.RequestTime,
-                0d,
                 result.GenerationMilliseconds,
-                0d));
+                0d,
+                result.GenerationProfile));
             completions++;
         }
 
@@ -351,6 +474,104 @@ public sealed class TerrainData : IDisposable
     public bool IsChunkColumnReady(int chunkX, int chunkZ)
     {
         return _chunkColumns.ContainsKey(WrapChunkCoords(chunkX, chunkZ));
+    }
+
+    public bool ReleaseChunkColumn(int chunkX, int chunkZ)
+    {
+        Vector2Int key = WrapChunkCoords(chunkX, chunkZ);
+        if (!_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
+        _chunkColumns.Remove(key);
+        ReturnChunkColumnData(chunk);
+        return true;
+    }
+
+    public int EvictChunkColumns(Func<Vector2Int, bool> shouldKeepChunk, int maxEvictions)
+    {
+        if (shouldKeepChunk == null || maxEvictions <= 0 || _chunkColumns.Count == 0)
+        {
+            return 0;
+        }
+
+        List<Vector2Int> evictionKeys = new(Math.Min(maxEvictions, _chunkColumns.Count));
+        foreach (Vector2Int key in _chunkColumns.Keys)
+        {
+            if (shouldKeepChunk(key))
+            {
+                continue;
+            }
+
+            evictionKeys.Add(key);
+            if (evictionKeys.Count >= maxEvictions)
+            {
+                break;
+            }
+        }
+
+        for (int i = 0; i < evictionKeys.Count; i++)
+        {
+            Vector2Int key = evictionKeys[i];
+            if (_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+            {
+                _chunkColumns.Remove(key);
+                ReturnChunkColumnData(chunk);
+            }
+        }
+
+        return evictionKeys.Count;
+    }
+
+    public int PrunePendingChunkColumns(Func<Vector2Int, bool> shouldKeepChunk)
+    {
+        if (shouldKeepChunk == null)
+        {
+            return 0;
+        }
+
+        int removedCount = 0;
+        lock (_generationStateLock)
+        {
+            List<Vector2Int> keysToRemove = null;
+            foreach (KeyValuePair<Vector2Int, PendingChunkColumnData> pair in _pendingChunkColumns)
+            {
+                if (shouldKeepChunk(pair.Key) || pair.Value.State == PendingChunkColumnState.Generating)
+                {
+                    continue;
+                }
+
+                keysToRemove ??= new List<Vector2Int>();
+                keysToRemove.Add(pair.Key);
+            }
+
+            if (keysToRemove == null || keysToRemove.Count == 0)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < keysToRemove.Count; i++)
+            {
+                Vector2Int key = keysToRemove[i];
+                if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending))
+                {
+                    continue;
+                }
+
+                if (pending.Result?.Chunk != null)
+                {
+                    ReturnChunkColumnData(pending.Result.Chunk);
+                }
+
+                _pendingChunkColumns.Remove(key);
+                removedCount++;
+            }
+
+            RebuildQueuedPendingCollections();
+        }
+
+        return removedCount;
     }
 
     public bool TryGetUsedSubChunkCount(int chunkX, int chunkZ, out int usedSubChunkCount)
@@ -445,7 +666,11 @@ public sealed class TerrainData : IDisposable
 
         int wrappedWorldX = WrapWorldCoord(worldX);
         int wrappedWorldZ = WrapWorldCoord(worldZ);
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        if (!TryGetEditableChunkColumn(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize), out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
         int localX = Mod(wrappedWorldX, ChunkSize);
         int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
@@ -514,7 +739,11 @@ public sealed class TerrainData : IDisposable
 
         int wrappedWorldX = WrapWorldCoord(worldX);
         int wrappedWorldZ = WrapWorldCoord(worldZ);
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        if (!TryGetEditableChunkColumn(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize), out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
         int localX = Mod(wrappedWorldX, ChunkSize);
         int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
@@ -564,7 +793,11 @@ public sealed class TerrainData : IDisposable
 
         int wrappedWorldX = WrapWorldCoord(worldX);
         int wrappedWorldZ = WrapWorldCoord(worldZ);
-        ChunkColumnData chunk = EnsureChunkColumnReady(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize));
+        if (!TryGetEditableChunkColumn(FloorDiv(wrappedWorldX, ChunkSize), FloorDiv(wrappedWorldZ, ChunkSize), out ChunkColumnData chunk))
+        {
+            return false;
+        }
+
         int localX = Mod(wrappedWorldX, ChunkSize);
         int localZ = Mod(wrappedWorldZ, ChunkSize);
         int index = GetIndex(localX, worldY, localZ);
@@ -603,37 +836,172 @@ public sealed class TerrainData : IDisposable
         return worldY >= 0 && worldY < WorldHeight;
     }
 
-    private ChunkColumnData EnsureChunkColumnReady(int chunkX, int chunkZ)
+    private bool TryGetEditableChunkColumn(int chunkX, int chunkZ, out ChunkColumnData chunk)
     {
         Vector2Int key = WrapChunkCoords(chunkX, chunkZ);
-        if (_chunkColumns.TryGetValue(key, out ChunkColumnData chunk))
+        if (_chunkColumns.TryGetValue(key, out chunk))
         {
-            return chunk;
+            return true;
         }
 
-        if (_pendingChunkColumns.ContainsKey(key))
-        {
-            _pendingChunkColumns.Remove(key);
-            _pendingChunkKeys.Remove(key);
-        }
-
-        chunk = GenerateChunkColumn(key.x, key.y, out _);
-        _chunkColumns[key] = chunk;
-        return chunk;
+        RequestChunkColumn(key.x, key.y);
+        chunk = null;
+        return false;
     }
 
-    private ChunkColumnData GenerateChunkColumn(int chunkX, int chunkZ, out int[] columnHeights)
+    private Thread[] CreateGenerationWorkers()
+    {
+        int workerCount = Math.Max(1, Environment.ProcessorCount - 1);
+        Thread[] workers = new Thread[workerCount];
+        for (int i = 0; i < workerCount; i++)
+        {
+            Thread worker = new(GenerationWorkerLoop)
+            {
+                IsBackground = true,
+                Name = $"Terrain Chunk Worker {i + 1}",
+            };
+            worker.Start();
+            workers[i] = worker;
+        }
+
+        return workers;
+    }
+
+    private void GenerationWorkerLoop()
+    {
+        while (true)
+        {
+            Vector2Int key = default;
+            PendingChunkColumnData pending = null;
+
+            lock (_generationStateLock)
+            {
+                while (!_generationWorkersStopping && !TryDequeueQueuedChunk(out key, out pending))
+                {
+                    Monitor.Wait(_generationStateLock);
+                }
+
+                if (_generationWorkersStopping)
+                {
+                    return;
+                }
+            }
+
+            try
+            {
+                double generateStart = GetCurrentTimeSeconds();
+                ChunkColumnData chunk = GenerateChunkColumn(key.x, key.y, out _, out ChunkColumnGenerationProfile generationProfile);
+                double generateEnd = GetCurrentTimeSeconds();
+                CompleteBackgroundChunkGeneration(
+                    key,
+                    pending,
+                    new GeneratedChunkColumnResult(chunk, (generateEnd - generateStart) * 1000d, generationProfile),
+                    null);
+            }
+            catch (Exception ex)
+            {
+                CompleteBackgroundChunkGeneration(key, pending, null, ex);
+            }
+        }
+    }
+
+    private bool TryDequeueQueuedChunk(out Vector2Int key, out PendingChunkColumnData pending)
+    {
+        while (_queuedChunkGenerations.Count > 0)
+        {
+            int bestIndex = GetHighestPriorityQueuedChunkIndex();
+            key = _queuedChunkGenerations[bestIndex];
+            _queuedChunkGenerations.RemoveAt(bestIndex);
+            if (!_pendingChunkColumns.TryGetValue(key, out pending))
+            {
+                continue;
+            }
+
+            if (!pending.TryMarkGenerating())
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        key = default;
+        pending = null;
+        return false;
+    }
+
+    private int GetHighestPriorityQueuedChunkIndex()
+    {
+        int bestIndex = 0;
+        Vector2Int centerChunk = _generationPriorityCenterChunk;
+        int bestDistance = GetChunkPriorityDistance(_queuedChunkGenerations[0], centerChunk);
+
+        for (int i = 1; i < _queuedChunkGenerations.Count; i++)
+        {
+            Vector2Int candidate = _queuedChunkGenerations[i];
+            int candidateDistance = GetChunkPriorityDistance(candidate, centerChunk);
+            if (candidateDistance < bestDistance)
+            {
+                bestIndex = i;
+                bestDistance = candidateDistance;
+                continue;
+            }
+
+            if (candidateDistance == bestDistance)
+            {
+                Vector2Int currentBest = _queuedChunkGenerations[bestIndex];
+                int zComparison = candidate.y.CompareTo(currentBest.y);
+                if (zComparison < 0 || (zComparison == 0 && candidate.x < currentBest.x))
+                {
+                    bestIndex = i;
+                }
+            }
+        }
+
+        return bestIndex;
+    }
+
+    private static int GetChunkPriorityDistance(Vector2Int chunkCoords, Vector2Int centerChunk)
+    {
+        int dx = TerrainData.GetDisplayChunkCoord(chunkCoords.x, centerChunk.x) - centerChunk.x;
+        int dz = TerrainData.GetDisplayChunkCoord(chunkCoords.y, centerChunk.y) - centerChunk.y;
+        return (dx * dx) + (dz * dz);
+    }
+
+    private void CompleteBackgroundChunkGeneration(Vector2Int key, PendingChunkColumnData pending, GeneratedChunkColumnResult result, Exception fault)
+    {
+        lock (_generationStateLock)
+        {
+            if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData currentPending) || !ReferenceEquals(currentPending, pending))
+            {
+                return;
+            }
+
+            if (fault != null)
+            {
+                pending.MarkFaulted(fault);
+            }
+            else
+            {
+                pending.MarkCompleted(result);
+            }
+
+            _completedChunkGenerations.Enqueue(key);
+        }
+    }
+
+    private ChunkColumnData GenerateChunkColumn(int chunkX, int chunkZ, out int[] columnHeights, out ChunkColumnGenerationProfile generationProfile)
     {
         chunkX = WrapChunkCoord(chunkX);
         chunkZ = WrapChunkCoord(chunkZ);
         int voxelCount = ChunkSize * WorldHeight * ChunkSize;
-        BlockType[] blocks = new BlockType[voxelCount];
-        VoxelFluid[] fluids = new VoxelFluid[voxelCount];
-        ushort[] foliageIds = new ushort[voxelCount];
-        columnHeights = new int[ChunkSize * ChunkSize];
-        byte[] subChunkContents = new byte[SubChunkCountY];
+        BlockType[] blocks = RentArray(_blockArrayPool, voxelCount);
+        VoxelFluid[] fluids = RentArray(_fluidArrayPool, voxelCount);
+        ushort[] foliageIds = RentArray(_foliageArrayPool, voxelCount);
+        columnHeights = RentArray(_intArrayPool, ChunkSize * ChunkSize);
+        byte[] subChunkContents = RentArray(_byteArrayPool, SubChunkCountY);
 
-        int maxHeight = _chunkGenerator.GenerateChunkColumn(chunkX, chunkZ, blocks, fluids, columnHeights);
+        int maxHeight = _chunkGenerator.GenerateChunkColumn(chunkX, chunkZ, blocks, fluids, columnHeights, out generationProfile);
 
         ChunkColumnData chunk = new(blocks, fluids, foliageIds, columnHeights, subChunkContents, maxHeight);
         for (int subChunkY = 0; subChunkY < SubChunkCountY; subChunkY++)
@@ -643,6 +1011,60 @@ public sealed class TerrainData : IDisposable
 
         RecalculateChunkMaxHeight(chunk);
         return chunk;
+    }
+
+    private void RebuildQueuedPendingCollections()
+    {
+        for (int i = _queuedChunkGenerations.Count - 1; i >= 0; i--)
+        {
+            Vector2Int key = _queuedChunkGenerations[i];
+            if (!_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending) || pending.State != PendingChunkColumnState.Queued)
+            {
+                _queuedChunkGenerations.RemoveAt(i);
+            }
+        }
+
+        if (_completedChunkGenerations.Count == 0)
+        {
+            return;
+        }
+
+        Queue<Vector2Int> filteredCompleted = new(_completedChunkGenerations.Count);
+        while (_completedChunkGenerations.Count > 0)
+        {
+            Vector2Int key = _completedChunkGenerations.Dequeue();
+            if (_pendingChunkColumns.TryGetValue(key, out PendingChunkColumnData pending) &&
+                (pending.State == PendingChunkColumnState.Completed || pending.State == PendingChunkColumnState.Faulted))
+            {
+                filteredCompleted.Enqueue(key);
+            }
+        }
+
+        while (filteredCompleted.Count > 0)
+        {
+            _completedChunkGenerations.Enqueue(filteredCompleted.Dequeue());
+        }
+    }
+
+    private T[] RentArray<T>(ArrayPool<T> pool, int minimumLength)
+    {
+        T[] array = pool.Rent(minimumLength);
+        Array.Clear(array, 0, minimumLength);
+        return array;
+    }
+
+    private void ReturnChunkColumnData(ChunkColumnData chunk)
+    {
+        if (chunk == null)
+        {
+            return;
+        }
+
+        _blockArrayPool.Return(chunk.blocks, clearArray: false);
+        _fluidArrayPool.Return(chunk.fluids, clearArray: false);
+        _foliageArrayPool.Return(chunk.foliageIds, clearArray: false);
+        _intArrayPool.Return(chunk.columnHeights, clearArray: false);
+        _byteArrayPool.Return(chunk.subChunkContents, clearArray: false);
     }
 
     private static double GetCurrentTimeSeconds()

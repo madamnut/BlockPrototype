@@ -1412,7 +1412,7 @@ MonoBehaviour:
   blockDatabase: {fileID: 11400000, guid: 193aec77485fe1b42bbdc1420bde93c5, type: 2}
   interactionCamera: {fileID: 330585545}
   chunkColumnPrefab: {fileID: 6545087223548192322, guid: dd6bb9761279da842a3e351fe345faf3, type: 3}
-  renderSizeInChunks: 33
+  renderDiameterInChunks: 65
   generationPaddingInChunks: 1
   seed: 2147483647
   worldGenPack: {fileID: 11400000, guid: c4b7ece8838f4c7ca0d7ad8369b71597, type: 2}
@@ -1420,6 +1420,7 @@ MonoBehaviour:
   chunkColumnsMeshedPerFrame: 2
   chunkGenerationRequestsPerFrame: 8
   maxPendingChunkGenerations: 48
+  terrainChunkEvictionsPerFrame: 32
   interactionDistance: 16
   selectionColor: {r: 1, g: 1, b: 1, a: 1}
   chunkBoundaryColor: {r: 0.2, g: 0.9, b: 1, a: 0.16}

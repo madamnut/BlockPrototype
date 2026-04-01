@@ -383,11 +383,13 @@ public static class VoxelMesher
         MeshApplyBuffers buffers = GetApplyBuffers();
         buffers.Clear();
 
-        CopyNativeList(pending.vertices, buffers.vertices);
-        CopyNativeList(pending.indices, buffers.indices);
-        CopyNativeList(pending.uvs, buffers.uvs);
-        CopyNativeList(pending.normals, buffers.normals);
-        CopyNativeList(pending.colors, buffers.colors);
+        AppendPendingSubChunkGeometry(
+            pending,
+            buffers.vertices,
+            buffers.indices,
+            buffers.uvs,
+            buffers.normals,
+            buffers.colors);
 
         mesh.name = meshName;
         mesh.indexFormat = IndexFormat.UInt32;
@@ -401,6 +403,57 @@ public static class VoxelMesher
         return true;
     }
 
+    public static bool AppendPendingSubChunkGeometry(
+        PendingSubChunkMeshData pending,
+        List<Vector3> vertices,
+        List<int> indices,
+        List<Vector2> uvs,
+        List<Vector3> normals,
+        List<Color32> colors)
+    {
+        if (pending == null)
+        {
+            return false;
+        }
+
+        pending.Complete();
+        if (!pending.HasGeometry)
+        {
+            return false;
+        }
+
+        int vertexOffset = vertices.Count;
+        CopyNativeList(pending.vertices, vertices);
+        CopyNativeList(pending.uvs, uvs);
+        CopyNativeList(pending.normals, normals);
+        CopyNativeList(pending.colors, colors);
+
+        for (int i = 0; i < pending.indices.Length; i++)
+        {
+            indices.Add(pending.indices[i] + vertexOffset);
+        }
+
+        return true;
+    }
+
+    public static bool AppendSubChunkGeometry(
+        List<Vector3> vertices,
+        List<int> indices,
+        List<Vector2> uvs,
+        List<Vector3> normals,
+        List<Color32> colors,
+        TerrainData terrain,
+        BlockDatabase blockDatabase,
+        int chunkX,
+        int subChunkY,
+        int chunkZ)
+    {
+        MeshBuildBuffers buffers = GetBuildBuffers();
+        buffers.Clear();
+        BuildSubChunkGeometry(buffers, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        return AppendBuiltGeometry(buffers, vertices, indices, uvs, normals, colors);
+    }
+
     public static bool RebuildSubChunkMesh(Mesh mesh, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (mesh == null)
@@ -410,7 +463,34 @@ public static class VoxelMesher
 
         MeshBuildBuffers buffers = GetBuildBuffers();
         buffers.Clear();
+        BuildSubChunkGeometry(buffers, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
 
+        List<Vector3> vertices = buffers.vertices;
+        List<int> indices = buffers.indices;
+        List<Vector2> uvs = buffers.uvs;
+        List<Vector3> normals = buffers.normals;
+        List<Color32> colors = buffers.colors;
+
+        mesh.Clear();
+        if (vertices.Count == 0)
+        {
+            return false;
+        }
+
+        mesh.name = $"SubChunk_{chunkX}_{subChunkY}_{chunkZ}";
+        mesh.indexFormat = IndexFormat.UInt32;
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(indices, 0, true);
+        mesh.SetUVs(0, uvs);
+        mesh.SetNormals(normals);
+        mesh.SetColors(colors);
+        mesh.RecalculateBounds();
+        mesh.UploadMeshData(false);
+        return true;
+    }
+
+    private static void BuildSubChunkGeometry(MeshBuildBuffers buffers, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    {
         List<Vector3> vertices = buffers.vertices;
         List<int> indices = buffers.indices;
         List<Vector2> uvs = buffers.uvs;
@@ -520,22 +600,32 @@ public static class VoxelMesher
                 }
             }
         }
+    }
 
-        mesh.Clear();
-        if (vertices.Count == 0)
+    private static bool AppendBuiltGeometry(
+        MeshBuildBuffers buffers,
+        List<Vector3> vertices,
+        List<int> indices,
+        List<Vector2> uvs,
+        List<Vector3> normals,
+        List<Color32> colors)
+    {
+        if (buffers.vertices.Count == 0)
         {
             return false;
         }
 
-        mesh.name = $"SubChunk_{chunkX}_{subChunkY}_{chunkZ}";
-        mesh.indexFormat = IndexFormat.UInt32;
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(indices, 0, true);
-        mesh.SetUVs(0, uvs);
-        mesh.SetNormals(normals);
-        mesh.SetColors(colors);
-        mesh.RecalculateBounds();
-        mesh.UploadMeshData(false);
+        int vertexOffset = vertices.Count;
+        vertices.AddRange(buffers.vertices);
+        uvs.AddRange(buffers.uvs);
+        normals.AddRange(buffers.normals);
+        colors.AddRange(buffers.colors);
+
+        for (int i = 0; i < buffers.indices.Count; i++)
+        {
+            indices.Add(buffers.indices[i] + vertexOffset);
+        }
+
         return true;
     }
 

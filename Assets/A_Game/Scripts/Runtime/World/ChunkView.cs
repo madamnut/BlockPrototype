@@ -10,10 +10,6 @@ public sealed class ChunkView
         public readonly List<Vector2> uvs = new(1024);
         public readonly List<Vector3> normals = new(1024);
         public readonly List<Color32> colors = new(1024);
-        public readonly List<Vector3> sourceVertices = new(1024);
-        public readonly List<Vector2> sourceUvs = new(1024);
-        public readonly List<Vector3> sourceNormals = new(1024);
-        public readonly List<int> sourceTriangles = new(1536);
         public readonly List<int>[] triangles =
         {
             new(1536),
@@ -27,10 +23,6 @@ public sealed class ChunkView
             uvs.Clear();
             normals.Clear();
             colors.Clear();
-            sourceVertices.Clear();
-            sourceUvs.Clear();
-            sourceNormals.Clear();
-            sourceTriangles.Clear();
 
             for (int i = 0; i < triangles.Length; i++)
             {
@@ -45,9 +37,6 @@ public sealed class ChunkView
         public MeshFilter MeshFilter;
         public MeshRenderer MeshRenderer;
         public Mesh Mesh;
-        public Mesh SolidMesh;
-        public Mesh FluidMesh;
-        public Mesh FoliageMesh;
         public bool HasFluidGeometry;
     }
 
@@ -163,22 +152,11 @@ public sealed class ChunkView
         {
             SubChunkInstance subChunk = column.SubChunks[subChunkY];
             VoxelMesher.PendingSubChunkMeshData pendingSubChunk = pendingColumn.subChunks[subChunkY];
-
-            bool hasSolidGeometry = false;
-            if (pendingSubChunk != null)
-            {
-                pendingSubChunk.Complete();
-                hasSolidGeometry = pendingSubChunk.HasGeometry;
-            }
-
-            subChunk.SolidMesh.Clear();
-            bool hasFluidGeometry = RebuildFluidSubChunk(subChunk, terrain, chunkCoords.x, subChunkY, chunkCoords.y);
-            bool hasFoliageGeometry = RebuildFoliageSubChunk(subChunk, terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
-
-            bool subChunkHasGeometry = RebuildCombinedSubChunkMesh(
-                subChunk,
-                pendingSubChunk,
-                $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
+            _combinedMeshBuffers.Clear();
+            bool hasSolidGeometry = AppendPendingSolidSubChunk(pendingSubChunk);
+            bool hasFluidGeometry = AppendFluidSubChunk(terrain, chunkCoords.x, subChunkY, chunkCoords.y);
+            bool hasFoliageGeometry = AppendFoliageSubChunk(terrain, blockDatabase, chunkCoords.x, subChunkY, chunkCoords.y);
+            bool subChunkHasGeometry = ApplyCombinedSubChunkMesh(subChunk, $"SubChunk_{chunkCoords.x}_{subChunkY}_{chunkCoords.y}");
             subChunk.HasFluidGeometry = hasFluidGeometry;
             SetSubChunkVisible(subChunk, subChunkHasGeometry);
             hasGeometry |= hasSolidGeometry || hasFluidGeometry || hasFoliageGeometry;
@@ -196,10 +174,11 @@ public sealed class ChunkView
         }
 
         SubChunkInstance subChunk = column.SubChunks[subChunkY];
-        bool hasSolidGeometry = RefreshSolidSubChunk(subChunk, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
-        bool hasFluidGeometry = RebuildFluidSubChunk(subChunk, terrain, chunkX, subChunkY, chunkZ);
-        bool hasFoliageGeometry = RebuildFoliageSubChunk(subChunk, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
-        bool subChunkHasGeometry = RebuildCombinedSubChunkMesh(subChunk, null, $"SubChunk_{chunkX}_{subChunkY}_{chunkZ}");
+        _combinedMeshBuffers.Clear();
+        bool hasSolidGeometry = AppendSolidSubChunk(terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        bool hasFluidGeometry = AppendFluidSubChunk(terrain, chunkX, subChunkY, chunkZ);
+        bool hasFoliageGeometry = AppendFoliageSubChunk(terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        bool subChunkHasGeometry = ApplyCombinedSubChunkMesh(subChunk, $"SubChunk_{chunkX}_{subChunkY}_{chunkZ}");
 
         subChunk.HasFluidGeometry = hasFluidGeometry;
         SetSubChunkVisible(subChunk, subChunkHasGeometry);
@@ -383,9 +362,6 @@ public sealed class ChunkView
             MeshFilter = meshFilter,
             MeshRenderer = meshRenderer,
             Mesh = mesh,
-            SolidMesh = CreateRuntimeMesh($"SolidSubChunkMesh_{subChunkY}"),
-            FluidMesh = CreateRuntimeMesh($"FluidSubChunkMesh_{subChunkY}"),
-            FoliageMesh = CreateRuntimeMesh($"FoliageSubChunkMesh_{subChunkY}"),
             HasFluidGeometry = false,
         };
 
@@ -411,9 +387,6 @@ public sealed class ChunkView
             MeshFilter = meshFilter,
             MeshRenderer = meshRenderer,
             Mesh = mesh,
-            SolidMesh = CreateRuntimeMesh($"SolidSubChunkMesh_{subChunkY}"),
-            FluidMesh = CreateRuntimeMesh($"FluidSubChunkMesh_{subChunkY}"),
-            FoliageMesh = CreateRuntimeMesh($"FoliageSubChunkMesh_{subChunkY}"),
             HasFluidGeometry = false,
         };
 
@@ -441,52 +414,81 @@ public sealed class ChunkView
         };
     }
 
-    private static bool RefreshSolidSubChunk(SubChunkInstance subChunk, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    private bool AppendSolidSubChunk(TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (!terrain.HasSolidBlocksInSubChunk(chunkX, subChunkY, chunkZ))
         {
-            subChunk.SolidMesh.Clear();
             return false;
         }
 
-        return VoxelMesher.RebuildSubChunkMesh(subChunk.SolidMesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        return VoxelMesher.AppendSubChunkGeometry(
+            _combinedMeshBuffers.vertices,
+            _combinedMeshBuffers.triangles[0],
+            _combinedMeshBuffers.uvs,
+            _combinedMeshBuffers.normals,
+            _combinedMeshBuffers.colors,
+            terrain,
+            blockDatabase,
+            chunkX,
+            subChunkY,
+            chunkZ);
     }
 
-    private static bool RebuildFluidSubChunk(SubChunkInstance subChunk, TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
+    private bool AppendPendingSolidSubChunk(VoxelMesher.PendingSubChunkMeshData pendingSubChunk)
+    {
+        return VoxelMesher.AppendPendingSubChunkGeometry(
+            pendingSubChunk,
+            _combinedMeshBuffers.vertices,
+            _combinedMeshBuffers.triangles[0],
+            _combinedMeshBuffers.uvs,
+            _combinedMeshBuffers.normals,
+            _combinedMeshBuffers.colors);
+    }
+
+    private bool AppendFluidSubChunk(TerrainData terrain, int chunkX, int subChunkY, int chunkZ)
     {
         if (!terrain.HasFluidInSubChunk(chunkX, subChunkY, chunkZ))
         {
-            subChunk.FluidMesh.Clear();
             return false;
         }
 
-        return VoxelFluidMesher.RebuildSubChunkMesh(subChunk.FluidMesh, terrain, chunkX, subChunkY, chunkZ);
+        return VoxelFluidMesher.AppendSubChunkGeometry(
+            _combinedMeshBuffers.vertices,
+            _combinedMeshBuffers.triangles[1],
+            _combinedMeshBuffers.uvs,
+            _combinedMeshBuffers.normals,
+            _combinedMeshBuffers.colors,
+            terrain,
+            chunkX,
+            subChunkY,
+            chunkZ);
     }
 
-    private static bool RebuildFoliageSubChunk(SubChunkInstance subChunk, TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
+    private bool AppendFoliageSubChunk(TerrainData terrain, BlockDatabase blockDatabase, int chunkX, int subChunkY, int chunkZ)
     {
         if (!terrain.HasFoliageInSubChunk(chunkX, subChunkY, chunkZ))
         {
-            subChunk.FoliageMesh.Clear();
             return false;
         }
 
-        return VoxelFoliageMesher.RebuildSubChunkMesh(subChunk.FoliageMesh, terrain, blockDatabase, chunkX, subChunkY, chunkZ);
+        return VoxelFoliageMesher.AppendSubChunkGeometry(
+            _combinedMeshBuffers.vertices,
+            _combinedMeshBuffers.triangles[2],
+            _combinedMeshBuffers.uvs,
+            _combinedMeshBuffers.normals,
+            _combinedMeshBuffers.colors,
+            terrain,
+            blockDatabase,
+            chunkX,
+            subChunkY,
+            chunkZ);
     }
 
-    private bool RebuildCombinedSubChunkMesh(SubChunkInstance subChunk, VoxelMesher.PendingSubChunkMeshData pendingSolidSubChunk, string meshName)
+    private bool ApplyCombinedSubChunkMesh(SubChunkInstance subChunk, string meshName)
     {
         Mesh mesh = subChunk.Mesh;
         mesh.Clear();
-        _combinedMeshBuffers.Clear();
-
-        bool hasAnyGeometry = false;
-        hasAnyGeometry |= AppendPendingSolidMesh(pendingSolidSubChunk, 0);
-        hasAnyGeometry |= AppendSourceMesh(subChunk.SolidMesh, 0);
-        hasAnyGeometry |= AppendSourceMesh(subChunk.FluidMesh, 1);
-        hasAnyGeometry |= AppendSourceMesh(subChunk.FoliageMesh, 2);
-
-        if (!hasAnyGeometry)
+        if (_combinedMeshBuffers.vertices.Count == 0)
         {
             return false;
         }
@@ -503,110 +505,6 @@ public sealed class ChunkView
         mesh.SetTriangles(_combinedMeshBuffers.triangles[2], 2, true);
         mesh.RecalculateBounds();
         mesh.UploadMeshData(false);
-        return true;
-    }
-
-    private bool AppendPendingSolidMesh(VoxelMesher.PendingSubChunkMeshData pending, int subMeshIndex)
-    {
-        if (pending == null)
-        {
-            return false;
-        }
-
-        pending.Complete();
-        if (!pending.HasGeometry)
-        {
-            return false;
-        }
-
-        int vertexOffset = _combinedMeshBuffers.vertices.Count;
-        for (int i = 0; i < pending.vertices.Length; i++)
-        {
-            _combinedMeshBuffers.vertices.Add(pending.vertices[i]);
-        }
-
-        for (int i = 0; i < pending.uvs.Length; i++)
-        {
-            _combinedMeshBuffers.uvs.Add(pending.uvs[i]);
-        }
-
-        for (int i = 0; i < pending.normals.Length; i++)
-        {
-            _combinedMeshBuffers.normals.Add(pending.normals[i]);
-        }
-
-        for (int i = 0; i < pending.colors.Length; i++)
-        {
-            _combinedMeshBuffers.colors.Add(pending.colors[i]);
-        }
-
-        List<int> destinationTriangles = _combinedMeshBuffers.triangles[subMeshIndex];
-        for (int i = 0; i < pending.indices.Length; i++)
-        {
-            destinationTriangles.Add(pending.indices[i] + vertexOffset);
-        }
-
-        return true;
-    }
-
-    private bool AppendSourceMesh(Mesh sourceMesh, int subMeshIndex)
-    {
-        if (sourceMesh == null || sourceMesh.vertexCount == 0)
-        {
-            return false;
-        }
-
-        sourceMesh.GetVertices(_combinedMeshBuffers.sourceVertices);
-        List<Vector3> sourceVertices = _combinedMeshBuffers.sourceVertices;
-        int vertexOffset = _combinedMeshBuffers.vertices.Count;
-        _combinedMeshBuffers.vertices.AddRange(_combinedMeshBuffers.sourceVertices);
-
-        sourceMesh.GetUVs(0, _combinedMeshBuffers.sourceUvs);
-        if (_combinedMeshBuffers.sourceUvs.Count == sourceVertices.Count)
-        {
-            _combinedMeshBuffers.uvs.AddRange(_combinedMeshBuffers.sourceUvs);
-        }
-        else
-        {
-            for (int i = 0; i < sourceVertices.Count; i++)
-            {
-                _combinedMeshBuffers.uvs.Add(Vector2.zero);
-            }
-        }
-
-        sourceMesh.GetNormals(_combinedMeshBuffers.sourceNormals);
-        if (_combinedMeshBuffers.sourceNormals.Count == sourceVertices.Count)
-        {
-            _combinedMeshBuffers.normals.AddRange(_combinedMeshBuffers.sourceNormals);
-        }
-        else
-        {
-            for (int i = 0; i < sourceVertices.Count; i++)
-            {
-                _combinedMeshBuffers.normals.Add(Vector3.up);
-            }
-        }
-
-        Color32[] sourceColors = sourceMesh.colors32;
-        if (sourceColors != null && sourceColors.Length == sourceVertices.Count)
-        {
-            _combinedMeshBuffers.colors.AddRange(sourceColors);
-        }
-        else
-        {
-            for (int i = 0; i < sourceVertices.Count; i++)
-            {
-                _combinedMeshBuffers.colors.Add(new Color32(255, 255, 255, 255));
-            }
-        }
-
-        sourceMesh.GetTriangles(_combinedMeshBuffers.sourceTriangles, 0, false);
-        List<int> destinationTriangles = _combinedMeshBuffers.triangles[subMeshIndex];
-        for (int i = 0; i < _combinedMeshBuffers.sourceTriangles.Count; i++)
-        {
-            destinationTriangles.Add(_combinedMeshBuffers.sourceTriangles[i] + vertexOffset);
-        }
-
         return true;
     }
 
@@ -665,21 +563,6 @@ public sealed class ChunkView
         if (subChunk.Mesh != null)
         {
             Object.Destroy(subChunk.Mesh);
-        }
-
-        if (subChunk.SolidMesh != null)
-        {
-            Object.Destroy(subChunk.SolidMesh);
-        }
-
-        if (subChunk.FluidMesh != null)
-        {
-            Object.Destroy(subChunk.FluidMesh);
-        }
-
-        if (subChunk.FoliageMesh != null)
-        {
-            Object.Destroy(subChunk.FoliageMesh);
         }
     }
 

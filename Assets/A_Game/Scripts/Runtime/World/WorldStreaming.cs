@@ -47,10 +47,15 @@ public sealed class WorldStreaming
         return _visibleChunkColumns.Contains(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y));
     }
 
+    public bool ShouldKeepTerrainChunk(Vector2Int chunkCoords)
+    {
+        return _targetGenerationChunks.Contains(TerrainData.WrapChunkCoords(chunkCoords.x, chunkCoords.y));
+    }
+
     public void UpdateVisibleChunks(
         Vector2Int centerChunk,
         bool force,
-        int renderSizeInChunks,
+        int renderRadiusInChunks,
         int generationPaddingInChunks,
         Func<int, int, bool> isChunkColumnReady,
         Action<Vector2Int> releaseChunkColumn)
@@ -65,20 +70,29 @@ public sealed class WorldStreaming
 
         _targetVisibleChunks.Clear();
         _targetGenerationChunks.Clear();
-        int radius = renderSizeInChunks / 2;
-        for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
+        for (int offsetZ = -renderRadiusInChunks; offsetZ <= renderRadiusInChunks; offsetZ++)
         {
-            for (int offsetX = -radius; offsetX <= radius; offsetX++)
+            for (int offsetX = -renderRadiusInChunks; offsetX <= renderRadiusInChunks; offsetX++)
             {
+                if (!IsWithinChunkRadius(offsetX, offsetZ, renderRadiusInChunks))
+                {
+                    continue;
+                }
+
                 _targetVisibleChunks.Add(TerrainData.WrapChunkCoords(centerChunk.x + offsetX, centerChunk.y + offsetZ));
             }
         }
 
-        int generationRadius = radius + generationPaddingInChunks;
+        int generationRadius = renderRadiusInChunks + generationPaddingInChunks;
         for (int offsetZ = -generationRadius; offsetZ <= generationRadius; offsetZ++)
         {
             for (int offsetX = -generationRadius; offsetX <= generationRadius; offsetX++)
             {
+                if (!IsWithinChunkRadius(offsetX, offsetZ, generationRadius))
+                {
+                    continue;
+                }
+
                 _targetGenerationChunks.Add(TerrainData.WrapChunkCoords(centerChunk.x + offsetX, centerChunk.y + offsetZ));
             }
         }
@@ -102,6 +116,8 @@ public sealed class WorldStreaming
             releaseChunkColumn?.Invoke(chunkCoords);
             _visibleChunkColumns.Remove(chunkCoords);
         }
+
+        RebuildRefreshQueue(centerChunk);
 
         GetSortedChunkCoordinates(_targetVisibleChunks, centerChunk, _chunkPriorityBuffer);
         for (int i = 0; i < _chunkPriorityBuffer.Count; i++)
@@ -171,6 +187,12 @@ public sealed class WorldStreaming
         for (int i = 0; i < _completedChunkBuffer.Count; i++)
         {
             Vector2Int chunkCoords = _completedChunkBuffer[i].chunkCoords;
+            if (!ShouldKeepTerrainChunk(chunkCoords))
+            {
+                terrain.ReleaseChunkColumn(chunkCoords.x, chunkCoords.y);
+                continue;
+            }
+
             if (!terrain.IsChunkColumnReady(chunkCoords.x, chunkCoords.y))
             {
                 continue;
@@ -273,6 +295,30 @@ public sealed class WorldStreaming
         }
     }
 
+    private void RebuildRefreshQueue(Vector2Int centerChunk)
+    {
+        _visibleChunkKeyBuffer.Clear();
+        foreach (Vector2Int chunkCoords in _queuedChunkColumns)
+        {
+            if (_visibleChunkColumns.Contains(chunkCoords))
+            {
+                _visibleChunkKeyBuffer.Add(chunkCoords);
+            }
+        }
+
+        _queuedChunkColumns.Clear();
+        _chunkRefreshQueue.Clear();
+        _chunkRefreshQueueHead = 0;
+
+        SortChunkCoordinatesByDistance(_visibleChunkKeyBuffer, centerChunk);
+        for (int i = 0; i < _visibleChunkKeyBuffer.Count; i++)
+        {
+            Vector2Int chunkCoords = _visibleChunkKeyBuffer[i];
+            _queuedChunkColumns.Add(chunkCoords);
+            _chunkRefreshQueue.Add(chunkCoords);
+        }
+    }
+
     private void TrimProcessedRefreshQueue()
     {
         if (_chunkRefreshQueueHead <= 0)
@@ -352,5 +398,15 @@ public sealed class WorldStreaming
 
         int zComparison = a.y.CompareTo(b.y);
         return zComparison != 0 ? zComparison : a.x.CompareTo(b.x);
+    }
+
+    private static bool IsWithinChunkRadius(int offsetX, int offsetZ, int radiusInChunks)
+    {
+        if (radiusInChunks <= 0)
+        {
+            return offsetX == 0 && offsetZ == 0;
+        }
+
+        return (offsetX * offsetX) + (offsetZ * offsetZ) <= (radiusInChunks * radiusInChunks);
     }
 }
