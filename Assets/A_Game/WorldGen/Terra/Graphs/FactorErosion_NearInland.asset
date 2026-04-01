@@ -15,21 +15,39 @@ MonoBehaviour:
   coordinateKind: 1
   points:
   - location: -0.85
-    value: {useChildSpline: 0, constantValue: 1.15, childSpline: {fileID: 0}}
+    value:
+      useChildSpline: 0
+      constantValue: 1.15
+      childSpline: {fileID: 0}
     derivative: 0
   - location: -0.7
-    value: {useChildSpline: 0, constantValue: 1.13, childSpline: {fileID: 0}}
+    value:
+      useChildSpline: 0
+      constantValue: 1.13
+      childSpline: {fileID: 0}
     derivative: 0
   - location: -0.4
-    value: {useChildSpline: 0, constantValue: 1.09, childSpline: {fileID: 0}}
+    value:
+      useChildSpline: 0
+      constantValue: 1.09
+      childSpline: {fileID: 0}
     derivative: 0
   - location: -0.1
-    value: {useChildSpline: 1, constantValue: 1.05, childSpline: {fileID: 11400000, guid: 80b0ae79dbf34d528c44ceba66bde17e, type: 2}}
+    value:
+      useChildSpline: 1
+      constantValue: 1.05
+      childSpline: {fileID: 11400000, guid: 80b0ae79dbf34d528c44ceba66bde17e, type: 2}
     derivative: 0
   - location: 0.2
-    value: {useChildSpline: 0, constantValue: 1.01, childSpline: {fileID: 0}}
+    value:
+      useChildSpline: 0
+      constantValue: 1.01
+      childSpline: {fileID: 0}
     derivative: 0
   - location: 0.7
-    value: {useChildSpline: 0, constantValue: 0.95, childSpline: {fileID: 0}}
+    value:
+      useChildSpline: 0
+      constantValue: 0.95
+      childSpline: {fileID: 0}
     derivative: 0
   runtimeJson: {fileID: 0}

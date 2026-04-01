@@ -122,6 +122,42 @@ public sealed class WorldRuntime : MonoBehaviour
         return true;
     }
 
+    public bool TryGetTemperatureAt(int worldX, int worldZ, out float temperature)
+    {
+        temperature = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        temperature = _terrain.SampleTemperature(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetPrecipitationAt(int worldX, int worldZ, out float precipitation)
+    {
+        precipitation = 0f;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        precipitation = _terrain.SamplePrecipitation(worldX, worldZ);
+        return true;
+    }
+
+    public bool TryGetBiomeGroupAt(int worldX, int worldZ, out BiomeGroupKind biome)
+    {
+        biome = BiomeGroupKind.Plains;
+        if (_terrain == null)
+        {
+            return false;
+        }
+
+        biome = _terrain.SampleBiomeGroup(worldX, worldZ);
+        return true;
+    }
+
     private void Reset()
     {
         EnsureRenderSizeIsOdd();
@@ -566,6 +602,18 @@ public sealed class WorldRuntime : MonoBehaviour
             if (worldGenPack.Terrain3DSimplexSettings == null)
             {
                 Debug.LogError("WorldRuntime WorldGen Pack is missing a terrain 3D simplex settings asset.", this);
+                isValid = false;
+            }
+
+            if (worldGenPack.TemperatureSettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a temperature settings asset.", this);
+                isValid = false;
+            }
+
+            if (worldGenPack.PrecipitationSimplexSettings == null)
+            {
+                Debug.LogError("WorldRuntime WorldGen Pack is missing a precipitation settings asset.", this);
                 isValid = false;
             }
 

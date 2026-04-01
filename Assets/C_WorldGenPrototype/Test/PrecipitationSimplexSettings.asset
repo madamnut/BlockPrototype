@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f6daba3b2c542499f980bfecaf7db89, type: 3}
+  m_Name: PrecipitationSimplexSettings
+  m_EditorClassIdentifier: 
+  frequency: 0.00055
+  octaves: 7
+  lacunarity: 2
+  persistence: 0.52
+  amplitude: 1.15
+  seedOffset: 606
+  coordinateOffset: {x: 2048, y: 8192}
+  bias: 0

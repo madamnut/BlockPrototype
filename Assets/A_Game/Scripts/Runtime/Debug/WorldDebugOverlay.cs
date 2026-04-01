@@ -155,6 +155,13 @@ public sealed class WorldDebugOverlay : MonoBehaviour
             {
                 int worldX = TerrainData.WrapWorldCoord(Mathf.FloorToInt(playerPosition.x));
                 int worldZ = TerrainData.WrapWorldCoord(Mathf.FloorToInt(playerPosition.z));
+                if (worldRuntime.TryGetBiomeGroupAt(worldX, worldZ, out BiomeGroupKind biome))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Biome: ");
+                    _upperLeftBuilder.Append(biome);
+                }
+
                 if (worldRuntime.TryGetContinentalnessAt(worldX, worldZ, out float continentalness))
                 {
                     _upperLeftBuilder.AppendLine();
@@ -181,6 +188,20 @@ public sealed class WorldDebugOverlay : MonoBehaviour
                     _upperLeftBuilder.AppendLine();
                     _upperLeftBuilder.Append("PV: ");
                     _upperLeftBuilder.Append(peaksAndValleys.ToString("F3"));
+                }
+
+                if (worldRuntime.TryGetTemperatureAt(worldX, worldZ, out float temperature))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Temp: ");
+                    _upperLeftBuilder.Append(temperature.ToString("F3"));
+                }
+
+                if (worldRuntime.TryGetPrecipitationAt(worldX, worldZ, out float precipitation))
+                {
+                    _upperLeftBuilder.AppendLine();
+                    _upperLeftBuilder.Append("Precip: ");
+                    _upperLeftBuilder.Append(precipitation.ToString("F3"));
                 }
             }
         }

@@ -168,6 +168,8 @@ public sealed class TerrainData : IDisposable
     private readonly ContinentalnessSampler _continentalnessSampler;
     private readonly ErosionSampler _erosionSampler;
     private readonly WeirdnessSampler _weirdnessSampler;
+    private readonly TemperatureSampler _temperatureSampler;
+    private readonly SimplexNoiseSampler _precipitationSampler;
     private readonly ChunkGenerator _chunkGenerator;
     private readonly Dictionary<Vector2Int, ChunkColumnData> _chunkColumns = new();
     private readonly Dictionary<Vector2Int, PendingChunkColumnData> _pendingChunkColumns = new();
@@ -185,6 +187,8 @@ public sealed class TerrainData : IDisposable
         _continentalnessSampler = new ContinentalnessSampler(_seed, worldGenPack.ContinentalnessSimplexSettings);
         _erosionSampler = new ErosionSampler(_seed, worldGenPack.ErosionSimplexSettings);
         _weirdnessSampler = new WeirdnessSampler(_seed, worldGenPack.WeirdnessSimplexSettings);
+        _temperatureSampler = new TemperatureSampler(_seed, worldGenPack.TemperatureSettings);
+        _precipitationSampler = new SimplexNoiseSampler(_seed, worldGenPack.PrecipitationSimplexSettings);
         SimplexNoiseSampler jaggedNoiseSampler = new(_seed, worldGenPack.JaggedSimplexSettings);
         SimplexNoise3DSampler terrainNoiseSampler = new(_seed, worldGenPack.Terrain3DSimplexSettings);
         JsonSplineMapper offsetMapper = new(worldGenPack.OffsetSplineGraph != null ? worldGenPack.OffsetSplineGraph.RuntimeJson : null);
@@ -213,6 +217,28 @@ public sealed class TerrainData : IDisposable
     public float SamplePeaksAndValleys(int worldX, int worldZ)
     {
         return PeaksAndValleys.Fold(_weirdnessSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ)));
+    }
+
+    public float SampleTemperature(int worldX, int worldZ)
+    {
+        return _temperatureSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
+    }
+
+    public float SamplePrecipitation(int worldX, int worldZ)
+    {
+        return _precipitationSampler.Sample(WrapWorldCoord(worldX), WrapWorldCoord(worldZ));
+    }
+
+    public BiomeGroupKind SampleBiomeGroup(int worldX, int worldZ)
+    {
+        int wrappedWorldX = WrapWorldCoord(worldX);
+        int wrappedWorldZ = WrapWorldCoord(worldZ);
+        float temperature = _temperatureSampler.Sample(wrappedWorldX, wrappedWorldZ);
+        float humidity = _precipitationSampler.Sample(wrappedWorldX, wrappedWorldZ);
+        float continentalness = _continentalnessSampler.Sample(wrappedWorldX, wrappedWorldZ);
+        float erosion = _erosionSampler.Sample(wrappedWorldX, wrappedWorldZ);
+        float weirdness = _weirdnessSampler.Sample(wrappedWorldX, wrappedWorldZ);
+        return OverworldBiomeGroupClassifier.Classify(temperature, humidity, continentalness, erosion, weirdness);
     }
 
     public ChunkColumnGenerationProfile ProfileChunkColumnGeneration(int chunkX, int chunkZ)

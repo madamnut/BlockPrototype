@@ -32,6 +32,12 @@ MonoBehaviour:
   - blockId: 5
     blockName: Leaves
     kind: 0
+  - blockId: 6
+    blockName: Sand
+    kind: 0
+  - blockId: 7
+    blockName: Mud
+    kind: 1
   - blockId: 100
     blockName: Plant
     kind: 1

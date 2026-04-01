@@ -106,6 +106,69 @@ public sealed class SimplexNoise3DSampler
     }
 }
 
+public sealed class TemperatureSampler
+{
+    private const double Tau = Math.PI * 2d;
+    private readonly TemperatureSettingsAsset _settings;
+    private readonly SimplexNoise4D _noise;
+
+    public TemperatureSampler(int seed, TemperatureSettingsAsset settings)
+    {
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        int combinedSeed = unchecked(seed + (_settings.SeedOffset * 486187739));
+        _noise = new SimplexNoise4D(combinedSeed);
+    }
+
+    public float Sample(int worldX, int worldZ)
+    {
+        Vector2 coordinateOffset = _settings.CoordinateOffset;
+        int wrappedWorldX = TerrainData.WrapWorldCoord(worldX);
+        int wrappedWorldZ = TerrainData.WrapWorldCoord(worldZ);
+        float latitudeTemperature = EvaluateLatitudeTemperature(wrappedWorldZ);
+        double angleX = ((wrappedWorldX + coordinateOffset.x) / TerrainData.WorldSizeXZ) * Tau;
+        double angleZ = ((wrappedWorldZ + coordinateOffset.y) / TerrainData.WorldSizeXZ) * Tau;
+
+        double noiseValue = 0d;
+        double amplitude = 1d;
+        double amplitudeSum = 0d;
+        double frequency = 1d;
+
+        for (int octave = 0; octave < _settings.Octaves; octave++)
+        {
+            double octaveFrequency = _settings.Frequency * frequency;
+            double radius = GetTorusRadius(octaveFrequency);
+            noiseValue += _noise.Sample(
+                Math.Cos(angleX) * radius,
+                Math.Sin(angleX) * radius,
+                Math.Cos(angleZ) * radius,
+                Math.Sin(angleZ) * radius) * amplitude;
+            amplitudeSum += amplitude;
+            frequency *= _settings.Lacunarity;
+            amplitude *= _settings.Persistence;
+        }
+
+        float normalizedNoise = amplitudeSum > 0d ? (float)(noiseValue / amplitudeSum) : 0f;
+        float combined =
+            (latitudeTemperature * _settings.LatitudeStrength) +
+            (normalizedNoise * _settings.NoiseAmplitude) +
+            _settings.Bias;
+        return Mathf.Clamp(combined, -1f, 1f);
+    }
+
+    private float EvaluateLatitudeTemperature(int wrappedWorldZ)
+    {
+        float normalizedLatitude = wrappedWorldZ / (float)(TerrainData.WorldSizeXZ - 1);
+        float distanceFromEquator = Mathf.Abs((normalizedLatitude * 2f) - 1f);
+        float heat01 = 1f - Mathf.Pow(distanceFromEquator, _settings.LatitudeExponent);
+        return Mathf.Lerp(-1f, 1f, heat01);
+    }
+
+    private static double GetTorusRadius(double sampleFrequency)
+    {
+        return (TerrainData.WorldSizeXZ * sampleFrequency) / Tau;
+    }
+}
+
 internal sealed class SimplexNoise4D
 {
     private const double F4 = 0.30901699437494745d;

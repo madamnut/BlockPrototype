@@ -58,12 +58,30 @@ MonoBehaviour:
     topLayer: 7
     backLayer: 7
     frontLayer: 7
-  - blockId: 100
-    displayName: Plant
-    kind: 1
+  - blockId: 6
+    displayName: Sand
+    kind: 0
     leftLayer: 8
     rightLayer: 8
     bottomLayer: 8
     topLayer: 8
     backLayer: 8
     frontLayer: 8
+  - blockId: 7
+    displayName: Mud
+    kind: 1
+    leftLayer: 9
+    rightLayer: 9
+    bottomLayer: 9
+    topLayer: 9
+    backLayer: 9
+    frontLayer: 9
+  - blockId: 100
+    displayName: Plant
+    kind: 1
+    leftLayer: 10
+    rightLayer: 10
+    bottomLayer: 10
+    topLayer: 10
+    backLayer: 10
+    frontLayer: 10

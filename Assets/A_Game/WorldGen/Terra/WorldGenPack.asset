@@ -18,6 +18,8 @@ MonoBehaviour:
   weirdnessSimplexSettings: {fileID: 11400000, guid: 1d34c8df8a50494b9ea79e3019bbedb4, type: 2}
   jaggedSimplexSettings: {fileID: 11400000, guid: 5f5fd20ff58048b4a7db85fa477e9b70, type: 2}
   terrain3DSimplexSettings: {fileID: 11400000, guid: 184751f505f2440baf163dd77c659c7d, type: 2}
+  temperatureSettings: {fileID: 11400000, guid: 5a6fd212aaf640d9b47a275730c0cf1d, type: 2}
+  precipitationSimplexSettings: {fileID: 11400000, guid: 24dbf516c5824b03b78b15c0afeb8cb5, type: 2}
   offsetSplineGraph: {fileID: 11400000, guid: e9068f8ee8db416d8a729e3d5bd8b6d3, type: 2}
   factorSplineGraph: {fileID: 11400000, guid: 6af753de72404893ba79f6a451d15a01, type: 2}
   jaggednessSplineGraph: {fileID: 11400000, guid: c5d617f8891c48448373de4f02067f59, type: 2}

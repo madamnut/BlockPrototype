@@ -1,23 +1,47 @@
 using System;
 using UnityEngine;
 
+internal static class PrototypeToroidalNoise
+{
+    public const int WorldSizeXZ = 65536;
+    public const double Tau = Math.PI * 2d;
+
+    public static int WrapWorldCoord(int worldCoord)
+    {
+        int result = worldCoord % WorldSizeXZ;
+        return result < 0 ? result + WorldSizeXZ : result;
+    }
+
+    public static double GetWrappedAngle(double wrappedWorldCoordWithOffset)
+    {
+        return (wrappedWorldCoordWithOffset / WorldSizeXZ) * Tau;
+    }
+
+    public static double GetTorusRadius(double sampleFrequency)
+    {
+        return (WorldSizeXZ * sampleFrequency) / Tau;
+    }
+}
+
 public sealed class PrototypeSimplexNoiseSampler
 {
     private readonly PrototypeSimplexNoiseSettingsAsset _settings;
-    private readonly PrototypeSimplexNoise2D _noise;
+    private readonly PrototypeSimplexNoise4D _noise;
 
     public PrototypeSimplexNoiseSampler(int seed, PrototypeSimplexNoiseSettingsAsset settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         int combinedSeed = unchecked(seed + (_settings.SeedOffset * 486187739));
-        _noise = new PrototypeSimplexNoise2D(combinedSeed);
+        _noise = new PrototypeSimplexNoise4D(combinedSeed);
     }
 
     public float Sample(int worldX, int worldZ)
     {
         Vector2 coordinateOffset = _settings.CoordinateOffset;
-        double baseX = (worldX + coordinateOffset.x) * _settings.Frequency;
-        double baseZ = (worldZ + coordinateOffset.y) * _settings.Frequency;
+        int wrappedWorldX = PrototypeToroidalNoise.WrapWorldCoord(worldX);
+        int wrappedWorldZ = PrototypeToroidalNoise.WrapWorldCoord(worldZ);
+        double angleX = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldX + coordinateOffset.x);
+        double angleZ = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldZ + coordinateOffset.y);
 
         double value = 0d;
         double amplitude = 1d;
@@ -26,7 +50,13 @@ public sealed class PrototypeSimplexNoiseSampler
 
         for (int octave = 0; octave < _settings.Octaves; octave++)
         {
-            value += _noise.Sample(baseX * frequency, baseZ * frequency) * amplitude;
+            double octaveFrequency = _settings.Frequency * frequency;
+            double radius = PrototypeToroidalNoise.GetTorusRadius(octaveFrequency);
+            value += _noise.Sample(
+                Math.Cos(angleX) * radius,
+                Math.Sin(angleX) * radius,
+                Math.Cos(angleZ) * radius,
+                Math.Sin(angleZ) * radius) * amplitude;
             amplitudeSum += amplitude;
             frequency *= _settings.Lacunarity;
             amplitude *= _settings.Persistence;
@@ -39,22 +69,28 @@ public sealed class PrototypeSimplexNoiseSampler
 
 public sealed class PrototypeSimplexNoise3DSampler
 {
+    private const double YOffsetA = 0.173d;
+    private const double YOffsetB = 0.381d;
+    private const double YOffsetC = 0.593d;
+    private const double YOffsetD = 0.827d;
+
     private readonly PrototypeSimplexNoise3DSettingsAsset _settings;
-    private readonly PrototypeSimplexNoise3D _noise;
+    private readonly PrototypeSimplexNoise4D _noise;
 
     public PrototypeSimplexNoise3DSampler(int seed, PrototypeSimplexNoise3DSettingsAsset settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         int combinedSeed = unchecked(seed + (_settings.SeedOffset * 486187739));
-        _noise = new PrototypeSimplexNoise3D(combinedSeed);
+        _noise = new PrototypeSimplexNoise4D(combinedSeed);
     }
 
     public float Sample(int worldX, int worldY, int worldZ)
     {
         Vector3 coordinateOffset = _settings.CoordinateOffset;
-        double baseX = (worldX + coordinateOffset.x) * _settings.Frequency;
-        double baseY = (worldY + coordinateOffset.y) * _settings.Frequency;
-        double baseZ = (worldZ + coordinateOffset.z) * _settings.Frequency;
+        int wrappedWorldX = PrototypeToroidalNoise.WrapWorldCoord(worldX);
+        int wrappedWorldZ = PrototypeToroidalNoise.WrapWorldCoord(worldZ);
+        double angleX = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldX + coordinateOffset.x);
+        double angleZ = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldZ + coordinateOffset.z);
 
         double value = 0d;
         double amplitude = 1d;
@@ -63,7 +99,14 @@ public sealed class PrototypeSimplexNoise3DSampler
 
         for (int octave = 0; octave < _settings.Octaves; octave++)
         {
-            value += _noise.Sample(baseX * frequency, baseY * frequency, baseZ * frequency) * amplitude;
+            double octaveFrequency = _settings.Frequency * frequency;
+            double radius = PrototypeToroidalNoise.GetTorusRadius(octaveFrequency);
+            double yOffset = (worldY + coordinateOffset.y) * octaveFrequency;
+            value += _noise.Sample(
+                (Math.Cos(angleX) * radius) + (yOffset * YOffsetA),
+                (Math.Sin(angleX) * radius) + (yOffset * YOffsetB),
+                (Math.Cos(angleZ) * radius) + (yOffset * YOffsetC),
+                (Math.Sin(angleZ) * radius) + (yOffset * YOffsetD)) * amplitude;
             amplitudeSum += amplitude;
             frequency *= _settings.Lacunarity;
             amplitude *= _settings.Persistence;
@@ -74,123 +117,83 @@ public sealed class PrototypeSimplexNoise3DSampler
     }
 }
 
-internal sealed class PrototypeSimplexNoise2D
+public sealed class PrototypeTemperatureSampler
 {
-    private const double F2 = 0.3660254037844386d;
-    private const double G2 = 0.21132486540518713d;
+    private readonly PrototypeTemperatureSettingsAsset _settings;
+    private readonly PrototypeSimplexNoise4D _noise;
 
-    private static readonly int[,] Gradients =
+    public PrototypeTemperatureSampler(int seed, PrototypeTemperatureSettingsAsset settings)
     {
-        { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 },
-        { 1, 0 }, { -1, 0 }, { 1, 0 }, { -1, 0 },
-        { 0, 1 }, { 0, -1 }, { 0, 1 }, { 0, -1 },
-    };
-
-    private readonly byte[] _perm = new byte[512];
-
-    public PrototypeSimplexNoise2D(int seed)
-    {
-        byte[] source = new byte[256];
-        for (int i = 0; i < source.Length; i++)
-        {
-            source[i] = (byte)i;
-        }
-
-        System.Random random = new(seed);
-        for (int i = source.Length - 1; i > 0; i--)
-        {
-            int swapIndex = random.Next(i + 1);
-            (source[i], source[swapIndex]) = (source[swapIndex], source[i]);
-        }
-
-        for (int i = 0; i < _perm.Length; i++)
-        {
-            _perm[i] = source[i & 255];
-        }
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        int combinedSeed = unchecked(seed + (_settings.SeedOffset * 486187739));
+        _noise = new PrototypeSimplexNoise4D(combinedSeed);
     }
 
-    public double Sample(double x, double y)
+    public float Sample(int worldX, int worldZ)
     {
-        double skew = (x + y) * F2;
-        int i = FastFloor(x + skew);
-        int j = FastFloor(y + skew);
+        Vector2 coordinateOffset = _settings.CoordinateOffset;
+        int wrappedWorldX = PrototypeToroidalNoise.WrapWorldCoord(worldX);
+        int wrappedWorldZ = PrototypeToroidalNoise.WrapWorldCoord(worldZ);
+        float latitudeTemperature = EvaluateLatitudeTemperature(wrappedWorldZ);
+        double angleX = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldX + coordinateOffset.x);
+        double angleZ = PrototypeToroidalNoise.GetWrappedAngle(wrappedWorldZ + coordinateOffset.y);
 
-        double unskew = (i + j) * G2;
-        double x0 = x - (i - unskew);
-        double y0 = y - (j - unskew);
+        double noiseValue = 0d;
+        double amplitude = 1d;
+        double amplitudeSum = 0d;
+        double frequency = 1d;
 
-        int i1;
-        int j1;
-        if (x0 > y0)
+        for (int octave = 0; octave < _settings.Octaves; octave++)
         {
-            i1 = 1;
-            j1 = 0;
-        }
-        else
-        {
-            i1 = 0;
-            j1 = 1;
-        }
-
-        double x1 = x0 - i1 + G2;
-        double y1 = y0 - j1 + G2;
-        double x2 = x0 - 1d + (2d * G2);
-        double y2 = y0 - 1d + (2d * G2);
-
-        int ii = i & 255;
-        int jj = j & 255;
-
-        int gi0 = _perm[ii + _perm[jj]];
-        int gi1 = _perm[ii + i1 + _perm[jj + j1]];
-        int gi2 = _perm[ii + 1 + _perm[jj + 1]];
-
-        double n0 = CornerContribution(gi0, x0, y0);
-        double n1 = CornerContribution(gi1, x1, y1);
-        double n2 = CornerContribution(gi2, x2, y2);
-
-        return 70d * (n0 + n1 + n2);
-    }
-
-    private static int FastFloor(double value)
-    {
-        int integer = (int)value;
-        return value < integer ? integer - 1 : integer;
-    }
-
-    private static double Dot(int gradientIndex, double x, double y)
-    {
-        int index = gradientIndex % 12;
-        return (Gradients[index, 0] * x) + (Gradients[index, 1] * y);
-    }
-
-    private static double CornerContribution(int gradientIndex, double x, double y)
-    {
-        double falloff = 0.5d - (x * x) - (y * y);
-        if (falloff <= 0d)
-        {
-            return 0d;
+            double octaveFrequency = _settings.Frequency * frequency;
+            double radius = PrototypeToroidalNoise.GetTorusRadius(octaveFrequency);
+            noiseValue += _noise.Sample(
+                Math.Cos(angleX) * radius,
+                Math.Sin(angleX) * radius,
+                Math.Cos(angleZ) * radius,
+                Math.Sin(angleZ) * radius) * amplitude;
+            amplitudeSum += amplitude;
+            frequency *= _settings.Lacunarity;
+            amplitude *= _settings.Persistence;
         }
 
-        falloff *= falloff;
-        return falloff * falloff * Dot(gradientIndex, x, y);
+        float normalizedNoise = amplitudeSum > 0d ? (float)(noiseValue / amplitudeSum) : 0f;
+        float combined =
+            (latitudeTemperature * _settings.LatitudeStrength) +
+            (normalizedNoise * _settings.NoiseAmplitude) +
+            _settings.Bias;
+        return Mathf.Clamp(combined, -1f, 1f);
+    }
+
+    private float EvaluateLatitudeTemperature(int wrappedWorldZ)
+    {
+        float normalizedLatitude = wrappedWorldZ / (float)(PrototypeToroidalNoise.WorldSizeXZ - 1);
+        float distanceFromEquator = Mathf.Abs((normalizedLatitude * 2f) - 1f);
+        float heat01 = 1f - Mathf.Pow(distanceFromEquator, _settings.LatitudeExponent);
+        return Mathf.Lerp(-1f, 1f, heat01);
     }
 }
 
-internal sealed class PrototypeSimplexNoise3D
+internal sealed class PrototypeSimplexNoise4D
 {
-    private const double F3 = 1d / 3d;
-    private const double G3 = 1d / 6d;
+    private const double F4 = 0.30901699437494745d;
+    private const double G4 = 0.1381966011250105d;
 
     private static readonly int[,] Gradients =
     {
-        { 1, 1, 0 }, { -1, 1, 0 }, { 1, -1, 0 }, { -1, -1, 0 },
-        { 1, 0, 1 }, { -1, 0, 1 }, { 1, 0, -1 }, { -1, 0, -1 },
-        { 0, 1, 1 }, { 0, -1, 1 }, { 0, 1, -1 }, { 0, -1, -1 },
+        { 0, 1, 1, 1 }, { 0, 1, 1, -1 }, { 0, 1, -1, 1 }, { 0, 1, -1, -1 },
+        { 0, -1, 1, 1 }, { 0, -1, 1, -1 }, { 0, -1, -1, 1 }, { 0, -1, -1, -1 },
+        { 1, 0, 1, 1 }, { 1, 0, 1, -1 }, { 1, 0, -1, 1 }, { 1, 0, -1, -1 },
+        { -1, 0, 1, 1 }, { -1, 0, 1, -1 }, { -1, 0, -1, 1 }, { -1, 0, -1, -1 },
+        { 1, 1, 0, 1 }, { 1, 1, 0, -1 }, { 1, -1, 0, 1 }, { 1, -1, 0, -1 },
+        { -1, 1, 0, 1 }, { -1, 1, 0, -1 }, { -1, -1, 0, 1 }, { -1, -1, 0, -1 },
+        { 1, 1, 1, 0 }, { 1, 1, -1, 0 }, { 1, -1, 1, 0 }, { 1, -1, -1, 0 },
+        { -1, 1, 1, 0 }, { -1, 1, -1, 0 }, { -1, -1, 1, 0 }, { -1, -1, -1, 0 },
     };
 
     private readonly byte[] _perm = new byte[512];
 
-    public PrototypeSimplexNoise3D(int seed)
+    public PrototypeSimplexNoise4D(int seed)
     {
         byte[] source = new byte[256];
         for (int i = 0; i < source.Length; i++)
@@ -211,87 +214,80 @@ internal sealed class PrototypeSimplexNoise3D
         }
     }
 
-    public double Sample(double x, double y, double z)
+    public double Sample(double x, double y, double z, double w)
     {
-        double skew = (x + y + z) * F3;
+        double skew = (x + y + z + w) * F4;
         int i = FastFloor(x + skew);
         int j = FastFloor(y + skew);
         int k = FastFloor(z + skew);
+        int l = FastFloor(w + skew);
 
-        double unskew = (i + j + k) * G3;
+        double unskew = (i + j + k + l) * G4;
         double x0 = x - (i - unskew);
         double y0 = y - (j - unskew);
         double z0 = z - (k - unskew);
+        double w0 = w - (l - unskew);
 
-        int i1;
-        int j1;
-        int k1;
-        int i2;
-        int j2;
-        int k2;
+        int rankX = 0;
+        int rankY = 0;
+        int rankZ = 0;
+        int rankW = 0;
 
-        if (x0 >= y0)
-        {
-            if (y0 >= z0)
-            {
-                i1 = 1; j1 = 0; k1 = 0;
-                i2 = 1; j2 = 1; k2 = 0;
-            }
-            else if (x0 >= z0)
-            {
-                i1 = 1; j1 = 0; k1 = 0;
-                i2 = 1; j2 = 0; k2 = 1;
-            }
-            else
-            {
-                i1 = 0; j1 = 0; k1 = 1;
-                i2 = 1; j2 = 0; k2 = 1;
-            }
-        }
-        else
-        {
-            if (y0 < z0)
-            {
-                i1 = 0; j1 = 0; k1 = 1;
-                i2 = 0; j2 = 1; k2 = 1;
-            }
-            else if (x0 < z0)
-            {
-                i1 = 0; j1 = 1; k1 = 0;
-                i2 = 0; j2 = 1; k2 = 1;
-            }
-            else
-            {
-                i1 = 0; j1 = 1; k1 = 0;
-                i2 = 1; j2 = 1; k2 = 0;
-            }
-        }
+        if (x0 > y0) rankX++; else rankY++;
+        if (x0 > z0) rankX++; else rankZ++;
+        if (x0 > w0) rankX++; else rankW++;
+        if (y0 > z0) rankY++; else rankZ++;
+        if (y0 > w0) rankY++; else rankW++;
+        if (z0 > w0) rankZ++; else rankW++;
 
-        double x1 = x0 - i1 + G3;
-        double y1 = y0 - j1 + G3;
-        double z1 = z0 - k1 + G3;
-        double x2 = x0 - i2 + (2d * G3);
-        double y2 = y0 - j2 + (2d * G3);
-        double z2 = z0 - k2 + (2d * G3);
-        double x3 = x0 - 1d + (3d * G3);
-        double y3 = y0 - 1d + (3d * G3);
-        double z3 = z0 - 1d + (3d * G3);
+        int i1 = rankX >= 3 ? 1 : 0;
+        int j1 = rankY >= 3 ? 1 : 0;
+        int k1 = rankZ >= 3 ? 1 : 0;
+        int l1 = rankW >= 3 ? 1 : 0;
+        int i2 = rankX >= 2 ? 1 : 0;
+        int j2 = rankY >= 2 ? 1 : 0;
+        int k2 = rankZ >= 2 ? 1 : 0;
+        int l2 = rankW >= 2 ? 1 : 0;
+        int i3 = rankX >= 1 ? 1 : 0;
+        int j3 = rankY >= 1 ? 1 : 0;
+        int k3 = rankZ >= 1 ? 1 : 0;
+        int l3 = rankW >= 1 ? 1 : 0;
+
+        double x1 = x0 - i1 + G4;
+        double y1 = y0 - j1 + G4;
+        double z1 = z0 - k1 + G4;
+        double w1 = w0 - l1 + G4;
+        double x2 = x0 - i2 + (2d * G4);
+        double y2 = y0 - j2 + (2d * G4);
+        double z2 = z0 - k2 + (2d * G4);
+        double w2 = w0 - l2 + (2d * G4);
+        double x3 = x0 - i3 + (3d * G4);
+        double y3 = y0 - j3 + (3d * G4);
+        double z3 = z0 - k3 + (3d * G4);
+        double w3 = w0 - l3 + (3d * G4);
+        double x4 = x0 - 1d + (4d * G4);
+        double y4 = y0 - 1d + (4d * G4);
+        double z4 = z0 - 1d + (4d * G4);
+        double w4 = w0 - 1d + (4d * G4);
 
         int ii = i & 255;
         int jj = j & 255;
         int kk = k & 255;
+        int ll = l & 255;
 
-        int gi0 = _perm[ii + _perm[jj + _perm[kk]]];
-        int gi1 = _perm[ii + i1 + _perm[jj + j1 + _perm[kk + k1]]];
-        int gi2 = _perm[ii + i2 + _perm[jj + j2 + _perm[kk + k2]]];
-        int gi3 = _perm[ii + 1 + _perm[jj + 1 + _perm[kk + 1]]];
+        int gi0 = _perm[ii + _perm[jj + _perm[kk + _perm[ll]]]];
+        int gi1 = _perm[ii + i1 + _perm[jj + j1 + _perm[kk + k1 + _perm[ll + l1]]]];
+        int gi2 = _perm[ii + i2 + _perm[jj + j2 + _perm[kk + k2 + _perm[ll + l2]]]];
+        int gi3 = _perm[ii + i3 + _perm[jj + j3 + _perm[kk + k3 + _perm[ll + l3]]]];
+        int gi4 = _perm[ii + 1 + _perm[jj + 1 + _perm[kk + 1 + _perm[ll + 1]]]];
 
-        double n0 = CornerContribution(gi0, x0, y0, z0);
-        double n1 = CornerContribution(gi1, x1, y1, z1);
-        double n2 = CornerContribution(gi2, x2, y2, z2);
-        double n3 = CornerContribution(gi3, x3, y3, z3);
+        double n0 = CornerContribution(gi0, x0, y0, z0, w0);
+        double n1 = CornerContribution(gi1, x1, y1, z1, w1);
+        double n2 = CornerContribution(gi2, x2, y2, z2, w2);
+        double n3 = CornerContribution(gi3, x3, y3, z3, w3);
+        double n4 = CornerContribution(gi4, x4, y4, z4, w4);
 
-        return 32d * (n0 + n1 + n2 + n3);
+        return 27d * (n0 + n1 + n2 + n3 + n4);
     }
 
     private static int FastFloor(double value)
@@ -300,21 +296,25 @@ internal sealed class PrototypeSimplexNoise3D
         return value < integer ? integer - 1 : integer;
     }
 
-    private static double Dot(int gradientIndex, double x, double y, double z)
+    private static double Dot(int gradientIndex, double x, double y, double z, double w)
     {
-        int index = gradientIndex % 12;
-        return (Gradients[index, 0] * x) + (Gradients[index, 1] * y) + (Gradients[index, 2] * z);
+        int index = gradientIndex & 31;
+        return
+            (Gradients[index, 0] * x) +
+            (Gradients[index, 1] * y) +
+            (Gradients[index, 2] * z) +
+            (Gradients[index, 3] * w);
     }
 
-    private static double CornerContribution(int gradientIndex, double x, double y, double z)
+    private static double CornerContribution(int gradientIndex, double x, double y, double z, double w)
     {
-        double falloff = 0.6d - (x * x) - (y * y) - (z * z);
+        double falloff = 0.6d - (x * x) - (y * y) - (z * z) - (w * w);
         if (falloff <= 0d)
         {
             return 0d;
         }
 
         falloff *= falloff;
-        return falloff * falloff * Dot(gradientIndex, x, y, z);
+        return falloff * falloff * Dot(gradientIndex, x, y, z, w);
     }
 }

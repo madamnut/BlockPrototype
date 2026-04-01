@@ -10,6 +10,8 @@ public sealed class WorldGenPackAsset : ScriptableObject
     [SerializeField] private SimplexNoiseSettingsAsset weirdnessSimplexSettings;
     [SerializeField] private SimplexNoiseSettingsAsset jaggedSimplexSettings;
     [SerializeField] private SimplexNoise3DSettingsAsset terrain3DSimplexSettings;
+    [SerializeField] private TemperatureSettingsAsset temperatureSettings;
+    [SerializeField] private SimplexNoiseSettingsAsset precipitationSimplexSettings;
 
     [SerializeField] private SplineAsset offsetSplineGraph;
     [SerializeField] private SplineAsset factorSplineGraph;
@@ -21,6 +23,8 @@ public sealed class WorldGenPackAsset : ScriptableObject
     public SimplexNoiseSettingsAsset WeirdnessSimplexSettings => weirdnessSimplexSettings;
     public SimplexNoiseSettingsAsset JaggedSimplexSettings => jaggedSimplexSettings;
     public SimplexNoise3DSettingsAsset Terrain3DSimplexSettings => terrain3DSimplexSettings;
+    public TemperatureSettingsAsset TemperatureSettings => temperatureSettings;
+    public SimplexNoiseSettingsAsset PrecipitationSimplexSettings => precipitationSimplexSettings;
     public SplineAsset OffsetSplineGraph => offsetSplineGraph;
     public SplineAsset FactorSplineGraph => factorSplineGraph;
     public SplineAsset JaggednessSplineGraph => jaggednessSplineGraph;
