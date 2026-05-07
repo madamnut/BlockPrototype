@@ -41,10 +41,174 @@ public sealed class ChunkGenerator
         public readonly float v111;
     }
 
+    private readonly struct SurfaceProfile
+    {
+        public SurfaceProfile(
+            BlockType top,
+            BlockType filler,
+            BlockType underwaterTop,
+            BlockType underwaterFiller,
+            BlockType deepFiller,
+            int fillerDepth)
+        {
+            Top = top;
+            Filler = filler;
+            UnderwaterTop = underwaterTop;
+            UnderwaterFiller = underwaterFiller;
+            DeepFiller = deepFiller;
+            FillerDepth = fillerDepth;
+        }
+
+        public BlockType Top { get; }
+        public BlockType Filler { get; }
+        public BlockType UnderwaterTop { get; }
+        public BlockType UnderwaterFiller { get; }
+        public BlockType DeepFiller { get; }
+        public int FillerDepth { get; }
+    }
+
+    private enum SurfaceLocation : byte
+    {
+        Any = 0,
+        Land = 1,
+        Underwater = 2,
+    }
+
+    private readonly struct SurfaceRuleContext
+    {
+        public SurfaceRuleContext(
+            int worldX,
+            int worldZ,
+            int highestSolid,
+            int seaLevel,
+            int steepness,
+            float surfaceNoise,
+            float temperature,
+            float humidity,
+            BiomeGroupKind biome)
+        {
+            WorldX = worldX;
+            WorldZ = worldZ;
+            HighestSolid = highestSolid;
+            SeaLevelDelta = highestSolid - seaLevel;
+            Steepness = steepness;
+            SurfaceNoise = surfaceNoise;
+            Temperature = temperature;
+            Humidity = humidity;
+            Biome = biome;
+            IsUnderwaterSurface = highestSolid < seaLevel;
+        }
+
+        public int WorldX { get; }
+        public int WorldZ { get; }
+        public int HighestSolid { get; }
+        public int SeaLevelDelta { get; }
+        public int Steepness { get; }
+        public float SurfaceNoise { get; }
+        public float Temperature { get; }
+        public float Humidity { get; }
+        public BiomeGroupKind Biome { get; }
+        public bool IsUnderwaterSurface { get; }
+    }
+
+    private readonly struct SurfaceRule
+    {
+        public SurfaceRule(
+            SurfaceProfile profile,
+            int biomeId = AnyBiomeId,
+            SurfaceLocation location = SurfaceLocation.Any,
+            int minSeaLevelDelta = int.MinValue,
+            int maxSeaLevelDelta = int.MaxValue,
+            int minSteepness = int.MinValue,
+            int maxSteepness = int.MaxValue,
+            float minSurfaceNoise = float.NegativeInfinity,
+            float maxSurfaceNoise = float.PositiveInfinity,
+            float minTemperature = float.NegativeInfinity,
+            float maxTemperature = float.PositiveInfinity,
+            float minHumidity = float.NegativeInfinity,
+            float maxHumidity = float.PositiveInfinity)
+        {
+            Profile = profile;
+            BiomeId = biomeId;
+            Location = location;
+            MinSeaLevelDelta = minSeaLevelDelta;
+            MaxSeaLevelDelta = maxSeaLevelDelta;
+            MinSteepness = minSteepness;
+            MaxSteepness = maxSteepness;
+            MinSurfaceNoise = minSurfaceNoise;
+            MaxSurfaceNoise = maxSurfaceNoise;
+            MinTemperature = minTemperature;
+            MaxTemperature = maxTemperature;
+            MinHumidity = minHumidity;
+            MaxHumidity = maxHumidity;
+        }
+
+        public SurfaceProfile Profile { get; }
+        public int BiomeId { get; }
+        public SurfaceLocation Location { get; }
+        public int MinSeaLevelDelta { get; }
+        public int MaxSeaLevelDelta { get; }
+        public int MinSteepness { get; }
+        public int MaxSteepness { get; }
+        public float MinSurfaceNoise { get; }
+        public float MaxSurfaceNoise { get; }
+        public float MinTemperature { get; }
+        public float MaxTemperature { get; }
+        public float MinHumidity { get; }
+        public float MaxHumidity { get; }
+
+        public bool Matches(in SurfaceRuleContext context)
+        {
+            if (BiomeId != AnyBiomeId && BiomeId != (int)context.Biome)
+            {
+                return false;
+            }
+
+            if (Location == SurfaceLocation.Land && context.IsUnderwaterSurface)
+            {
+                return false;
+            }
+
+            if (Location == SurfaceLocation.Underwater && !context.IsUnderwaterSurface)
+            {
+                return false;
+            }
+
+            if (context.SeaLevelDelta < MinSeaLevelDelta || context.SeaLevelDelta > MaxSeaLevelDelta)
+            {
+                return false;
+            }
+
+            if (context.Steepness < MinSteepness || context.Steepness > MaxSteepness)
+            {
+                return false;
+            }
+
+            if (context.SurfaceNoise < MinSurfaceNoise || context.SurfaceNoise > MaxSurfaceNoise)
+            {
+                return false;
+            }
+
+            if (context.Temperature < MinTemperature || context.Temperature > MaxTemperature)
+            {
+                return false;
+            }
+
+            if (context.Humidity < MinHumidity || context.Humidity > MaxHumidity)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
     private readonly int _seaLevel;
     private readonly ContinentalnessSampler _continentalnessSampler;
     private readonly ErosionSampler _erosionSampler;
     private readonly WeirdnessSampler _weirdnessSampler;
+    private readonly TemperatureSampler _temperatureSampler;
+    private readonly SimplexNoiseSampler _precipitationSampler;
     private readonly SimplexNoiseSampler _jaggedNoise;
     private readonly SimplexNoise3DSampler _terrainNoise;
     private readonly JsonSplineMapper _offsetMapper;
@@ -52,6 +216,7 @@ public sealed class ChunkGenerator
     private readonly JsonSplineMapper _jaggednessMapper;
     [System.ThreadStatic] private static float[] s_bodyCornerSampleBuffer;
     [System.ThreadStatic] private static float[] s_terrainNoiseColumnBuffer;
+    private const int AnyBiomeId = -1;
     private static readonly int[] s_cornerMinecraftY = CreateCornerMinecraftYTable();
     private static readonly float[] s_cornerDepthGradient = CreateCornerDepthGradientTable();
     private static readonly float[] s_cornerSlideScale = CreateCornerSlideScaleTable();
@@ -62,6 +227,8 @@ public sealed class ChunkGenerator
         ContinentalnessSampler continentalnessSampler,
         ErosionSampler erosionSampler,
         WeirdnessSampler weirdnessSampler,
+        TemperatureSampler temperatureSampler,
+        SimplexNoiseSampler precipitationSampler,
         SimplexNoiseSampler jaggedNoiseSampler,
         SimplexNoise3DSampler terrainNoiseSampler,
         JsonSplineMapper offsetMapper,
@@ -72,6 +239,8 @@ public sealed class ChunkGenerator
         _continentalnessSampler = continentalnessSampler ?? throw new System.ArgumentNullException(nameof(continentalnessSampler));
         _erosionSampler = erosionSampler ?? throw new System.ArgumentNullException(nameof(erosionSampler));
         _weirdnessSampler = weirdnessSampler ?? throw new System.ArgumentNullException(nameof(weirdnessSampler));
+        _temperatureSampler = temperatureSampler ?? throw new System.ArgumentNullException(nameof(temperatureSampler));
+        _precipitationSampler = precipitationSampler ?? throw new System.ArgumentNullException(nameof(precipitationSampler));
         _jaggedNoise = jaggedNoiseSampler ?? throw new System.ArgumentNullException(nameof(jaggedNoiseSampler));
         _terrainNoise = terrainNoiseSampler ?? throw new System.ArgumentNullException(nameof(terrainNoiseSampler));
         _offsetMapper = offsetMapper ?? throw new System.ArgumentNullException(nameof(offsetMapper));
@@ -141,7 +310,7 @@ public sealed class ChunkGenerator
                 columnHeights[columnIndex] = highestSolid;
 
                 long surfaceStart = Stopwatch.GetTimestamp();
-                PaintSurfaceLayers(blocks, localX, localZ, highestSolid);
+                PaintSurfaceLayers(blocks, columnHeights, chunkWorldX, chunkWorldZ, localX, localZ, highestSolid);
                 surfacePaintMilliseconds += ElapsedMilliseconds(surfaceStart);
                 long waterStart = Stopwatch.GetTimestamp();
                 FillWaterColumn(blocks, fluids, localX, localZ, highestSolid);
@@ -339,13 +508,22 @@ public sealed class ChunkGenerator
         }
     }
 
-    private static void PaintSurfaceLayers(BlockType[] blocks, int localX, int localZ, int highestSolid)
+    private void PaintSurfaceLayers(BlockType[] blocks, int[] columnHeights, int chunkWorldX, int chunkWorldZ, int localX, int localZ, int highestSolid)
     {
         if (highestSolid < 0)
         {
             return;
         }
 
+        int worldX = TerrainData.WrapWorldCoord(chunkWorldX + localX);
+        int worldZ = TerrainData.WrapWorldCoord(chunkWorldZ + localZ);
+        float temperature = _temperatureSampler.Sample(worldX, worldZ);
+        float humidity = _precipitationSampler.Sample(worldX, worldZ);
+        BiomeGroupKind biome = SampleBiomeGroup(worldX, worldZ, temperature, humidity);
+        int steepness = SampleColumnSteepness(columnHeights, localX, localZ, highestSolid);
+        float surfaceNoise = _jaggedNoise.Sample(worldX, worldZ);
+        SurfaceRuleContext context = new(worldX, worldZ, highestSolid, _seaLevel, steepness, surfaceNoise, temperature, humidity, biome);
+        SurfaceProfile profile = EvaluateSurfaceProfile(in context);
         int soilDepth = 0;
         for (int worldY = highestSolid; worldY >= 0; worldY--)
         {
@@ -362,11 +540,15 @@ public sealed class ChunkGenerator
 
             if (soilDepth == 0)
             {
-                blocks[index] = BlockType.Grass;
+                blocks[index] = context.IsUnderwaterSurface ? profile.UnderwaterTop : profile.Top;
             }
-            else if (soilDepth <= 3)
+            else if (soilDepth <= profile.FillerDepth)
             {
-                blocks[index] = BlockType.Dirt;
+                blocks[index] = context.IsUnderwaterSurface ? profile.UnderwaterFiller : profile.Filler;
+            }
+            else if (profile.DeepFiller != BlockType.Air && soilDepth == profile.FillerDepth + 1)
+            {
+                blocks[index] = profile.DeepFiller;
             }
             else
             {
@@ -385,6 +567,53 @@ public sealed class ChunkGenerator
     private static int GetColumnIndex(int localX, int localZ)
     {
         return (localZ * TerrainData.ChunkSize) + localX;
+    }
+
+    private BiomeGroupKind SampleBiomeGroup(int worldX, int worldZ, float temperature, float humidity)
+    {
+        float continentalness = _continentalnessSampler.Sample(worldX, worldZ);
+        float erosion = _erosionSampler.Sample(worldX, worldZ);
+        float weirdness = _weirdnessSampler.Sample(worldX, worldZ);
+        return OverworldBiomeGroupClassifier.Classify(temperature, humidity, continentalness, erosion, weirdness);
+    }
+
+    private static SurfaceProfile EvaluateSurfaceProfile(in SurfaceRuleContext context)
+    {
+        for (int i = 0; i < s_surfaceRules.Length; i++)
+        {
+            SurfaceRule rule = s_surfaceRules[i];
+            if (rule.Matches(in context))
+            {
+                return rule.Profile;
+            }
+        }
+
+        return GrasslandProfile;
+    }
+
+    private static int SampleColumnSteepness(int[] columnHeights, int localX, int localZ, int highestSolid)
+    {
+        int maxHeightDelta = 0;
+        IncludeNeighborHeightDelta(columnHeights, localX - 1, localZ, highestSolid, ref maxHeightDelta);
+        IncludeNeighborHeightDelta(columnHeights, localX + 1, localZ, highestSolid, ref maxHeightDelta);
+        IncludeNeighborHeightDelta(columnHeights, localX, localZ - 1, highestSolid, ref maxHeightDelta);
+        IncludeNeighborHeightDelta(columnHeights, localX, localZ + 1, highestSolid, ref maxHeightDelta);
+        return maxHeightDelta;
+    }
+
+    private static void IncludeNeighborHeightDelta(int[] columnHeights, int localX, int localZ, int height, ref int maxHeightDelta)
+    {
+        if (localX < 0 || localX >= TerrainData.ChunkSize || localZ < 0 || localZ >= TerrainData.ChunkSize)
+        {
+            return;
+        }
+
+        int neighborHeight = columnHeights[GetColumnIndex(localX, localZ)];
+        int heightDelta = Mathf.Abs(height - neighborHeight);
+        if (heightDelta > maxHeightDelta)
+        {
+            maxHeightDelta = heightDelta;
+        }
     }
 
     private static float EvaluateSlopedCheese(float yGradient, float offset, float factor, float jaggedContribution)
@@ -521,4 +750,116 @@ public sealed class ChunkGenerator
 
         return values;
     }
+
+    private static readonly SurfaceProfile GrasslandProfile = new(
+        BlockType.Grass,
+        BlockType.Dirt,
+        BlockType.Dirt,
+        BlockType.Dirt,
+        BlockType.Air,
+        3);
+
+    private static readonly SurfaceProfile SandyProfile = new(
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sandstone,
+        3);
+
+    private static readonly SurfaceProfile GravelSeafloorProfile = new(
+        BlockType.Gravel,
+        BlockType.Gravel,
+        BlockType.Gravel,
+        BlockType.Gravel,
+        BlockType.Sand,
+        2);
+
+    private static readonly SurfaceProfile SwampWetProfile = new(
+        BlockType.Mud,
+        BlockType.Dirt,
+        BlockType.Mud,
+        BlockType.Mud,
+        BlockType.Air,
+        3);
+
+    private static readonly SurfaceProfile RiverGravelProfile = new(
+        BlockType.Gravel,
+        BlockType.Dirt,
+        BlockType.Gravel,
+        BlockType.Gravel,
+        BlockType.Sand,
+        2);
+
+    private static readonly SurfaceProfile DesertProfile = new(
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sand,
+        BlockType.Sandstone,
+        4);
+
+    private static readonly SurfaceProfile RockyProfile = new(
+        BlockType.Rock,
+        BlockType.Rock,
+        BlockType.Rock,
+        BlockType.Rock,
+        BlockType.Air,
+        2);
+
+    private static readonly SurfaceRule[] s_surfaceRules =
+    {
+        new SurfaceRule(
+            GravelSeafloorProfile,
+            biomeId: (int)BiomeGroupKind.Ocean,
+            location: SurfaceLocation.Underwater,
+            minSurfaceNoise: 0.2f),
+        new SurfaceRule(
+            SandyProfile,
+            biomeId: (int)BiomeGroupKind.Ocean,
+            location: SurfaceLocation.Underwater),
+        new SurfaceRule(
+            SwampWetProfile,
+            biomeId: (int)BiomeGroupKind.River,
+            location: SurfaceLocation.Underwater,
+            minHumidity: 0.15f,
+            minSurfaceNoise: 0.1f),
+        new SurfaceRule(
+            RiverGravelProfile,
+            biomeId: (int)BiomeGroupKind.River,
+            location: SurfaceLocation.Underwater,
+            maxSurfaceNoise: -0.15f),
+        new SurfaceRule(
+            SandyProfile,
+            biomeId: (int)BiomeGroupKind.River,
+            location: SurfaceLocation.Underwater),
+        new SurfaceRule(
+            SandyProfile,
+            biomeId: (int)BiomeGroupKind.Coast,
+            minSeaLevelDelta: -6,
+            maxSeaLevelDelta: 3),
+        new SurfaceRule(
+            SwampWetProfile,
+            biomeId: (int)BiomeGroupKind.Swamp,
+            minSeaLevelDelta: -4,
+            maxSeaLevelDelta: 2,
+            minHumidity: 0f),
+        new SurfaceRule(
+            DesertProfile,
+            biomeId: (int)BiomeGroupKind.Desert),
+        new SurfaceRule(
+            RockyProfile,
+            biomeId: (int)BiomeGroupKind.Mountain,
+            location: SurfaceLocation.Land,
+            minSteepness: 5),
+        new SurfaceRule(
+            RiverGravelProfile,
+            biomeId: (int)BiomeGroupKind.River,
+            location: SurfaceLocation.Land,
+            minSeaLevelDelta: -2,
+            maxSeaLevelDelta: 3,
+            maxSurfaceNoise: -0.2f),
+        new SurfaceRule(
+            GrasslandProfile)
+    };
 }

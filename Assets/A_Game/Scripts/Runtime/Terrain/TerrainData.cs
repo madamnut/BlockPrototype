@@ -255,7 +255,18 @@ public sealed class TerrainData : IDisposable
         JsonSplineMapper offsetMapper = new(worldGenPack.OffsetSplineGraph != null ? worldGenPack.OffsetSplineGraph.RuntimeJson : null);
         JsonSplineMapper factorMapper = new(worldGenPack.FactorSplineGraph != null ? worldGenPack.FactorSplineGraph.RuntimeJson : null);
         JsonSplineMapper jaggednessMapper = new(worldGenPack.JaggednessSplineGraph != null ? worldGenPack.JaggednessSplineGraph.RuntimeJson : null);
-        _chunkGenerator = new ChunkGenerator(worldGenPack.SeaLevel, _continentalnessSampler, _erosionSampler, _weirdnessSampler, jaggedNoiseSampler, terrainNoiseSampler, offsetMapper, factorMapper, jaggednessMapper);
+        _chunkGenerator = new ChunkGenerator(
+            worldGenPack.SeaLevel,
+            _continentalnessSampler,
+            _erosionSampler,
+            _weirdnessSampler,
+            _temperatureSampler,
+            _precipitationSampler,
+            jaggedNoiseSampler,
+            terrainNoiseSampler,
+            offsetMapper,
+            factorMapper,
+            jaggednessMapper);
         _generationWorkers = CreateGenerationWorkers();
     }
 

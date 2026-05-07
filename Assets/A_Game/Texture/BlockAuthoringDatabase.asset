@@ -37,7 +37,13 @@ MonoBehaviour:
     kind: 0
   - blockId: 7
     blockName: Mud
-    kind: 1
-  - blockId: 100
+    kind: 0
+  - blockId: 8
+    blockName: Sandstone
+    kind: 0
+  - blockId: 9
+    blockName: Gravel
+    kind: 0
+  - blockId: 1000
     blockName: Plant
     kind: 1
